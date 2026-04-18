@@ -17,15 +17,18 @@ class TokenCookieAuthentication(BaseAuthentication):
 
     def authenticate(self, request):
         token = None
+        from_cookie = False
 
         # Try Bearer header first
         auth_header = request.META.get("HTTP_AUTHORIZATION", "")
         if auth_header.startswith("Bearer "):
-            token = auth_header[7:]
+            token = auth_header[7:].strip()
 
         # Fallback to cookie
         if not token:
             token = request.COOKIES.get("session_token")
+            if token:
+                from_cookie = True
 
         if not token:
             return None  # No credentials provided
@@ -33,11 +36,11 @@ class TokenCookieAuthentication(BaseAuthentication):
         try:
             sesion = Sesion.objects.select_related("usuario").get(token=token)
         except Sesion.DoesNotExist:
-            raise AuthenticationFailed("Sesión inválida o expirada")
+            return None  # Stale/invalid token — let permission layer handle it
 
         if sesion.expires_at < timezone.now():
             sesion.delete()
-            raise AuthenticationFailed("Sesión expirada")
+            return None  # Expired — let permission layer handle it
 
         if not sesion.usuario.activo:
             raise AuthenticationFailed("Cuenta desactivada")

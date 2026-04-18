@@ -14,6 +14,8 @@ api.interceptors.response.use(
     const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/me');
     if (err.response?.status === 401 && !isAuthEndpoint) {
       window.location.href = '/login';
+      // Return a forever-pending promise so callers never see the error
+      return new Promise(() => {});
     }
     return Promise.reject(err);
   }

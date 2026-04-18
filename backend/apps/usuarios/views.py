@@ -11,9 +11,13 @@ from .serializers import (
     UsuarioCreateSerializer,
     UsuarioUpdateSerializer,
 )
+from django.conf import settings as django_settings
 from .authentication import create_session, delete_session, delete_user_sessions
 from .permissions import IsAdmin
 from apps.auditoria.services import audit_log
+
+_COOKIE_SECURE = not django_settings.DEBUG
+_COOKIE_SAMESITE = "None" if _COOKIE_SECURE else "Lax"
 
 
 # ── Auth views ──
@@ -46,7 +50,8 @@ def register(request):
     )
     response.set_cookie(
         "session_token", token,
-        httponly=True, samesite="Lax", max_age=86400, path="/",
+        httponly=True, samesite=_COOKIE_SAMESITE,
+        secure=_COOKIE_SECURE, max_age=86400, path="/",
     )
     return response
 
@@ -87,7 +92,8 @@ def login(request):
     })
     response.set_cookie(
         "session_token", token,
-        httponly=True, samesite="Lax", max_age=86400, path="/",
+        httponly=True, samesite=_COOKIE_SAMESITE,
+        secure=_COOKIE_SECURE, max_age=86400, path="/",
     )
     return response
 
