@@ -49,7 +49,10 @@ MIDDLEWARE = [
 ROOT_URLCONF = "config.urls"
 
 # ── Frontend build directory ──
-FRONTEND_DIR = BASE_DIR.parent / "frontend" / "dist"
+# Local dev: ../frontend/dist | Docker/Railway: ../frontend_dist
+_FRONTEND_LOCAL = BASE_DIR.parent / "frontend" / "dist"
+_FRONTEND_DOCKER = BASE_DIR / "frontend_dist"
+FRONTEND_DIR = _FRONTEND_DOCKER if _FRONTEND_DOCKER.exists() else _FRONTEND_LOCAL
 
 TEMPLATES = [
     {

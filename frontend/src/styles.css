@@ -508,20 +508,6 @@ body {
 .text-success { color: var(--success) !important; }
 .text-danger { color: var(--danger) !important; }
 
-/* ── Responsive ── */
-@media (max-width: 768px) {
-  .sidebar {
-    transform: translateX(-100%);
-  }
-  .sidebar.open {
-    transform: translateX(0);
-  }
-  .main-content {
-    margin-left: 0;
-    padding: 1rem;
-  }
-}
-
 /* ── Alerts ── */
 .alert-toast {
   position: fixed;
