@@ -41,7 +41,7 @@ export default function Layout() {
             <i className="bi bi-journal-bookmark-fill" />
           </div>
           <div className="sidebar-brand-text">
-            <span className="sidebar-brand-title">Libro Fiscal</span>
+            <span className="sidebar-brand-title">MoneyControl</span>
             <span className="sidebar-brand-sub">Sistema Contable</span>
           </div>
         </div>

@@ -37,7 +37,7 @@ export default function LoginPage() {
           <div className="icon-circle">
             <i className="bi bi-journal-bookmark-fill" style={{ fontSize: '1.8rem' }} />
           </div>
-          <h2>Libro Fiscal</h2>
+          <h2>Money Control</h2>
           <p>{isRegister ? 'Crear cuenta nueva' : 'Iniciar sesión'}</p>
         </div>
 
