@@ -7,11 +7,17 @@ from .serializers import LibroSerializer, LibroCreateSerializer
 from apps.auditoria.services import audit_log
 
 
+def _libros_qs_for_user(user):
+    if getattr(user, "rol", None) == "admin":
+        return Libro.objects.all()
+    return Libro.objects.filter(propietario=user)
+
+
 @api_view(["GET", "POST"])
 def libros_list_create(request):
     if request.method == "GET":
         anio = request.query_params.get("anio")
-        qs = Libro.objects.all()
+        qs = _libros_qs_for_user(request.user)
         if anio:
             try:
                 qs = qs.filter(anio=int(anio))
@@ -29,9 +35,10 @@ def libros_list_create(request):
     nombre = data["nombre"].strip()
     nit = data["nit"].strip()
     anio = data["anio"]
+    libros_qs = _libros_qs_for_user(request.user)
 
     # Check NIT + año (RN-001)
-    existing = Libro.objects.filter(nit=nit, anio=anio).first()
+    existing = libros_qs.filter(nit=nit, anio=anio).first()
     if existing:
         if nombre and existing.nombre != nombre:
             return Response(
@@ -41,20 +48,20 @@ def libros_list_create(request):
         return Response(LibroSerializer(existing).data)
 
     # Check nombre + año (RN-002)
-    if Libro.objects.filter(nombre=nombre, anio=anio).exists():
+    if libros_qs.filter(nombre=nombre, anio=anio).exists():
         return Response(
             {"error": f"El nombre '{nombre}' ya está registrado para el año {anio}."},
             status=status.HTTP_409_CONFLICT,
         )
 
-    libro = Libro.objects.create(nombre=nombre, nit=nit, anio=anio)
+    libro = Libro.objects.create(nombre=nombre, nit=nit, anio=anio, propietario=request.user)
     return Response(LibroSerializer(libro).data, status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET", "PUT", "DELETE"])
 def libro_detail(request, libro_id):
     try:
-        libro = Libro.objects.get(pk=libro_id)
+        libro = _libros_qs_for_user(request.user).get(pk=libro_id)
     except Libro.DoesNotExist:
         return Response({"error": "libro no existe"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -68,9 +75,10 @@ def libro_detail(request, libro_id):
         nombre = data["nombre"].strip()
         nit = data["nit"].strip()
         anio = data["anio"]
+        libros_qs = _libros_qs_for_user(request.user)
 
         # Check NIT + año uniqueness (exclude current)
-        dup_nit = Libro.objects.filter(nit=nit, anio=anio).exclude(pk=libro_id).first()
+        dup_nit = libros_qs.filter(nit=nit, anio=anio).exclude(pk=libro_id).first()
         if dup_nit:
             return Response(
                 {"error": f"Ya existe un libro para NIT {nit} y año {anio} con el nombre '{dup_nit.nombre}'."},
@@ -78,7 +86,7 @@ def libro_detail(request, libro_id):
             )
 
         # Check nombre + año uniqueness (exclude current)
-        if Libro.objects.filter(nombre=nombre, anio=anio).exclude(pk=libro_id).exists():
+        if libros_qs.filter(nombre=nombre, anio=anio).exclude(pk=libro_id).exists():
             return Response(
                 {"error": f"El nombre '{nombre}' ya está registrado para el año {anio}."},
                 status=status.HTTP_409_CONFLICT,

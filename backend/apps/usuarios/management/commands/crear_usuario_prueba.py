@@ -20,6 +20,20 @@ class Command(BaseCommand):
         else:
             self.stdout.write(self.style.WARNING("Usuario admin@test.com ya existe"))
 
+        # Usuario admin principal
+        if not Usuario.objects.filter(email="andresmau1126@gmail.com").exists():
+            Usuario.objects.create_user(
+                email="andresmau1126@gmail.com",
+                nombre="Andrés Mauricio",
+                password="admin123",
+                rol="admin",
+                is_staff=True,
+                is_superuser=True,
+            )
+            self.stdout.write(self.style.SUCCESS("Usuario admin creado: andresmau1126@gmail.com / admin123"))
+        else:
+            self.stdout.write(self.style.WARNING("Usuario andresmau1126@gmail.com ya existe"))
+
         # Usuario normal
         if not Usuario.objects.filter(email="usuario@test.com").exists():
             Usuario.objects.create_user(

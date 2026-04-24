@@ -31,6 +31,12 @@ def _build_filters(params):
     return filters
 
 
+def _libros_qs_for_user(user):
+    if getattr(user, "rol", None) == "admin":
+        return Libro.objects.all()
+    return Libro.objects.filter(propietario=user)
+
+
 @api_view(["GET", "POST"])
 def entries_list_create(request):
     if request.method == "GET":
@@ -39,7 +45,7 @@ def entries_list_create(request):
         except (ValueError, TypeError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        qs = Movimiento.objects.filter(**filters).order_by("fecha", "id")
+        qs = Movimiento.objects.filter(libro__in=_libros_qs_for_user(request.user), **filters).order_by("fecha", "id")
         rows = MovimientoSerializer(qs, many=True).data
 
         tot_ing = sum(r["ingresos"] for r in rows)
@@ -57,7 +63,7 @@ def entries_list_create(request):
     data = serializer.validated_data
 
     try:
-        libro = Libro.objects.get(pk=data["libro_id"])
+        libro = _libros_qs_for_user(request.user).get(pk=data["libro_id"])
     except Libro.DoesNotExist:
         return Response({"error": "libro no existe"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -86,8 +92,11 @@ def entries_list_create(request):
 @api_view(["PUT", "DELETE"])
 def entry_detail(request, entry_id):
     try:
-        mov = Movimiento.objects.get(pk=entry_id)
+        mov = Movimiento.objects.select_related("libro").get(pk=entry_id)
     except Movimiento.DoesNotExist:
+        return Response({"error": "no existe"}, status=status.HTTP_404_NOT_FOUND)
+
+    if not _libros_qs_for_user(request.user).filter(pk=mov.libro_id).exists():
         return Response({"error": "no existe"}, status=status.HTTP_404_NOT_FOUND)
 
     libro_id = mov.libro_id

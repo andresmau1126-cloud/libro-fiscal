@@ -9,23 +9,33 @@ from apps.movimientos.models import Movimiento
 from apps.usuarios.models import Usuario
 
 
+def _libros_qs_for_user(user):
+    if getattr(user, "rol", None) == "admin":
+        return Libro.objects.all()
+    return Libro.objects.filter(propietario=user)
+
+
 @api_view(["GET"])
 def dashboard_stats(request):
-    total_libros = Libro.objects.count()
-    total_movimientos = Movimiento.objects.count()
+    libros_qs = _libros_qs_for_user(request.user)
+    movs_qs = Movimiento.objects.filter(libro__in=libros_qs)
 
-    totals = Movimiento.objects.aggregate(
+    total_libros = libros_qs.count()
+    total_movimientos = movs_qs.count()
+
+    totals = movs_qs.aggregate(
         ingresos=Sum("ingresos"),
         egresos=Sum("egresos"),
     )
     total_ingresos = float(totals["ingresos"] or 0)
     total_egresos = float(totals["egresos"] or 0)
 
-    total_usuarios = Usuario.objects.filter(activo=True).count()
+    total_usuarios = Usuario.objects.filter(activo=True).count() if getattr(request.user, "rol", None) == "admin" else 1
 
     # Libros por año (últimos 5)
     libros_por_anio = list(
         Libro.objects
+        .filter(pk__in=libros_qs.values("pk"))
         .values("anio")
         .annotate(cantidad=Count("id"))
         .order_by("-anio")[:5]
@@ -33,7 +43,7 @@ def dashboard_stats(request):
 
     # Movimientos recientes
     recientes_qs = (
-        Movimiento.objects
+        movs_qs
         .select_related("libro")
         .order_by("-id")[:10]
     )
@@ -53,7 +63,7 @@ def dashboard_stats(request):
     # Ingresos vs egresos por mes (año actual)
     current_year = timezone.now().year
     meses_chart = list(
-        Movimiento.objects
+        movs_qs
         .filter(libro__anio=current_year)
         .annotate(mes=ExtractMonth("fecha"))
         .values("mes")
@@ -94,7 +104,10 @@ def resumen_anual(request):
     except (ValueError, TypeError):
         return Response({"error": "libro_id inválido"}, status=400)
 
-    qs = Movimiento.objects.filter(libro_id=libro_id)
+    if not _libros_qs_for_user(request.user).filter(pk=libro_id).exists():
+        return Response({"error": "libro no existe"}, status=404)
+
+    qs = Movimiento.objects.filter(libro_id=libro_id, libro__in=_libros_qs_for_user(request.user))
     if year:
         try:
             y = int(year)

@@ -1,0 +1,6 @@
+{
+  "appId": "com.librofiscal.app",
+  "appName": "MoneyControl",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

@@ -8,6 +8,12 @@ from apps.movimientos.models import Movimiento
 from services.excel import generate_excel
 
 
+def _libros_qs_for_user(user):
+    if getattr(user, "rol", None) == "admin":
+        return Libro.objects.all()
+    return Libro.objects.filter(propietario=user)
+
+
 @api_view(["GET"])
 def export_excel(request):
     libro_id = request.query_params.get("libro_id")
@@ -23,11 +29,11 @@ def export_excel(request):
         return Response({"error": "libro_id inválido"}, status=400)
 
     try:
-        libro = Libro.objects.get(pk=libro_id)
+        libro = _libros_qs_for_user(request.user).get(pk=libro_id)
     except Libro.DoesNotExist:
         return Response({"error": "libro no existe"}, status=404)
 
-    qs = Movimiento.objects.filter(libro_id=libro_id)
+    qs = Movimiento.objects.filter(libro_id=libro_id, libro__in=_libros_qs_for_user(request.user))
 
     if year and month:
         try:
