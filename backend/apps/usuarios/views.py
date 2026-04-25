@@ -10,6 +10,7 @@ from .serializers import (
     UsuarioSerializer,
     UsuarioCreateSerializer,
     UsuarioUpdateSerializer,
+    UsuarioPreferencesUpdateSerializer,
 )
 from django.conf import settings as django_settings
 from .authentication import create_session, delete_session, delete_user_sessions
@@ -114,9 +115,32 @@ def logout(request):
     return response
 
 
-@api_view(["GET"])
+@api_view(["GET", "PATCH"])
 @permission_classes([IsAuthenticated])
 def me(request):
+    if request.method == "PATCH":
+        serializer = UsuarioPreferencesUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        user = request.user
+        updated_fields = []
+
+        if "email_notifications" in data:
+            user.pref_email_notifications = data["email_notifications"]
+            updated_fields.append("pref_email_notifications")
+        if "currency" in data:
+            user.pref_currency = data["currency"]
+            updated_fields.append("pref_currency")
+        if "timezone" in data:
+            user.pref_timezone = data["timezone"]
+            updated_fields.append("pref_timezone")
+
+        if updated_fields:
+            user.save(update_fields=updated_fields + ["updated_at"])
+
+        return Response({"user": UsuarioSerializer(user).data})
+
     return Response({"user": UsuarioSerializer(request.user).data})
 
 

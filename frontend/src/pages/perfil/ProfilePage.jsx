@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { authUpdateMe } from '../../services/api';
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState('info');
 
   const initials = (user?.nombre || 'U')
@@ -101,7 +102,7 @@ export default function ProfilePage() {
       <div className="profile-tab-content">
         {activeTab === 'info' && <InfoTab user={user} />}
         {activeTab === 'security' && <SecurityTab />}
-        {activeTab === 'preferences' && <PreferencesTab />}
+        {activeTab === 'preferences' && <PreferencesTab user={user} updateUser={updateUser} />}
       </div>
     </div>
   );
@@ -204,7 +205,48 @@ function SecurityTab() {
 }
 
 /* ── Preferences Tab ── */
-function PreferencesTab() {
+function PreferencesTab({ user, updateUser }) {
+  const [prefs, setPrefs] = useState({
+    emailNotifications: true,
+    currency: 'GTQ',
+    timezone: 'GMT-6',
+  });
+  const [msg, setMsg] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const serverPrefs = user?.preferences;
+    if (!serverPrefs) return;
+    setPrefs({
+      emailNotifications: Boolean(serverPrefs.email_notifications),
+      currency: serverPrefs.currency || 'GTQ',
+      timezone: serverPrefs.timezone || 'GMT-6',
+    });
+  }, [user]);
+
+  useEffect(() => {
+    if (!msg) return undefined;
+    const timer = setTimeout(() => setMsg(null), 2500);
+    return () => clearTimeout(timer);
+  }, [msg]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const data = await authUpdateMe({
+        email_notifications: prefs.emailNotifications,
+        currency: prefs.currency,
+        timezone: prefs.timezone,
+      });
+      updateUser(data.user);
+      setMsg({ ok: true, text: 'Preferencias guardadas correctamente' });
+    } catch {
+      setMsg({ ok: false, text: 'No se pudieron guardar las preferencias' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="profile-card">
       <div className="profile-card-header">
@@ -212,6 +254,16 @@ function PreferencesTab() {
         <p>Personaliza tu experiencia en el sistema</p>
       </div>
       <div className="profile-card-body">
+        <div className="d-flex justify-content-end mb-3">
+          <button type="button" className="btn btn-primary px-4" onClick={handleSave} disabled={saving}>
+            <i className="bi bi-check-lg me-1" /> {saving ? 'Guardando...' : 'Guardar preferencias'}
+          </button>
+        </div>
+        {msg && (
+          <div className={`alert ${msg.ok ? 'alert-success' : 'alert-danger'}`} style={{ borderRadius: 12 }}>
+            {msg.text}
+          </div>
+        )}
         <div className="profile-pref-grid">
           <div className="profile-pref-item">
             <div>
@@ -219,7 +271,14 @@ function PreferencesTab() {
               <div className="profile-pref-desc">Recibir alertas de actividad por email</div>
             </div>
             <div className="form-check form-switch">
-              <input className="form-check-input" type="checkbox" role="switch" defaultChecked style={{ width: 48, height: 24 }} />
+              <input
+                className="form-check-input"
+                type="checkbox"
+                role="switch"
+                checked={prefs.emailNotifications}
+                onChange={(e) => setPrefs(prev => ({ ...prev, emailNotifications: e.target.checked }))}
+                style={{ width: 48, height: 24 }}
+              />
             </div>
           </div>
           <div className="profile-pref-item">
@@ -227,7 +286,12 @@ function PreferencesTab() {
               <div className="profile-pref-title">Formato de moneda</div>
               <div className="profile-pref-desc">Formato de visualización de montos</div>
             </div>
-            <select className="form-select" style={{ width: 200 }} defaultValue="GTQ">
+            <select
+              className="form-select"
+              style={{ width: 200 }}
+              value={prefs.currency}
+              onChange={(e) => setPrefs(prev => ({ ...prev, currency: e.target.value }))}
+            >
               <option value="GTQ">GTQ (Quetzal)</option>
               <option value="USD">USD (Dólar)</option>
               <option value="COP">COP (Peso Col.)</option>
@@ -238,13 +302,40 @@ function PreferencesTab() {
               <div className="profile-pref-title">Zona horaria</div>
               <div className="profile-pref-desc">Para fechas y horas del sistema</div>
             </div>
-            <select className="form-select" style={{ width: 200 }} defaultValue="GMT-6">
+            <select
+              className="form-select"
+              style={{ width: 200 }}
+              value={prefs.timezone}
+              onChange={(e) => setPrefs(prev => ({ ...prev, timezone: e.target.value }))}
+            >
               <option value="GMT-6">GMT-6 (Guatemala)</option>
               <option value="GMT-5">GMT-5 (Colombia)</option>
               <option value="GMT-4">GMT-4 (Venezuela)</option>
             </select>
           </div>
         </div>
+        <div className="mt-4">
+          <button type="button" className="btn btn-primary px-4" onClick={handleSave} disabled={saving}>
+            <i className="bi bi-check-lg me-1" /> {saving ? 'Guardando...' : 'Guardar preferencias'}
+          </button>
+        </div>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleSave}
+          disabled={saving}
+          style={{
+            position: 'fixed',
+            right: 16,
+            bottom: 16,
+            zIndex: 1050,
+            borderRadius: 999,
+            boxShadow: '0 10px 24px rgba(0,0,0,0.2)',
+            padding: '10px 18px',
+          }}
+        >
+          <i className="bi bi-save2 me-1" /> {saving ? 'Guardando...' : 'Guardar'}
+        </button>
       </div>
     </div>
   );

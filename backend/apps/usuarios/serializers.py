@@ -6,10 +6,19 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class UsuarioSerializer(serializers.ModelSerializer):
+    preferences = serializers.SerializerMethodField()
+
     class Meta:
         model = Usuario
-        fields = ["id", "nombre", "email", "rol", "activo", "created_at", "updated_at"]
+        fields = ["id", "nombre", "email", "rol", "activo", "preferences", "created_at", "updated_at"]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_preferences(self, obj):
+        return {
+            "email_notifications": obj.pref_email_notifications,
+            "currency": obj.pref_currency,
+            "timezone": obj.pref_timezone,
+        }
 
 
 class UsuarioCreateSerializer(serializers.Serializer):
@@ -48,3 +57,9 @@ class RegisterSerializer(serializers.Serializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
+
+
+class UsuarioPreferencesUpdateSerializer(serializers.Serializer):
+    email_notifications = serializers.BooleanField(required=False)
+    currency = serializers.ChoiceField(choices=["GTQ", "USD", "COP"], required=False)
+    timezone = serializers.ChoiceField(choices=["GMT-6", "GMT-5", "GMT-4"], required=False)
