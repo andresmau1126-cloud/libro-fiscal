@@ -35,6 +35,7 @@ export const authLogout = () => api.post('/auth/logout').then(r => r.data);
 /* ── Dashboard ── */
 export const fetchDashboard = () => api.get('/dashboard').then(r => r.data);
 export const fetchAuditoria = (limit = 100) => api.get(`/auditoria?limit=${limit}`).then(r => r.data);
+export const deleteAuditoria = (id) => api.delete(`/auditoria/${id}`).then(r => r.data);
 
 /* ── Usuarios ── */
 export const fetchUsuarios = () => api.get('/auth/usuarios/').then(r => r.data);

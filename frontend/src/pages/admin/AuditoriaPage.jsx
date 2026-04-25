@@ -1,16 +1,29 @@
 import { useState, useEffect } from 'react';
-import { fetchAuditoria } from '../../services/api';
+import { fetchAuditoria, deleteAuditoria } from '../../services/api';
 
 export default function AuditoriaPage() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
     fetchAuditoria(200)
       .then(setLogs)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('¿Eliminar este registro de auditoría?')) return;
+    try {
+      await deleteAuditoria(id);
+      setLogs(prev => prev.filter(l => l.id !== id));
+    } catch {
+      alert('Error al eliminar el registro');
+    }
+  };
 
   return (
     <>
@@ -36,6 +49,7 @@ export default function AuditoriaPage() {
                 <th>ID</th>
                 <th>IP</th>
                 <th>Detalle</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -54,10 +68,19 @@ export default function AuditoriaPage() {
                   <td style={{ fontSize: '0.8rem', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {l.detalle ? JSON.stringify(l.detalle) : '—'}
                   </td>
+                  <td>
+                    <button
+                      className="btn btn-sm btn-outline-danger"
+                      title="Eliminar registro"
+                      onClick={() => handleDelete(l.id)}
+                    >
+                      <i className="bi bi-trash" />
+                    </button>
+                  </td>
                 </tr>
               ))}
               {logs.length === 0 && (
-                <tr><td colSpan={7} className="text-center text-muted py-4">Sin registros</td></tr>
+                <tr><td colSpan={8} className="text-center text-muted py-4">Sin registros</td></tr>
               )}
             </tbody>
           </table>
