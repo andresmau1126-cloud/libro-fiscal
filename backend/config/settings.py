@@ -8,6 +8,15 @@ import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Cargar variables del archivo .env si existe
+_env_file = BASE_DIR / ".env"
+if _env_file.exists():
+    for _line in _env_file.read_text(encoding="utf-8").splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            os.environ.setdefault(_k.strip(), _v.strip())
+
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me-in-production")
 
 DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
@@ -32,6 +41,7 @@ INSTALLED_APPS = [
     "apps.auditoria",
     "apps.dashboard",
     "apps.exportacion",
+    "apps.inventario",
 ]
 
 MIDDLEWARE = [
@@ -165,6 +175,16 @@ CSRF_TRUSTED_ORIGINS = os.getenv(
 
 # ── Session token ──
 SESSION_TOKEN_EXPIRY_HOURS = int(os.getenv("SESSION_TOKEN_EXPIRY_HOURS", "24"))
+
+# ── Email (alertas de inventario) ──
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")  # Contraseña de aplicación Google
+DEFAULT_FROM_EMAIL = os.getenv("EMAIL_HOST_USER", "")
+ALERTA_EMAIL_DESTINO = os.getenv("ALERTA_EMAIL_DESTINO", "maurcio1126@gmail.com")
 
 # ── Security headers (producción) ──
 if not DEBUG:

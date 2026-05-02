@@ -4,8 +4,8 @@ import Layout from './components/Layout';
 import LoginPage from './pages/auth/LoginPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import LibrosPage from './pages/libros/LibrosPage';
+import InventarioPage from './pages/inventario/InventarioPage';
 import UsuariosPage from './pages/admin/UsuariosPage';
-import AuditoriaPage from './pages/admin/AuditoriaPage';
 import ProfilePage from './pages/perfil/ProfilePage';
 
 function ProtectedRoute({ children }) {
@@ -32,9 +32,9 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<DashboardPage />} />
         <Route path="libros" element={<LibrosPage />} />
+        <Route path="inventario" element={<InventarioPage />} />
         <Route path="movimientos" element={<Navigate to="/libros" replace />} />
         <Route path="usuarios" element={<AdminRoute><UsuariosPage /></AdminRoute>} />
-        <Route path="auditoria" element={<AdminRoute><AuditoriaPage /></AdminRoute>} />
         <Route path="perfil" element={<ProfilePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

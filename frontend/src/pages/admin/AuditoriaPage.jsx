@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchAuditoria } from '../../services/api';
+import { fetchAuditoria, clearAuditoria } from '../../services/api';
 
 export default function AuditoriaPage() {
   const [logs, setLogs] = useState([]);
@@ -12,11 +12,26 @@ export default function AuditoriaPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleClear = async () => {
+    if (!window.confirm('¿Eliminar TODOS los registros de auditoría? Esta acción no se puede deshacer.')) return;
+    try {
+      await clearAuditoria();
+      setLogs([]);
+    } catch {
+      alert('Error al limpiar la auditoría');
+    }
+  };
+
   return (
     <>
-      <div className="page-header">
-        <h2>Auditoría</h2>
-        <p>Registro de acciones del sistema</p>
+      <div className="page-header d-flex justify-content-between align-items-start">
+        <div>
+          <h2>Auditoría</h2>
+          <p>Registro de acciones del sistema</p>
+        </div>
+        <button className="btn btn-outline-danger" onClick={handleClear}>
+          <i className="bi bi-trash3 me-1" /> Limpiar todo
+        </button>
       </div>
 
       <div className="data-table">

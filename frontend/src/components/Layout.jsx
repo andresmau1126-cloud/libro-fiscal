@@ -71,6 +71,12 @@ export default function Layout() {
                   <span>Libros Fiscales</span>
                 </NavLink>
               </li>
+              <li>
+                <NavLink to="/inventario" onClick={closeSidebar}>
+                  <i className="bi bi-box-seam-fill" />
+                  <span>Inventario</span>
+                </NavLink>
+              </li>
             </ul>
           </div>
 
@@ -83,12 +89,6 @@ export default function Layout() {
                   <NavLink to="/usuarios" onClick={closeSidebar}>
                     <i className="bi bi-people-fill" />
                     <span>Usuarios</span>
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink to="/auditoria" onClick={closeSidebar}>
-                    <i className="bi bi-shield-check" />
-                    <span>Auditoría</span>
                   </NavLink>
                 </li>
               </ul>

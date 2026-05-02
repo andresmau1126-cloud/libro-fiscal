@@ -39,3 +39,10 @@ def auditoria_delete(request, pk):
         return Response({"error": "Registro no encontrado"}, status=status.HTTP_404_NOT_FOUND)
     registro.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAdmin])
+def auditoria_clear(request):
+    deleted, _ = Auditoria.objects.all().delete()
+    return Response({"deleted": deleted})

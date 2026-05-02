@@ -36,6 +36,7 @@ export const authLogout = () => api.post('/auth/logout').then(r => r.data);
 export const fetchDashboard = () => api.get('/dashboard').then(r => r.data);
 export const fetchAuditoria = (limit = 100) => api.get(`/auditoria?limit=${limit}`).then(r => r.data);
 export const deleteAuditoria = (id) => api.delete(`/auditoria/${id}`).then(r => r.data);
+export const clearAuditoria = () => api.delete('/auditoria/clear').then(r => r.data);
 
 /* ── Usuarios ── */
 export const fetchUsuarios = () => api.get('/auth/usuarios/').then(r => r.data);
@@ -65,5 +66,18 @@ export const fetchResumenAnual = (libroId, year) =>
 export const fetchExportBlob = (libroId, year, month) =>
   api.get(`/export?libro_id=${libroId}&year=${year}&month=${month}`, { responseType: 'blob' })
     .then(r => r.data);
+
+/* ── Inventario ── */
+export const fetchProductos = (q = '', lowStock = false) => {
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (lowStock) params.set('low_stock', '1');
+  const queryString = params.toString();
+  const suffix = queryString ? `?${queryString}` : '';
+  return api.get(`/productos${suffix}`).then(r => r.data);
+};
+export const createProducto = (data) => api.post('/productos', data).then(r => r.data);
+export const updateProducto = (id, data) => api.put(`/productos/${id}`, data).then(r => r.data);
+export const deleteProducto = (id) => api.delete(`/productos/${id}`).then(r => r.data);
 
 export default api;
