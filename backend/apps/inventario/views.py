@@ -1,7 +1,12 @@
 from rest_framework import status
 from rest_framework.decorators import api_view
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.db import models
+from django.conf import settings
+from django.core.mail import send_mail
+from django.http import HttpResponse
 
 from .models import Producto
 from .serializers import ProductoSerializer, ProductoCreateUpdateSerializer
@@ -92,3 +97,88 @@ def producto_detail(request, producto_id):
 
     producto.delete()
     return Response({"ok": True})
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def test_mail(request):
+    destino = "maurcio1126@gmail.com"
+    remitente = settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER
+
+    if not remitente or not settings.EMAIL_HOST_PASSWORD:
+        return Response(
+            {
+                "ok": False,
+                "error": "Faltan variables EMAIL_HOST_USER o EMAIL_HOST_PASSWORD para Brevo SMTP.",
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    try:
+        send_mail(
+            subject="Prueba de correo - Libro Fiscal v2",
+            message="Este es un correo de prueba enviado desde /api/test-mail usando Brevo SMTP.",
+            from_email=remitente,
+            recipient_list=[destino],
+            fail_silently=False,
+        )
+    except Exception as exc:
+        return Response(
+            {"ok": False, "error": str(exc)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    return Response(
+        {
+            "ok": True,
+            "message": "Correo de prueba enviado.",
+            "destino": destino,
+            "smtp_host": settings.EMAIL_HOST,
+        }
+    )
+
+
+def test_mail_page(request):
+    destino = "maurcio1126@gmail.com"
+    remitente = settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER
+
+    if not remitente or not settings.EMAIL_HOST_PASSWORD:
+        html = """
+        <html><body style='font-family:Arial,sans-serif;padding:24px'>
+        <h2 style='color:#b42318'>Error al enviar correo</h2>
+        <p>Faltan variables EMAIL_HOST_USER o EMAIL_HOST_PASSWORD.</p>
+        <p>Destino esperado: <strong>maurcio1126@gmail.com</strong></p>
+        </body></html>
+        """
+        return HttpResponse(html, status=500)
+
+    try:
+        send_mail(
+            subject="Prueba de correo - Libro Fiscal v2",
+            message="Este es un correo de prueba enviado desde /test-mail usando Brevo SMTP.",
+            from_email=remitente,
+            recipient_list=[destino],
+            fail_silently=False,
+        )
+    except Exception as exc:
+        html = f"""
+        <html><body style='font-family:Arial,sans-serif;padding:24px'>
+        <h2 style='color:#b42318'>Fallo de envio</h2>
+        <p>No se pudo enviar el correo de prueba.</p>
+        <p><strong>Error:</strong> {str(exc)}</p>
+        <p><strong>SMTP:</strong> {settings.EMAIL_HOST}:{settings.EMAIL_PORT}</p>
+        <p><strong>Destino:</strong> {destino}</p>
+        </body></html>
+        """
+        return HttpResponse(html, status=500)
+
+    html = f"""
+    <html><body style='font-family:Arial,sans-serif;padding:24px'>
+    <h2 style='color:#067647'>Correo enviado correctamente</h2>
+    <p>Se envio un correo de prueba exitosamente.</p>
+    <p><strong>Destino:</strong> {destino}</p>
+    <p><strong>SMTP:</strong> {settings.EMAIL_HOST}:{settings.EMAIL_PORT}</p>
+    <p><strong>Remitente:</strong> {remitente}</p>
+    </body></html>
+    """
+    return HttpResponse(html)

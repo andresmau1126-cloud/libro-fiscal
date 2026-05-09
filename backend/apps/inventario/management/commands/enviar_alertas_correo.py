@@ -6,17 +6,11 @@ Uso:
     python manage.py enviar_alertas_correo
 
 Variables de entorno necesarias (.env o sistema):
-    EMAIL_HOST_USER      → tu correo Gmail, ej: andresmau1126@gmail.com
-    EMAIL_HOST_PASSWORD  → contraseña de aplicación Google (NO tu contraseña normal)
+    EMAIL_HOST           → smtp-relay.sendinblue.com (Brevo SMTP)
+    EMAIL_PORT           → 587
+    EMAIL_HOST_USER      → login SMTP de Brevo
+    EMAIL_HOST_PASSWORD  → password SMTP de Brevo
     ALERTA_EMAIL_DESTINO → correo donde llegan las alertas (puede ser el mismo)
-
-Cómo obtener la contraseña de aplicación Google (1 minuto):
-    1. Entra a https://myaccount.google.com/security
-    2. Activa "Verificación en 2 pasos" si no la tienes
-    3. Busca "Contraseñas de aplicaciones"
-    4. Selecciona app: Correo / dispositivo: Windows
-    5. Copia la clave de 16 letras que te genera
-    6. Úsala como EMAIL_HOST_PASSWORD
 """
 
 import os

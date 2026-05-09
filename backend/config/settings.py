@@ -4,6 +4,7 @@ Django settings for Libro Fiscal project.
 import os
 from pathlib import Path
 from datetime import timedelta
+from email.utils import formataddr
 import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -176,15 +177,21 @@ CSRF_TRUSTED_ORIGINS = os.getenv(
 # ── Session token ──
 SESSION_TOKEN_EXPIRY_HOURS = int(os.getenv("SESSION_TOKEN_EXPIRY_HOURS", "24"))
 
-# ── Email (alertas de inventario) ──
+# ── Email (Brevo SMTP) ──
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp-relay.brevo.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")  # Contraseña de aplicación Google
-DEFAULT_FROM_EMAIL = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+BREVO_SENDER_EMAIL = os.getenv("BREVO_SENDER_EMAIL", "").strip()
+BREVO_SENDER_NAME = os.getenv("BREVO_SENDER_NAME", "").strip()
+if BREVO_SENDER_EMAIL:
+    DEFAULT_FROM_EMAIL = formataddr((BREVO_SENDER_NAME, BREVO_SENDER_EMAIL)) if BREVO_SENDER_NAME else BREVO_SENDER_EMAIL
+else:
+    DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", os.getenv("EMAIL_HOST_USER", ""))
 ALERTA_EMAIL_DESTINO = os.getenv("ALERTA_EMAIL_DESTINO", "maurcio1126@gmail.com")
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
 
 # ── Security headers (producción) ──
 if not DEBUG:
