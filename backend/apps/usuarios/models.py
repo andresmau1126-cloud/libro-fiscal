@@ -75,3 +75,29 @@ class Sesion(models.Model):
 
     def __str__(self):
         return f"Sesión {self.usuario.email} ({self.token[:8]}...)"
+
+
+class OTP(models.Model):
+    """Modelo para almacenar códigos OTP de un solo uso"""
+    TIPO_CHOICES = [
+        ('login', 'Login'),
+        ('reset_password', 'Resetear Contraseña'),
+    ]
+    
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name="otps")
+    codigo = models.CharField(max_length=6)
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='login')
+    usado = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    
+    class Meta:
+        db_table = "otps"
+        verbose_name = "OTP"
+        verbose_name_plural = "OTPs"
+        indexes = [
+            models.Index(fields=['usuario', 'codigo', 'tipo']),
+        ]
+    
+    def __str__(self):
+        return f"OTP {self.usuario.email} - {self.tipo}"

@@ -6,3 +6,7 @@ openpyxl>=3.1
 gunicorn>=21.2
 whitenoise>=6.5
 dj-database-url>=2.1
+python-decouple>=3.8
+django-otp>=1.1
+qrcode>=7.4
+Pillow>=10.0

@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Usuario
+from .models import Usuario, OTP
 from .serializers import (
     RegisterSerializer,
     LoginSerializer,
@@ -11,10 +11,13 @@ from .serializers import (
     UsuarioCreateSerializer,
     UsuarioUpdateSerializer,
     UsuarioPreferencesUpdateSerializer,
+    RequestOTPSerializer,
+    VerifyOTPSerializer,
 )
 from django.conf import settings as django_settings
 from .authentication import create_session, delete_session, delete_user_sessions
 from .permissions import IsAdmin
+from .otp_service import crear_otp, enviar_otp_email, verificar_otp
 from apps.auditoria.services import audit_log
 
 _COOKIE_SECURE = not django_settings.DEBUG
@@ -59,7 +62,104 @@ def register(request):
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+def request_otp(request):
+    """Solicitar código OTP - Paso 1 del login"""
+    serializer = RequestOTPSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    email = data["email"].strip().lower()
+    password = data["password"]
+
+    # Validar credenciales
+    try:
+        user = Usuario.objects.get(email=email)
+    except Usuario.DoesNotExist:
+        return Response(
+            {"error": "Credenciales inválidas"},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    if not user.check_password(password):
+        return Response(
+            {"error": "Credenciales inválidas"},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    if not user.activo:
+        return Response(
+            {"error": "Cuenta desactivada. Contacte al administrador"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Crear y enviar OTP
+    otp = crear_otp(user, tipo='login')
+    email_enviado = enviar_otp_email(user, otp.codigo)
+
+    if not email_enviado:
+        return Response(
+            {"error": "Error al enviar el código. Intente más tarde"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+    return Response({
+        "message": "Código OTP enviado al email",
+        "email": user.email,
+        "expires_in_minutes": 5
+    })
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def verify_otp(request):
+    """Verificar código OTP y crear sesión - Paso 2 del login"""
+    serializer = VerifyOTPSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    email = data["email"].strip().lower()
+    codigo = data["codigo"].strip()
+
+    try:
+        user = Usuario.objects.get(email=email)
+    except Usuario.DoesNotExist:
+        return Response(
+            {"error": "Usuario no encontrado"},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    # Verificar OTP
+    es_valido, mensaje = verificar_otp(user, codigo, tipo='login')
+    
+    if not es_valido:
+        return Response(
+            {"error": mensaje},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    # Crear sesión
+    token = create_session(
+        user,
+        ip=request.META.get("REMOTE_ADDR"),
+        user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
+    )
+
+    response = Response({
+        "message": "Login exitoso",
+        "user": UsuarioSerializer(user).data,
+    })
+    response.set_cookie(
+        "session_token", token,
+        httponly=True, samesite=_COOKIE_SAMESITE,
+        secure=_COOKIE_SECURE, max_age=86400, path="/",
+    )
+    return response
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
 def login(request):
+    """LOGIN SIMPLIFICADO - Mantener para compatibilidad (opcional)"""
     serializer = LoginSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
