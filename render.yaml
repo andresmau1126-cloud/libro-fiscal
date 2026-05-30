@@ -2,7 +2,7 @@ services:
   - type: web
     name: render4
     env: docker
-    branch: main
+    branch: master
     plan: starter
     dockerfilePath: Dockerfile
     autoDeploy: true
