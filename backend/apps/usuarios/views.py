@@ -1,3 +1,7 @@
+import secrets
+
+from django.conf import settings as django_settings
+from django.core.mail import BadHeaderError, send_mail
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -7,6 +11,8 @@ from .models import Usuario, OTP
 from .serializers import (
     RegisterSerializer,
     LoginSerializer,
+    VerifyRegistrationCodeSerializer,
+    ResendRegistrationCodeSerializer,
     UsuarioSerializer,
     UsuarioCreateSerializer,
     UsuarioUpdateSerializer,
@@ -14,7 +20,6 @@ from .serializers import (
     RequestOTPSerializer,
     VerifyOTPSerializer,
 )
-from django.conf import settings as django_settings
 from .authentication import create_session, delete_session, delete_user_sessions
 from .permissions import IsAdmin
 from .otp_service import crear_otp, enviar_otp_email, verificar_otp
@@ -22,6 +27,27 @@ from apps.auditoria.services import audit_log
 
 _COOKIE_SECURE = not django_settings.DEBUG
 _COOKIE_SAMESITE = "None" if _COOKIE_SECURE else "Lax"
+
+
+def _generate_security_code():
+    return "".join(str(secrets.randbelow(10)) for _ in range(6))
+
+
+def _send_registration_security_code(user, code):
+    subject = "Código de seguridad para tu registro"
+    message = (
+        f"Hola {user.nombre},\n\n"
+        f"Gracias por registrarte en Libro Fiscal. Tu código de seguridad es:\n\n"
+        f"{code}\n\n"
+        "Usa este código para verificar tu correo electrónico. Si no solicitaste este registro, ignora este mensaje.\n"
+    )
+    send_mail(
+        subject,
+        message,
+        django_settings.DEFAULT_FROM_EMAIL,
+        [user.email],
+        fail_silently=False,
+    )
 
 
 # ── Auth views ──
@@ -39,25 +65,26 @@ def register(request):
         password=data["password"],
     )
 
-    token = create_session(
-        user,
-        ip=request.META.get("REMOTE_ADDR"),
-        user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
-    )
+    security_code = _generate_security_code()
+    user.email_verification_code = security_code
+    user.email_verified = False
+    user.save(update_fields=["email_verification_code", "email_verified"])
 
-    response = Response(
+    try:
+        _send_registration_security_code(user, security_code)
+    except (BadHeaderError, Exception):
+        user.delete()
+        return Response(
+            {"error": "No se pudo enviar el código de seguridad. Verifica la configuración de correo."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    return Response(
         {
-            "message": "Registro exitoso",
-            "user": UsuarioSerializer(user).data,
+            "message": "Registro exitoso. Se ha enviado un código de seguridad al correo ingresado.",
         },
         status=status.HTTP_201_CREATED,
     )
-    response.set_cookie(
-        "session_token", token,
-        httponly=True, samesite=_COOKIE_SAMESITE,
-        secure=_COOKIE_SECURE, max_age=86400, path="/",
-    )
-    return response
 
 
 @api_view(["POST"])
@@ -181,6 +208,12 @@ def login(request):
             status=status.HTTP_403_FORBIDDEN,
         )
 
+    if not user.email_verified:
+        return Response(
+            {"error": "Debes verificar tu correo con el código enviado."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     token = create_session(
         user,
         ip=request.META.get("REMOTE_ADDR"),
@@ -197,6 +230,80 @@ def login(request):
         secure=_COOKIE_SECURE, max_age=86400, path="/",
     )
     return response
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def verify_registration_code(request):
+    serializer = VerifyRegistrationCodeSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    email = data["email"].strip().lower()
+    code = data["code"].strip()
+
+    try:
+        user = Usuario.objects.get(email=email)
+    except Usuario.DoesNotExist:
+        return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+    if user.email_verified:
+        return Response({"message": "El correo ya ha sido verificado.", "user": UsuarioSerializer(user).data})
+
+    if user.email_verification_code != code:
+        return Response({"error": "Código de seguridad inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.email_verified = True
+    user.email_verification_code = ""
+    user.save(update_fields=["email_verified", "email_verification_code"])
+
+    token = create_session(
+        user,
+        ip=request.META.get("REMOTE_ADDR"),
+        user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
+    )
+
+    response = Response({
+        "message": "Correo verificado correctamente.",
+        "user": UsuarioSerializer(user).data,
+    })
+    response.set_cookie(
+        "session_token", token,
+        httponly=True, samesite=_COOKIE_SAMESITE,
+        secure=_COOKIE_SECURE, max_age=86400, path="/",
+    )
+    return response
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def resend_registration_code(request):
+    serializer = ResendRegistrationCodeSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    email = data["email"].strip().lower()
+    try:
+        user = Usuario.objects.get(email=email)
+    except Usuario.DoesNotExist:
+        return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+    if user.email_verified:
+        return Response({"message": "El correo ya ha sido verificado."})
+
+    security_code = _generate_security_code()
+    user.email_verification_code = security_code
+    user.save(update_fields=["email_verification_code"])
+
+    try:
+        _send_registration_security_code(user, security_code)
+    except (BadHeaderError, Exception):
+        return Response(
+            {"error": "No se pudo reenviar el código. Verifica la configuración de correo."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    return Response({"message": "Se ha reenviado el código de seguridad al correo ingresado."})
 
 
 @api_view(["POST"])
@@ -263,6 +370,7 @@ def usuarios_list_create(request):
         nombre=data["nombre"].strip(),
         password=data["password"],
         rol=data.get("rol", "usuario"),
+        email_verified=True,
     )
 
     audit_log(

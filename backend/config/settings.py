@@ -22,7 +22,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me-in-production")
 
 DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",") if os.getenv("ALLOWED_HOSTS") else ["*"]
 
 # ── Aplicaciones ──
 INSTALLED_APPS = [
@@ -57,6 +57,15 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# ── CSRF Configuration ──
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS = ["*"]
+else:
+    CSRF_TRUSTED_ORIGINS = os.getenv(
+        "CSRF_TRUSTED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,https://*.ngrok-free.dev,https://*.ngrok.io"
+    ).split(",")
+
 ROOT_URLCONF = "config.urls"
 
 # ── Frontend build directory ──
@@ -84,44 +93,51 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 # ── Base de datos ──
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if DATABASE_URL:
+if DEBUG:
+    # Forzar SQLite en desarrollo local
     DATABASES = {
-        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600),
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
 else:
-    DB_ENGINE = os.getenv("DB_ENGINE", "mysql").strip().lower()
-
-    if DB_ENGINE in ("postgres", "postgresql"):
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    if DATABASE_URL:
         DATABASES = {
-            "default": {
-                "ENGINE": "django.db.backends.postgresql",
-                "NAME": os.getenv("DB_NAME", "libro_fiscal"),
-                "USER": os.getenv("DB_USER", "postgres"),
-                "PASSWORD": os.getenv("DB_PASSWORD", "12345"),
-                "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-                "PORT": os.getenv("DB_PORT", "5432"),
-            }
-        }
-    elif DB_ENGINE == "mysql":
-        DATABASES = {
-            "default": {
-                "ENGINE": "django.db.backends.mysql",
-                "NAME": os.getenv("DB_NAME", "libro_fiscal"),
-                "USER": os.getenv("DB_USER", "root"),
-                "PASSWORD": os.getenv("DB_PASSWORD", ""),
-                "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-                "PORT": os.getenv("DB_PORT", "3306"),
-            }
+            "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600),
         }
     else:
-        DATABASES = {
-            "default": {
-                "ENGINE": "django.db.backends.sqlite3",
-                "NAME": BASE_DIR / "db.sqlite3",
+        DB_ENGINE = os.getenv("DB_ENGINE", "mysql").strip().lower()
+        if DB_ENGINE in ("postgres", "postgresql"):
+            DATABASES = {
+                "default": {
+                    "ENGINE": "django.db.backends.postgresql",
+                    "NAME": os.getenv("DB_NAME", "libro_fiscal"),
+                    "USER": os.getenv("DB_USER", "postgres"),
+                    "PASSWORD": os.getenv("DB_PASSWORD", "12345"),
+                    "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+                    "PORT": os.getenv("DB_PORT", "5432"),
+                }
             }
-        }
+        elif DB_ENGINE == "mysql":
+            DATABASES = {
+                "default": {
+                    "ENGINE": "django.db.backends.mysql",
+                    "NAME": os.getenv("DB_NAME", "libro_fiscal"),
+                    "USER": os.getenv("DB_USER", "root"),
+                    "PASSWORD": os.getenv("DB_PASSWORD", ""),
+                    "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+                    "PORT": os.getenv("DB_PORT", "3306"),
+                }
+            }
+        else:
+            DATABASES = {
+                "default": {
+                    "ENGINE": "django.db.backends.sqlite3",
+                    "NAME": BASE_DIR / "db.sqlite3",
+                }
+            }
 
 # ── Auth ──
 AUTH_USER_MODEL = "usuarios.Usuario"
@@ -163,15 +179,16 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ── CORS ──
 CORS_ALLOW_ALL_ORIGINS = DEBUG
-CORS_ALLOWED_ORIGINS = os.getenv(
-    "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
-).split(",")
+if not DEBUG:
+    CORS_ALLOWED_ORIGINS = os.getenv(
+        "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+    ).split(",")
 CORS_ALLOW_CREDENTIALS = True
 
 # ── CSRF trusted origins ──
 CSRF_TRUSTED_ORIGINS = os.getenv(
     "CSRF_TRUSTED_ORIGINS",
-    "http://localhost:3000,http://127.0.0.1:3000,https://*.ngrok-free.dev,https://*.ngrok.io"
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,https://*.ngrok-free.dev,https://*.ngrok.io"
 ).split(",")
 
 # ── Session token ──

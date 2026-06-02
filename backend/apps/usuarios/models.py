@@ -16,6 +16,7 @@ class UsuarioManager(BaseUserManager):
         extra_fields.setdefault("rol", "admin")
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("email_verified", True)
         return self.create_user(email, nombre, password, **extra_fields)
 
 
@@ -27,6 +28,8 @@ class Usuario(AbstractBaseUser):
 
     nombre = models.CharField(max_length=150)
     email = models.EmailField(unique=True)
+    email_verified = models.BooleanField(default=False)
+    email_verification_code = models.CharField(max_length=6, blank=True, default="")
     rol = models.CharField(max_length=10, choices=ROL_CHOICES, default="usuario")
     pref_email_notifications = models.BooleanField(default=True)
     pref_currency = models.CharField(max_length=3, default="GTQ")

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:railway": "vite build && npx rimraf ../frontend_dist && npx cpx \"dist/**\" ../frontend_dist",
     "preview": "vite preview",
     "cap:copy": "npx cap copy",
     "cap:sync": "npx cap sync",
@@ -26,6 +27,8 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.2.0",
+    "cpx": "^1.5.0",
+    "rimraf": "^6.1.3",
     "vite": "^5.0.0"
   }
 }

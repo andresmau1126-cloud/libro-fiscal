@@ -45,6 +45,9 @@ class TokenCookieAuthentication(BaseAuthentication):
         if not sesion.usuario.activo:
             raise AuthenticationFailed("Cuenta desactivada")
 
+        if not getattr(sesion.usuario, 'email_verified', False):
+            raise AuthenticationFailed("Correo no verificado")
+
         return (sesion.usuario, token)
 
 

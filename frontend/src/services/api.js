@@ -2,7 +2,18 @@ import axios from 'axios';
 
 const envApiBase = import.meta.env.VITE_API_BASE_URL;
 const isNativeApp = Boolean(window?.Capacitor?.isNativePlatform?.());
-const fallbackApiBase = isNativeApp ? 'http://10.0.2.2:8000/api' : '/api';
+
+// Determine API base URL based on environment
+let fallbackApiBase;
+if (isNativeApp) {
+  fallbackApiBase = 'http://10.0.2.2:8000/api';
+} else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+  // Local development: use relative path (assumes proxy or same origin)
+  fallbackApiBase = '/api';
+} else {
+  // Network access: explicitly use hostname with backend port
+  fallbackApiBase = `http://${window.location.hostname}:8000/api`;
+}
 
 const api = axios.create({
   baseURL: envApiBase || fallbackApiBase,
@@ -15,7 +26,7 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     const url = err.config?.url || '';
-    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/me');
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/me') || url.includes('/auth/verify-registration-code') || url.includes('/auth/resend-registration-code');
     if (err.response?.status === 401 && !isAuthEndpoint) {
       window.location.href = '/login';
       // Return a forever-pending promise so callers never see the error
@@ -30,6 +41,8 @@ export const authMe = () => api.get('/auth/me').then(r => r.data);
 export const authUpdateMe = (data) => api.patch('/auth/me', data).then(r => r.data);
 export const authLogin = (data) => api.post('/auth/login', data).then(r => r.data);
 export const authRegister = (data) => api.post('/auth/register', data).then(r => r.data);
+export const authVerifyRegistrationCode = (data) => api.post('/auth/verify-registration-code', data).then(r => r.data);
+export const authResendRegistrationCode = (data) => api.post('/auth/resend-registration-code', data).then(r => r.data);
 export const authLogout = () => api.post('/auth/logout').then(r => r.data);
 
 /* ── Dashboard ── */

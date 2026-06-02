@@ -55,6 +55,15 @@ class UsuarioUpdateSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, required=False, min_length=6)
 
 
+class VerifyRegistrationCodeSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    code = serializers.CharField(min_length=6, max_length=6)
+
+
+class ResendRegistrationCodeSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
 class UsuarioPreferencesUpdateSerializer(serializers.Serializer):
     email_notifications = serializers.BooleanField(required=False)
     currency = serializers.CharField(max_length=3, required=False)

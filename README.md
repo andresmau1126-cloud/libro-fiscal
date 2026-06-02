@@ -74,6 +74,16 @@ npm run dev
 
 El frontend se sirve en `http://localhost:3000` y hace proxy de `/api/*` al backend en `http://localhost:8000`.
 
+### Despliegue en Render
+
+Render puede desplegar este proyecto usando el `Dockerfile` raíz y un servicio PostgreSQL.
+
+1. Conecta el repositorio a Render.
+2. Usa el archivo `render.yaml` en la raíz para crear los servicios.
+3. Render construirá la imagen Docker, ejecutará las migraciones y servirá la app en el puerto que provee la plataforma.
+
+> Asegúrate de cambiar `SECRET_KEY` en las variables de entorno de Render por una clave segura.
+
 ## API Endpoints
 
 | Método | Ruta                    | Descripción                |
