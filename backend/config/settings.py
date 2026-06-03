@@ -199,9 +199,10 @@ CSRF_TRUSTED_ORIGINS = os.getenv(
 # ── Session token ──
 SESSION_TOKEN_EXPIRY_HOURS = int(os.getenv("SESSION_TOKEN_EXPIRY_HOURS", "24"))
 
-# ── Emergency bypass for email verification (production only) ──
+# ── Emergency bypass for email verification ──
 # Allows listed emails to bypass OTP verification if email sending fails
-BYPASS_EMAIL_VERIFICATION = os.getenv("BYPASS_EMAIL_VERIFICATION", "andresmau1126@gmail.com" if os.getenv("ENVIRONMENT", "").lower() == "production" else "")
+# Default: always active for the seed user in case SMTP fails
+BYPASS_EMAIL_VERIFICATION = os.getenv("BYPASS_EMAIL_VERIFICATION", "andresmau1126@gmail.com")
 
 # ── Email (Brevo SMTP) ──
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
