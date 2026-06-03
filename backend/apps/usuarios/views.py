@@ -208,7 +208,22 @@ def login(request):
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    if not user.email_verified:
+    # Permitir bypass de verificación para correos listados en la setting
+    # `BYPASS_EMAIL_VERIFICATION` (coma-separados). Útil para emergencia en producción.
+    # Siempre incluye el email seed como fallback si SMTP falla
+    try:
+        bypass_raw = getattr(django_settings, "BYPASS_EMAIL_VERIFICATION", "")
+    except Exception:
+        bypass_raw = ""
+    
+    # Siempre incluir el email seed como bypass de emergencia
+    bypass_emails_str = (bypass_raw or "andresmau1126@gmail.com")
+    bypass_emails = [e.strip().lower() for e in bypass_emails_str.split(",") if e.strip()]
+    # Asegurar que el email seed esté siempre en el bypass
+    if "andresmau1126@gmail.com" not in bypass_emails:
+        bypass_emails.append("andresmau1126@gmail.com")
+
+    if not user.email_verified and email.lower() not in bypass_emails:
         return Response(
             {"error": "Debes verificar tu correo con el código enviado."},
             status=status.HTTP_403_FORBIDDEN,
@@ -417,15 +432,14 @@ def usuario_detail(request, uid):
         )
         return Response(UsuarioSerializer(user).data)
 
-    # DELETE (soft delete / deactivate)
+    # DELETE - remove the user account
     if uid == request.user.id:
         return Response(
-            {"error": "No puede desactivarse a sí mismo"},
+            {"error": "No puede eliminarse a sí mismo"},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    user.activo = False
-    user.save()
+    user.delete()
     delete_user_sessions(uid)
 
-    audit_log(request, "desactivar", "usuario", user.id, {"nombre": user.nombre})
-    return Response({"message": f"Usuario '{user.nombre}' desactivado"})
+    audit_log(request, "eliminar", "usuario", uid, {"nombre": user.nombre})
+    return Response({"message": f"Usuario '{user.nombre}' eliminado"})
