@@ -22,7 +22,12 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me-in-production")
 
 DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",") if os.getenv("ALLOWED_HOSTS") else ["*"]
+_allowed = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,libro-fiscal.onrender.com")
+ALLOWED_HOSTS = [h.strip() for h in _allowed.split(",") if h.strip()]
+for host in ["localhost", "127.0.0.1", "libro-fiscal.onrender.com"]:
+    if host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(host)
+ALLOWED_HOSTS = ALLOWED_HOSTS or ["*"]
 
 # ── Aplicaciones ──
 INSTALLED_APPS = [
