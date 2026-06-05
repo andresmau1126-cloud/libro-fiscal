@@ -21,6 +21,7 @@ export default function LoginPage() {
     setMessage('');
     setLoading(true);
     try {
+      // Verificación de registro (código de seguridad)
       if (pendingVerificationEmail || isVerifying) {
         const email = pendingVerificationEmail || verificationEmail.trim().toLowerCase();
         const data = await verifyRegistrationCode(email, verificationCode);
@@ -33,6 +34,7 @@ export default function LoginPage() {
         return;
       }
 
+
       if (isRegister) {
         await register(form.nombre, form.email, form.password);
         setPendingVerificationEmail(form.email.trim().toLowerCase());
@@ -42,6 +44,7 @@ export default function LoginPage() {
         return;
       }
 
+      // Inicio de sesión normal con email + password
       await login(form.email, form.password);
       navigate('/');
     } catch (err) {
@@ -186,18 +189,38 @@ export default function LoginPage() {
             </div>
           )}
 
+          {isRegister && (
+            <div className="text-center mt-3">
+              <button
+                type="button"
+                className="btn btn-outline-primary"
+                onClick={() => {
+                  setIsRegister(false);
+                  setIsVerifying(true);
+                  setError('');
+                  setMessage('');
+                  setVerificationCode('');
+                }}
+                disabled={loading}
+                style={{ fontWeight: 600 }}
+              >
+                Ya tengo código de verificación
+              </button>
+            </div>
+          )}
+
           {!pendingVerificationEmail && !isRegister && (
             <div className="text-center mt-3">
               <button
                 type="button"
-                className="btn btn-link"
+                className="btn btn-outline-primary"
                 onClick={() => {
                   setIsVerifying(!isVerifying);
                   setError('');
                   setMessage('');
                   setVerificationCode('');
                 }}
-                style={{ paddingLeft: 0 }}
+                style={{ fontWeight: 600 }}
               >
                 {isVerifying ? 'Volver al inicio de sesión' : 'Ya tengo código de verificación'}
               </button>

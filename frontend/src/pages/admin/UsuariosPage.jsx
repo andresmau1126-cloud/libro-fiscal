@@ -57,13 +57,13 @@ export default function UsuariosPage() {
     }
   };
 
-  const handleDeactivate = async (id, nombre) => {
-    if (!window.confirm(`¿Desactivar al usuario "${nombre}"?`)) return;
+  const handleDeleteUser = async (id, nombre) => {
+    if (!window.confirm(`¿Eliminar al usuario "${nombre}"? Esta acción borrará su cuenta.`)) return;
     try {
       await deleteUsuario(id);
       load();
     } catch (err) {
-      alert(err.response?.data?.error || 'Error al desactivar');
+      alert(err.response?.data?.error || 'Error al eliminar');
     }
   };
 
@@ -119,8 +119,8 @@ export default function UsuariosPage() {
                     <button className="btn btn-sm btn-outline-primary me-1" onClick={() => openEdit(u)} title="Editar">
                       <i className="bi bi-pencil" />
                     </button>
-                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeactivate(u.id, u.nombre)} title="Desactivar">
-                      <i className="bi bi-person-x" />
+                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteUser(u.id, u.nombre)} title="Eliminar usuario">
+                      <i className="bi bi-trash" />
                     </button>
                   </td>
                 </tr>

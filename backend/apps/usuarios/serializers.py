@@ -3,10 +3,19 @@ from .models import Usuario, OTP
 
 
 class UsuarioSerializer(serializers.ModelSerializer):
+    preferences = serializers.SerializerMethodField()
+
     class Meta:
         model = Usuario
-        fields = ["id", "nombre", "email", "rol", "activo", "created_at"]
+        fields = ["id", "nombre", "email", "rol", "activo", "created_at", "preferences"]
         read_only_fields = ["id", "created_at"]
+
+    def get_preferences(self, obj):
+        return {
+            "email_notifications": obj.pref_email_notifications,
+            "currency": obj.pref_currency,
+            "timezone": obj.pref_timezone,
+        }
 
 
 class RegisterSerializer(serializers.Serializer):

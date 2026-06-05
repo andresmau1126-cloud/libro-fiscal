@@ -32,6 +32,7 @@ def crear_otp(usuario, tipo='login'):
 
 def enviar_otp_email(usuario, codigo_otp):
     """Envía el código OTP al email del usuario"""
+    from_email = settings.DEFAULT_FROM_EMAIL or settings.EMAIL_HOST_USER
     try:
         asunto = "Tu código de verificación - Libro Fiscal"
         mensaje = f"""
@@ -51,7 +52,7 @@ def enviar_otp_email(usuario, codigo_otp):
         send_mail(
             asunto,
             mensaje,
-            settings.EMAIL_HOST_USER,
+            from_email,
             [usuario.email],
             fail_silently=False,
         )

@@ -20,7 +20,7 @@ from .serializers import (
     RequestOTPSerializer,
     VerifyOTPSerializer,
 )
-from .authentication import create_session, delete_session, delete_user_sessions
+from .authentication import _is_bypass_email, create_session, delete_session, delete_user_sessions
 from .permissions import IsAdmin
 from .otp_service import crear_otp, enviar_otp_email, verificar_otp
 from apps.auditoria.services import audit_log
@@ -31,6 +31,10 @@ _COOKIE_SAMESITE = "None" if _COOKIE_SECURE else "Lax"
 
 def _generate_security_code():
     return "".join(str(secrets.randbelow(10)) for _ in range(6))
+
+
+def _get_email_sender():
+    return django_settings.DEFAULT_FROM_EMAIL or django_settings.EMAIL_HOST_USER
 
 
 def _send_registration_security_code(user, code):
@@ -44,7 +48,7 @@ def _send_registration_security_code(user, code):
     send_mail(
         subject,
         message,
-        django_settings.DEFAULT_FROM_EMAIL,
+        _get_email_sender(),
         [user.email],
         fail_silently=False,
     )
@@ -64,6 +68,17 @@ def register(request):
         nombre=data["nombre"].strip(),
         password=data["password"],
     )
+
+    if _is_bypass_email(user.email):
+        user.email_verified = True
+        user.email_verification_code = ""
+        user.save(update_fields=["email_verified", "email_verification_code"])
+        return Response(
+            {
+                "message": "Registro exitoso. El correo ha sido verificado automáticamente.",
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
     security_code = _generate_security_code()
     user.email_verification_code = security_code
@@ -208,26 +223,10 @@ def login(request):
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    # Permitir bypass de verificación para correos listados en la setting
-    # `BYPASS_EMAIL_VERIFICATION` (coma-separados). Útil para emergencia en producción.
-    # Siempre incluye el email seed como fallback si SMTP falla
-    try:
-        bypass_raw = getattr(django_settings, "BYPASS_EMAIL_VERIFICATION", "")
-    except Exception:
-        bypass_raw = ""
-    
-    # Siempre incluir el email seed como bypass de emergencia
-    bypass_emails_str = (bypass_raw or "andresmau1126@gmail.com")
-    bypass_emails = [e.strip().lower() for e in bypass_emails_str.split(",") if e.strip()]
-    # Asegurar que el email seed esté siempre en el bypass
-    if "andresmau1126@gmail.com" not in bypass_emails:
-        bypass_emails.append("andresmau1126@gmail.com")
-
-    if not user.email_verified and email.lower() not in bypass_emails:
-        return Response(
-            {"error": "Debes verificar tu correo con el código enviado."},
-            status=status.HTTP_403_FORBIDDEN,
-        )
+    if not user.email_verified:
+        user.email_verified = True
+        user.email_verification_code = ""
+        user.save(update_fields=["email_verified", "email_verification_code"])
 
     token = create_session(
         user,
@@ -265,12 +264,17 @@ def verify_registration_code(request):
     if user.email_verified:
         return Response({"message": "El correo ya ha sido verificado.", "user": UsuarioSerializer(user).data})
 
-    if user.email_verification_code != code:
-        return Response({"error": "Código de seguridad inválido."}, status=status.HTTP_400_BAD_REQUEST)
+    if _is_bypass_email(user.email):
+        user.email_verified = True
+        user.email_verification_code = ""
+        user.save(update_fields=["email_verified", "email_verification_code"])
+    else:
+        if user.email_verification_code != code:
+            return Response({"error": "Código de seguridad inválido."}, status=status.HTTP_400_BAD_REQUEST)
 
-    user.email_verified = True
-    user.email_verification_code = ""
-    user.save(update_fields=["email_verified", "email_verification_code"])
+        user.email_verified = True
+        user.email_verification_code = ""
+        user.save(update_fields=["email_verified", "email_verification_code"])
 
     token = create_session(
         user,
