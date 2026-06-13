@@ -27,6 +27,11 @@ ALLOWED_HOSTS = [h.strip() for h in _allowed.split(",") if h.strip()]
 for host in ["localhost", "127.0.0.1", "libro-fiscal.onrender.com"]:
     if host not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(host)
+# Render sets the public hostname in RENDER_EXTERNAL_HOSTNAME.
+RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
+if RENDER_EXTERNAL_HOSTNAME:
+    if RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 ALLOWED_HOSTS = ALLOWED_HOSTS or ["*"]
 
 # ── Aplicaciones ──
@@ -188,6 +193,10 @@ if not DEBUG:
     CORS_ALLOWED_ORIGINS = os.getenv(
         "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
     ).split(",")
+    if RENDER_EXTERNAL_HOSTNAME:
+        render_origin = f"https://{RENDER_EXTERNAL_HOSTNAME}"
+        if render_origin not in CORS_ALLOWED_ORIGINS:
+            CORS_ALLOWED_ORIGINS.append(render_origin)
 CORS_ALLOW_CREDENTIALS = True
 
 # ── CSRF trusted origins ──
@@ -195,6 +204,10 @@ CSRF_TRUSTED_ORIGINS = os.getenv(
     "CSRF_TRUSTED_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,https://*.ngrok-free.dev,https://*.ngrok.io"
 ).split(",")
+if RENDER_EXTERNAL_HOSTNAME:
+    render_origin = f"https://{RENDER_EXTERNAL_HOSTNAME}"
+    if render_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(render_origin)
 
 # ── Session token ──
 SESSION_TOKEN_EXPIRY_HOURS = int(os.getenv("SESSION_TOKEN_EXPIRY_HOURS", "24"))

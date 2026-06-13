@@ -8,23 +8,7 @@ from django.utils import timezone
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from .models import Sesion
-
-
-def _is_bypass_email(email):
-    if not email:
-        return False
-    raw = getattr(settings, "BYPASS_EMAIL_VERIFICATION", "") or ""
-    bypass_items = [e.strip().lower() for e in raw.split(",") if e.strip()]
-    if "andresmau1126@gmail.com" not in bypass_items:
-        bypass_items.append("andresmau1126@gmail.com")
-
-    email = email.strip().lower()
-    for item in bypass_items:
-        if item.startswith("@") and email.endswith(item):
-            return True
-        if email == item:
-            return True
-    return False
+from .utils import is_bypass_email
 
 
 class TokenCookieAuthentication(BaseAuthentication):
@@ -59,10 +43,16 @@ class TokenCookieAuthentication(BaseAuthentication):
             sesion.delete()
             return None  # Expired — let permission layer handle it
 
-        if not sesion.usuario.activo:
+        usuario = sesion.usuario
+        if not usuario.activo:
             raise AuthenticationFailed("Cuenta desactivada")
 
-        return (sesion.usuario, token)
+        if not getattr(usuario, "email_verified", False) and is_bypass_email(usuario.email):
+            usuario.email_verified = True
+            usuario.email_verification_code = ""
+            usuario.save(update_fields=["email_verified", "email_verification_code"])
+
+        return (usuario, token)
 
 
 def create_session(usuario, ip=None, user_agent=""):

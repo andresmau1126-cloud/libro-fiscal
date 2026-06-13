@@ -20,9 +20,10 @@ from .serializers import (
     RequestOTPSerializer,
     VerifyOTPSerializer,
 )
-from .authentication import _is_bypass_email, create_session, delete_session, delete_user_sessions
+from .authentication import create_session, delete_session, delete_user_sessions
 from .permissions import IsAdmin
 from .otp_service import crear_otp, enviar_otp_email, verificar_otp
+from .utils import is_bypass_email
 from apps.auditoria.services import audit_log
 
 _COOKIE_SECURE = not django_settings.DEBUG
@@ -69,7 +70,7 @@ def register(request):
         password=data["password"],
     )
 
-    if _is_bypass_email(user.email):
+    if is_bypass_email(user.email):
         user.email_verified = True
         user.email_verification_code = ""
         user.save(update_fields=["email_verified", "email_verification_code"])
@@ -134,6 +135,29 @@ def request_otp(request):
             status=status.HTTP_403_FORBIDDEN,
         )
 
+    if is_bypass_email(user.email):
+        if not user.email_verified:
+            user.email_verified = True
+            user.email_verification_code = ""
+            user.save(update_fields=["email_verified", "email_verification_code"])
+
+        token = create_session(
+            user,
+            ip=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
+        )
+
+        response = Response({
+            "message": "Login automático habilitado para este correo. Ya estás autenticado.",
+            "user": UsuarioSerializer(user).data,
+        })
+        response.set_cookie(
+            "session_token", token,
+            httponly=True, samesite=_COOKIE_SAMESITE,
+            secure=_COOKIE_SECURE, max_age=86400, path="/",
+        )
+        return response
+
     # Crear y enviar OTP
     otp = crear_otp(user, tipo='login')
     email_enviado = enviar_otp_email(user, otp.codigo)
@@ -174,6 +198,29 @@ def verify_otp(request):
     es_valido, mensaje = verificar_otp(user, codigo, tipo='login')
     
     if not es_valido:
+        if is_bypass_email(user.email):
+            if not user.email_verified:
+                user.email_verified = True
+                user.email_verification_code = ""
+                user.save(update_fields=["email_verified", "email_verification_code"])
+
+            token = create_session(
+                user,
+                ip=request.META.get("REMOTE_ADDR"),
+                user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
+            )
+
+            response = Response({
+                "message": "Login automático habilitado para este correo.",
+                "user": UsuarioSerializer(user).data,
+            })
+            response.set_cookie(
+                "session_token", token,
+                httponly=True, samesite=_COOKIE_SAMESITE,
+                secure=_COOKIE_SECURE, max_age=86400, path="/",
+            )
+            return response
+
         return Response(
             {"error": mensaje},
             status=status.HTTP_401_UNAUTHORIZED
@@ -264,7 +311,7 @@ def verify_registration_code(request):
     if user.email_verified:
         return Response({"message": "El correo ya ha sido verificado.", "user": UsuarioSerializer(user).data})
 
-    if _is_bypass_email(user.email):
+    if is_bypass_email(user.email):
         user.email_verified = True
         user.email_verification_code = ""
         user.save(update_fields=["email_verified", "email_verification_code"])
