@@ -6,16 +6,19 @@ __pycache__/
 dist/
 *.egg
 venv/
+backend/.venv/
 .env
 
 # Django
 backend/db.sqlite3
 backend/staticfiles/
 backend/media/
+backend/frontend_dist/
 
 # Node
 frontend/node_modules/
 frontend/dist/
+frontend_dist/
 
 # IDE
 .vscode/
