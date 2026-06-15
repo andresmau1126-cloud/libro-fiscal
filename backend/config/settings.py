@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from email.utils import formataddr
+
+from django.core.exceptions import ImproperlyConfigured
 import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -112,13 +114,13 @@ if DEBUG:
         }
     }
 else:
-    DATABASE_URL = os.getenv("DATABASE_URL")
+    DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("RENDER_DATABASE_URL")
     if DATABASE_URL:
         DATABASES = {
             "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600),
         }
     else:
-        DB_ENGINE = os.getenv("DB_ENGINE", "mysql").strip().lower()
+        DB_ENGINE = os.getenv("DB_ENGINE", "").strip().lower()
         if DB_ENGINE in ("postgres", "postgresql"):
             DATABASES = {
                 "default": {
@@ -141,13 +143,15 @@ else:
                     "PORT": os.getenv("DB_PORT", "3306"),
                 }
             }
+        elif DB_ENGINE:
+            raise ImproperlyConfigured(
+                f"Unsupported DB_ENGINE '{DB_ENGINE}' in production. Use DATABASE_URL, postgres/postgresql, or mysql."
+            )
         else:
-            DATABASES = {
-                "default": {
-                    "ENGINE": "django.db.backends.sqlite3",
-                    "NAME": BASE_DIR / "db.sqlite3",
-                }
-            }
+            raise ImproperlyConfigured(
+                "No DATABASE_URL or DB_ENGINE configured in production. "
+                "Set the Render database env variable or add DB_ENGINE and DB_* settings."
+            )
 
 # ── Auth ──
 AUTH_USER_MODEL = "usuarios.Usuario"
