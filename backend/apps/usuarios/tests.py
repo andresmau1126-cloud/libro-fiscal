@@ -1,5 +1,7 @@
 import json
-from django.test import Client, TestCase
+import re
+from django.core import mail
+from django.test import Client, TestCase, override_settings
 from apps.usuarios.models import Usuario
 
 
@@ -59,3 +61,58 @@ class UsuarioAuthBypassTests(TestCase):
         data = response.json()
         self.assertIn('Login automático', data['message'])
         self.assertEqual(data['user']['email'], self.email)
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_register_requires_email_verification(self):
+        client = Client(HTTP_HOST='localhost')
+        client.cookies.clear()
+
+        response = client.post(
+            '/api/auth/register/',
+            data=json.dumps({
+                'nombre': 'Prueba Usuario',
+                'email': 'test@example.com',
+                'password': 'secret123',
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertIn('Registro exitoso', data['message'])
+
+        self.assertEqual(len(mail.outbox), 1)
+        email_message = mail.outbox[0]
+        self.assertEqual(email_message.to, ['test@example.com'])
+        self.assertIn('Tu código de seguridad es:', email_message.body)
+
+        # Intentar login sin verificar debe fallar
+        login_response = client.post(
+            '/api/auth/login/',
+            data=json.dumps({'email': 'test@example.com', 'password': 'secret123'}),
+            content_type='application/json',
+        )
+        self.assertEqual(login_response.status_code, 401)
+        self.assertIn('Cuenta no verificada', login_response.json().get('error', ''))
+
+        # Verificación del código enviado
+        email_body = email_message.body
+        match = re.search(r"(\d{6})", email_body)
+        self.assertIsNotNone(match, "El email debe contener un código de 6 dígitos")
+        code = match.group(1)
+        verify_response = client.post(
+            '/api/auth/verify-registration-code/',
+            data=json.dumps({'email': 'test@example.com', 'code': code}),
+            content_type='application/json',
+        )
+        self.assertEqual(verify_response.status_code, 200)
+        self.assertIn('Correo verificado', verify_response.json().get('message', ''))
+
+        # Ahora login debe funcionar
+        login_response = client.post(
+            '/api/auth/login/',
+            data=json.dumps({'email': 'test@example.com', 'password': 'secret123'}),
+            content_type='application/json',
+        )
+        self.assertEqual(login_response.status_code, 200)
+        self.assertEqual(login_response.json()['user']['email'], 'test@example.com')

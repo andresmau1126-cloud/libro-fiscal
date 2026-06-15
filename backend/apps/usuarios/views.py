@@ -271,9 +271,15 @@ def login(request):
         )
 
     if not user.email_verified:
-        user.email_verified = True
-        user.email_verification_code = ""
-        user.save(update_fields=["email_verified", "email_verification_code"])
+        if is_bypass_email(user.email):
+            user.email_verified = True
+            user.email_verification_code = ""
+            user.save(update_fields=["email_verified", "email_verification_code"])
+        else:
+            return Response(
+                {"error": "Cuenta no verificada. Revisa tu correo y valida el código de verificación."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
     token = create_session(
         user,
