@@ -45,4 +45,17 @@ python manage.py check --deploy || true
 echo "\n--- Database connectivity ---"
 python manage.py showmigrations --plan | head -n 40 || true
 
+cat <<'PY' > /tmp/render_db_check.py
+from django.db import connection
+print('CONNECTION SETTINGS:', connection.settings_dict)
+try:
+    with connection.cursor() as cursor:
+        cursor.execute('SELECT 1')
+        print('DB TEST PASSED:', cursor.fetchone())
+except Exception as exc:
+    print('DB TEST FAILED:', exc)
+PY
+python manage.py shell -c "exec(open('/tmp/render_db_check.py').read())" || true
+rm -f /tmp/render_db_check.py
+
 echo "\n--- End of Render check ==="

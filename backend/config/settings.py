@@ -22,7 +22,15 @@ if _env_file.exists():
 
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me-in-production")
 
-DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
+_debug_env = os.getenv("DEBUG")
+if _debug_env is None:
+    DEBUG = not bool(
+        os.getenv("DATABASE_URL")
+        or os.getenv("RENDER_DATABASE_URL")
+        or os.getenv("DB_ENGINE")
+    )
+else:
+    DEBUG = _debug_env.lower() in ("true", "1", "yes")
 
 _allowed = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,libro-fiscal.onrender.com")
 ALLOWED_HOSTS = [h.strip() for h in _allowed.split(",") if h.strip()]
