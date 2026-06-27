@@ -14,7 +14,7 @@ def set_existing_users_email_verified(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('usuarios', '0002_otp'),
+        ('usuarios', '0003_otp'),
     ]
 
     operations = [
