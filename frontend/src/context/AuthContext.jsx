@@ -31,7 +31,11 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (nombre, email, password) => {
-    return await authRegister({ nombre, email, password });
+    const data = await authRegister({ nombre, email, password });
+    if (data?.user) {
+      setUser(data.user);
+    }
+    return data;
   };
 
   const verifyRegistrationCode = async (email, code) => {

@@ -1,5 +1,6 @@
 import json
 import re
+from unittest.mock import patch
 from django.core import mail
 from django.test import Client, TestCase, override_settings
 from apps.usuarios.models import Usuario
@@ -116,3 +117,28 @@ class UsuarioAuthBypassTests(TestCase):
         )
         self.assertEqual(login_response.status_code, 200)
         self.assertEqual(login_response.json()['user']['email'], 'test@example.com')
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    @patch('apps.usuarios.views.send_mail', side_effect=Exception('smtp unavailable'))
+    def test_register_auto_logs_in_when_security_code_email_fails(self, _mock_send_mail):
+        client = Client(HTTP_HOST='localhost')
+        client.cookies.clear()
+
+        response = client.post(
+            '/api/auth/register/',
+            data=json.dumps({
+                'nombre': 'Usuario Sin Correo',
+                'email': 'sincorreo@example.com',
+                'password': 'secret123',
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertFalse(response.json().get('requires_verification', True))
+        self.assertIn('autorizada', response.json()['message'])
+
+        user = Usuario.objects.get(email='sincorreo@example.com')
+        self.assertTrue(user.email_verified)
+        self.assertEqual(user.email_verification_code, '')
+        self.assertTrue(response.cookies.get('session_token'))

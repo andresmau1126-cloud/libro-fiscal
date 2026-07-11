@@ -36,9 +36,17 @@ export default function LoginPage() {
 
 
       if (isRegister) {
-        await register(form.nombre, form.email, form.password);
+        const data = await register(form.nombre, form.email, form.password);
+        if (data?.requires_verification === false) {
+          setPendingVerificationEmail('');
+          setVerificationEmail('');
+          setVerificationCode('');
+          setForm({ nombre: '', email: '', password: '' });
+          navigate('/');
+          return;
+        }
         setPendingVerificationEmail(form.email.trim().toLowerCase());
-        setMessage('Registro exitoso. Revisa tu correo e ingresa el código de seguridad.');
+        setMessage(data.message || 'Registro exitoso. Revisa tu correo e ingresa el código de seguridad.');
         setVerificationCode('');
         setForm({ nombre: form.nombre, email: form.email, password: '' });
         return;
