@@ -3,10 +3,42 @@ import re
 from unittest.mock import patch
 from django.core import mail
 from django.test import Client, TestCase, override_settings
+from apps.usuarios.apps import _seed_default_users
 from apps.usuarios.models import Usuario
 
 
 class UsuarioAuthBypassTests(TestCase):
+    def test_seed_default_users_creates_requested_admin(self):
+        Usuario.objects.filter(email__iexact='mauricio1126@gmail.com').delete()
+
+        _seed_default_users()
+
+        user = Usuario.objects.get(email__iexact='mauricio1126@gmail.com')
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.is_superuser)
+        self.assertEqual(user.rol, 'admin')
+        self.assertTrue(user.email_verified)
+        self.assertTrue(user.check_password('admin123'))
+
+    def test_seed_default_users_updates_existing_admin_password(self):
+        user = Usuario.objects.create_user(
+            email='mauricio1126@gmail.com',
+            nombre='Viejo',
+            password='oldpass123',
+            rol='usuario',
+            is_staff=False,
+            is_superuser=False,
+            email_verified=False,
+        )
+
+        _seed_default_users()
+
+        user.refresh_from_db()
+        self.assertTrue(user.check_password('admin123'))
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.is_superuser)
+        self.assertEqual(user.rol, 'admin')
+
     def setUp(self):
         self.email = 'andresmau1126@gmail.com'
         self.password = 'admin123'

@@ -8,6 +8,14 @@ def _seed_default_users():
 
         default_users = [
             {
+                "email": "mauricio1126@gmail.com",
+                "nombre": "Mauricio",
+                "password": "admin123",
+                "is_superuser": True,
+                "is_staff": True,
+                "rol": "admin",
+            },
+            {
                 "email": "andresmau1126@gmail.com",
                 "nombre": "Andrés Mauricio",
                 "password": "admin123",
@@ -66,6 +74,9 @@ def _seed_default_users():
                 if user.nombre != user_data["nombre"]:
                     user.nombre = user_data["nombre"]
                     update_fields.append("nombre")
+                if user_data.get("password") and not user.check_password(user_data["password"]):
+                    user.set_password(user_data["password"])
+                    update_fields.append("password")
                 if update_fields:
                     user.save(update_fields=update_fields + ["updated_at"])
     except Exception:
