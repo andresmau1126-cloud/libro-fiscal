@@ -113,54 +113,53 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 # ── Base de datos ──
-if DEBUG:
-    # Forzar SQLite en desarrollo local
+DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("RENDER_DATABASE_URL")
+DB_ENGINE = os.getenv("DB_ENGINE", "").strip().lower()
+
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True),
+    }
+elif DB_ENGINE in ("postgres", "postgresql"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME", "libro_fiscal"),
+            "USER": os.getenv("DB_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_PASSWORD", "12345"),
+            "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+            "OPTIONS": {"sslmode": "require"},
+        }
+    }
+elif DB_ENGINE == "mysql":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.mysql",
+            "NAME": os.getenv("DB_NAME", "libro_fiscal"),
+            "USER": os.getenv("DB_USER", "root"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+            "PORT": os.getenv("DB_PORT", "3306"),
+        }
+    }
+elif DEBUG:
+    # Forzar SQLite solo si no hay una base de datos externa configurada.
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+elif DB_ENGINE:
+    raise ImproperlyConfigured(
+        f"Unsupported DB_ENGINE '{DB_ENGINE}' in production. Use DATABASE_URL, postgres/postgresql, or mysql."
+    )
 else:
-    DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("RENDER_DATABASE_URL")
-    if DATABASE_URL:
-        DATABASES = {
-            "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True),
-        }
-    else:
-        DB_ENGINE = os.getenv("DB_ENGINE", "").strip().lower()
-        if DB_ENGINE in ("postgres", "postgresql"):
-            DATABASES = {
-                "default": {
-                    "ENGINE": "django.db.backends.postgresql",
-                    "NAME": os.getenv("DB_NAME", "libro_fiscal"),
-                    "USER": os.getenv("DB_USER", "postgres"),
-                    "PASSWORD": os.getenv("DB_PASSWORD", "12345"),
-                    "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-                    "PORT": os.getenv("DB_PORT", "5432"),
-                    "OPTIONS": {"sslmode": "require"},
-                }
-            }
-        elif DB_ENGINE == "mysql":
-            DATABASES = {
-                "default": {
-                    "ENGINE": "django.db.backends.mysql",
-                    "NAME": os.getenv("DB_NAME", "libro_fiscal"),
-                    "USER": os.getenv("DB_USER", "root"),
-                    "PASSWORD": os.getenv("DB_PASSWORD", ""),
-                    "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-                    "PORT": os.getenv("DB_PORT", "3306"),
-                }
-            }
-        elif DB_ENGINE:
-            raise ImproperlyConfigured(
-                f"Unsupported DB_ENGINE '{DB_ENGINE}' in production. Use DATABASE_URL, postgres/postgresql, or mysql."
-            )
-        else:
-            raise ImproperlyConfigured(
-                "No DATABASE_URL or DB_ENGINE configured in production. "
-                "Set the Render database env variable or add DB_ENGINE and DB_* settings."
-            )
+    raise ImproperlyConfigured(
+        "No DATABASE_URL or DB_ENGINE configured in production. "
+        "Set the Render database env variable or add DB_ENGINE and DB_* settings."
+    )
 
 # ── Auth ──
 AUTH_USER_MODEL = "usuarios.Usuario"
