@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { fetchUsuarios, createUsuario, updateUsuario, deleteUsuario } from '../../services/api';
 
 const ROLE_PERMISSIONS = [
-  { key: 'admin', label: 'Administrador', icon: 'bi-shield-fill-check', actions: ['Gestionar usuarios', 'Crear, editar y eliminar información operativa', 'Consultar y limpiar auditoría'] },
-  { key: 'vendedor', label: 'Vendedor', icon: 'bi-cart-check-fill', actions: ['Consultar sus libros e inventario', 'Crear y editar sus libros, movimientos e inventario', 'Exportar información'] },
-  { key: 'gerente', label: 'Gerente', icon: 'bi-graph-up-arrow', actions: ['Consultar toda la operación', 'Crear, editar y eliminar libros, movimientos e inventario', 'Consultar auditoría y exportar información'] },
-  { key: 'auditor', label: 'Auditor', icon: 'bi-search', actions: ['Consultar libros, movimientos e inventario', 'Exportar información', 'Consultar registros de auditoría'] },
-  { key: 'usuario', label: 'Usuario', icon: 'bi-person-fill', actions: ['Consultar su información', 'Crear y editar sus propios registros operativos', 'Sin acceso a administración'] },
+  { key: 'admin', label: 'Administrador', icon: 'bi-shield-fill-check', spaces: 'Administración, Libros, Inventario, Movimientos, Auditoría y Exportación', actions: ['Gestionar usuarios', 'Crear, editar y eliminar información operativa', 'Consultar, eliminar y limpiar auditoría'] },
+  { key: 'vendedor', label: 'Vendedor', icon: 'bi-cart-check-fill', spaces: 'Libros, Inventario, Movimientos, Exportación y Perfil', actions: ['Consultar sus registros', 'Crear y editar sus libros, movimientos e inventario', 'Exportar información; no elimina registros'] },
+  { key: 'gerente', label: 'Gerente', icon: 'bi-graph-up-arrow', spaces: 'Libros, Inventario, Movimientos, Auditoría, Exportación y Perfil', actions: ['Consultar toda la operación', 'Crear, editar y eliminar libros, movimientos e inventario', 'Consultar auditoría y exportar información'] },
+  { key: 'auditor', label: 'Auditor', icon: 'bi-search', spaces: 'Libros, Inventario, Movimientos, Auditoría, Exportación y Perfil', actions: ['Consultar todos los registros operativos', 'Exportar información', 'Consultar auditoría; no crea, edita ni elimina'] },
+  { key: 'usuario', label: 'Usuario', icon: 'bi-person-fill', spaces: 'Libros, Inventario, Movimientos y Perfil', actions: ['Consultar su información', 'Crear y editar sus propios registros operativos', 'Sin acceso a Administración ni Auditoría'] },
 ];
 
 export default function UsuariosPage() {
@@ -104,6 +104,9 @@ export default function UsuariosPage() {
                 <span className={`role-permission-icon role-${role.key}`}><i className={`bi ${role.icon}`} /></span>
                 <strong>{role.label}</strong>
               </div>
+              <div className="role-permission-label">Espacios</div>
+              <p className="role-permission-spaces">{role.spaces}</p>
+              <div className="role-permission-label">Permisos</div>
               <ul>
                 {role.actions.map(action => <li key={action}>{action}</li>)}
               </ul>

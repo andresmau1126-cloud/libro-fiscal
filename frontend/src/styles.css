@@ -662,6 +662,21 @@ body {
   color: var(--gray-600);
   font-size: .78rem;
 }
+.role-permission-label {
+  margin-top: .55rem;
+  color: var(--brand);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.role-permission-spaces {
+  min-height: 2.25rem;
+  margin: .2rem 0 .35rem;
+  color: var(--gray-600);
+  font-size: .78rem;
+  line-height: 1.35;
+}
 .role-permission-item li + li { margin-top: .35rem; }
 
 /* ========== CARDS ========== */
