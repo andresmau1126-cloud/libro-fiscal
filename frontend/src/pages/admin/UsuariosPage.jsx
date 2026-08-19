@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
 import { fetchUsuarios, createUsuario, updateUsuario, deleteUsuario } from '../../services/api';
 
+const ROLE_PERMISSIONS = [
+  { key: 'admin', label: 'Administrador', icon: 'bi-shield-fill-check', actions: ['Gestionar usuarios', 'Crear, editar y eliminar información operativa', 'Consultar y limpiar auditoría'] },
+  { key: 'vendedor', label: 'Vendedor', icon: 'bi-cart-check-fill', actions: ['Consultar sus libros e inventario', 'Crear y editar sus libros, movimientos e inventario', 'Exportar información'] },
+  { key: 'gerente', label: 'Gerente', icon: 'bi-graph-up-arrow', actions: ['Consultar toda la operación', 'Crear, editar y eliminar libros, movimientos e inventario', 'Consultar auditoría y exportar información'] },
+  { key: 'auditor', label: 'Auditor', icon: 'bi-search', actions: ['Consultar libros, movimientos e inventario', 'Exportar información', 'Consultar registros de auditoría'] },
+  { key: 'usuario', label: 'Usuario', icon: 'bi-person-fill', actions: ['Consultar su información', 'Crear y editar sus propios registros operativos', 'Sin acceso a administración'] },
+];
+
 export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -80,6 +88,29 @@ export default function UsuariosPage() {
           <i className="bi bi-person-plus-fill" /> Nuevo Usuario
         </button>
       </div>
+
+      <section className="role-permissions-panel" aria-labelledby="role-permissions-title">
+        <div className="role-permissions-heading">
+          <div>
+            <h5 id="role-permissions-title">Roles y permisos</h5>
+            <p>Acciones disponibles para cada tipo de usuario</p>
+          </div>
+          <i className="bi bi-key-fill" aria-hidden="true" />
+        </div>
+        <div className="role-permissions-grid">
+          {ROLE_PERMISSIONS.map(role => (
+            <article className="role-permission-item" key={role.key}>
+              <div className="role-permission-title">
+                <span className={`role-permission-icon role-${role.key}`}><i className={`bi ${role.icon}`} /></span>
+                <strong>{role.label}</strong>
+              </div>
+              <ul>
+                {role.actions.map(action => <li key={action}>{action}</li>)}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <div className="data-table">
         <div className="table-header">
