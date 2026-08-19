@@ -82,7 +82,7 @@ export default function Layout() {
             </ul>
           </div>
 
-          {/* ADMINISTRACIÓN (admin only) */}
+          {/* ADMINISTRACIÓN */}
           {user?.rol === 'admin' && (
             <div className="sidebar-section">
               <div className="sidebar-section-label">Administración</div>
@@ -117,7 +117,7 @@ export default function Layout() {
             <div className="sidebar-user-avatar">{initials}</div>
             <div className="sidebar-user-info">
               <span className="sidebar-user-name">{user?.nombre}</span>
-              <span className="sidebar-user-role">{user?.rol === 'admin' ? 'Administrador' : 'Usuario'}</span>
+              <span className="sidebar-user-role">{{ admin: 'Administrador', vendedor: 'Vendedor', gerente: 'Gerente', auditor: 'Auditor', usuario: 'Usuario' }[user?.rol] || 'Usuario'}</span>
             </div>
           </NavLink>
           <button className="sidebar-logout-btn" onClick={handleLogout}>

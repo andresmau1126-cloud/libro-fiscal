@@ -37,7 +37,7 @@ export default function ProfilePage() {
               </span>
               <span className={`profile-role-badge ${user?.rol === 'admin' ? 'role-admin' : 'role-user'}`}>
                 <i className={`bi ${user?.rol === 'admin' ? 'bi-shield-fill-check' : 'bi-person-fill'}`} />
-                {user?.rol === 'admin' ? 'Administrador' : 'Usuario'}
+                {{ admin: 'Administrador', vendedor: 'Vendedor', gerente: 'Gerente', auditor: 'Auditor', usuario: 'Usuario' }[user?.rol] || 'Usuario'}
               </span>
             </div>
           </div>
@@ -62,7 +62,7 @@ export default function ProfilePage() {
           <div className="profile-stat-icon"><i className="bi bi-shield-check" /></div>
           <div>
             <div className="profile-stat-label">Rol del sistema</div>
-            <div className="profile-stat-value">{user?.rol === 'admin' ? 'Administrador' : 'Usuario estándar'}</div>
+            <div className="profile-stat-value">{{ admin: 'Administrador', vendedor: 'Vendedor', gerente: 'Gerente', auditor: 'Auditor', usuario: 'Usuario' }[user?.rol] || 'Usuario'}</div>
           </div>
         </div>
         <div className="profile-stat-divider" />
@@ -136,7 +136,7 @@ function InfoTab({ user }) {
             <div className="profile-field-icon"><i className="bi bi-award" /></div>
             <div>
               <label>Rol del sistema</label>
-              <p>{user?.rol === 'admin' ? 'Administrador' : 'Usuario'}</p>
+              <p>{{ admin: 'Administrador', vendedor: 'Vendedor', gerente: 'Gerente', auditor: 'Auditor', usuario: 'Usuario' }[user?.rol] || 'Usuario'}</p>
             </div>
           </div>
           <div className="profile-field">

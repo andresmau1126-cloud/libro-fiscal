@@ -2,12 +2,12 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 
-from apps.usuarios.permissions import IsAdmin
+from apps.usuarios.permissions import IsAdmin, IsAuditorOrManagerOrAdmin
 from .models import Auditoria
 
 
 @api_view(["GET"])
-@permission_classes([IsAdmin])
+@permission_classes([IsAuditorOrManagerOrAdmin])
 def auditoria_list(request):
     limit = min(int(request.query_params.get("limit", 50)), 200)
     qs = (

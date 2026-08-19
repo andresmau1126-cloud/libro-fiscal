@@ -6,10 +6,11 @@ from rest_framework.response import Response
 from apps.libros.models import Libro
 from apps.movimientos.models import Movimiento
 from services.excel import generate_excel
+from apps.usuarios.permissions import can_view_all
 
 
 def _libros_qs_for_user(user):
-    if getattr(user, "rol", None) == "admin":
+    if can_view_all(user):
         return Libro.objects.all()
     return Libro.objects.filter(propietario=user)
 

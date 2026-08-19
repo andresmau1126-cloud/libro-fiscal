@@ -23,6 +23,9 @@ class UsuarioManager(BaseUserManager):
 class Usuario(AbstractBaseUser):
     ROL_CHOICES = [
         ("admin", "Administrador"),
+        ("vendedor", "Vendedor"),
+        ("gerente", "Gerente"),
+        ("auditor", "Auditor"),
         ("usuario", "Usuario"),
     ]
 

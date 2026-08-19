@@ -10,16 +10,19 @@ from django.http import HttpResponse
 
 from .models import Producto
 from .serializers import ProductoSerializer, ProductoCreateUpdateSerializer
+from apps.usuarios.permissions import can_view_all, can_write
 
 
 def _productos_qs_for_user(user):
-    if getattr(user, "rol", None) == "admin":
+    if can_view_all(user):
         return Producto.objects.all()
     return Producto.objects.filter(propietario=user)
 
 
 @api_view(["GET", "POST"])
 def productos_list_create(request):
+    if request.method == "POST" and not can_write(request.user):
+        return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     productos_qs = _productos_qs_for_user(request.user)
 
     if request.method == "GET":
@@ -61,6 +64,8 @@ def productos_list_create(request):
 
 @api_view(["GET", "PUT", "DELETE"])
 def producto_detail(request, producto_id):
+    if request.method in {"PUT", "DELETE"} and not can_write(request.user):
+        return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     try:
         producto = _productos_qs_for_user(request.user).get(pk=producto_id)
     except Producto.DoesNotExist:

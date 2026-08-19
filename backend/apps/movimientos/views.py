@@ -7,6 +7,7 @@ from .models import Movimiento
 from .serializers import MovimientoSerializer, MovimientoCreateSerializer, MovimientoUpdateSerializer
 from apps.libros.models import Libro
 from services.saldo import recompute_saldos
+from apps.usuarios.permissions import can_view_all, can_write
 
 
 def _build_filters(params):
@@ -32,13 +33,15 @@ def _build_filters(params):
 
 
 def _libros_qs_for_user(user):
-    if getattr(user, "rol", None) == "admin":
+    if can_view_all(user):
         return Libro.objects.all()
     return Libro.objects.filter(propietario=user)
 
 
 @api_view(["GET", "POST"])
 def entries_list_create(request):
+    if request.method == "POST" and not can_write(request.user):
+        return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     if request.method == "GET":
         try:
             filters = _build_filters(request.query_params)
@@ -91,6 +94,8 @@ def entries_list_create(request):
 
 @api_view(["PUT", "DELETE"])
 def entry_detail(request, entry_id):
+    if not can_write(request.user):
+        return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     try:
         mov = Movimiento.objects.select_related("libro").get(pk=entry_id)
     except Movimiento.DoesNotExist:

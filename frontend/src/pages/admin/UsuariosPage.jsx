@@ -159,8 +159,11 @@ export default function UsuariosPage() {
                 <div className="mb-3">
                   <label className="form-label">Rol</label>
                   <select className="form-select" value={form.rol} onChange={set('rol')}>
-                    <option value="usuario">Usuario</option>
                     <option value="admin">Administrador</option>
+                    <option value="vendedor">Vendedor</option>
+                    <option value="gerente">Gerente</option>
+                    <option value="auditor">Auditor</option>
+                    <option value="usuario">Usuario</option>
                   </select>
                 </div>
               </div>

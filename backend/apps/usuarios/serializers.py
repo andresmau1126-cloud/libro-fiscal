@@ -48,7 +48,7 @@ class UsuarioCreateSerializer(serializers.Serializer):
     nombre = serializers.CharField(max_length=150)
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=6)
-    rol = serializers.ChoiceField(choices=["admin", "usuario"], required=False)
+    rol = serializers.ChoiceField(choices=["admin", "vendedor", "gerente", "auditor", "usuario"], required=False)
 
     def validate_email(self, value):
         if Usuario.objects.filter(email=value.lower()).exists():
@@ -59,7 +59,7 @@ class UsuarioCreateSerializer(serializers.Serializer):
 class UsuarioUpdateSerializer(serializers.Serializer):
     nombre = serializers.CharField(max_length=150, required=False)
     email = serializers.EmailField(required=False)
-    rol = serializers.ChoiceField(choices=["admin", "usuario"], required=False)
+    rol = serializers.ChoiceField(choices=["admin", "vendedor", "gerente", "auditor", "usuario"], required=False)
     activo = serializers.BooleanField(required=False)
     password = serializers.CharField(write_only=True, required=False, min_length=6)
 
