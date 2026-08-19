@@ -26,14 +26,13 @@ class Usuario(AbstractBaseUser):
         ("vendedor", "Vendedor"),
         ("gerente", "Gerente"),
         ("auditor", "Auditor"),
-        ("usuario", "Usuario"),
     ]
 
     nombre = models.CharField(max_length=150)
     email = models.EmailField(unique=True)
     email_verified = models.BooleanField(default=False)
     email_verification_code = models.CharField(max_length=6, blank=True, default="")
-    rol = models.CharField(max_length=10, choices=ROL_CHOICES, default="usuario")
+    rol = models.CharField(max_length=10, choices=ROL_CHOICES, default="vendedor")
     pref_email_notifications = models.BooleanField(default=True)
     pref_currency = models.CharField(max_length=3, default="GTQ")
     pref_timezone = models.CharField(max_length=10, default="GMT-6")

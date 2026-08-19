@@ -85,7 +85,7 @@ class Command(BaseCommand):
             defaults={
                 "nombre": "Usuario Prueba",
                 "password": "usuario123",
-                "rol": "usuario",
+                "rol": "vendedor",
                 "email_verified": True,
                 "email_verification_code": "",
             },

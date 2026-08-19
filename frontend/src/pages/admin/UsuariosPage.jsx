@@ -6,7 +6,6 @@ const ROLE_PERMISSIONS = [
   { key: 'vendedor', label: 'Vendedor', icon: 'bi-cart-check-fill', spaces: 'Libros, Inventario, Movimientos, Exportación y Perfil', actions: ['Consultar sus registros', 'Crear y editar sus libros, movimientos e inventario', 'Exportar información; no elimina registros'] },
   { key: 'gerente', label: 'Gerente', icon: 'bi-graph-up-arrow', spaces: 'Libros, Inventario, Movimientos, Auditoría, Exportación y Perfil', actions: ['Consultar toda la operación', 'Crear, editar y eliminar libros, movimientos e inventario', 'Consultar auditoría y exportar información'] },
   { key: 'auditor', label: 'Auditor', icon: 'bi-search', spaces: 'Libros, Inventario, Movimientos, Auditoría, Exportación y Perfil', actions: ['Consultar todos los registros operativos', 'Exportar información', 'Consultar auditoría; no crea, edita ni elimina'] },
-  { key: 'usuario', label: 'Usuario', icon: 'bi-person-fill', spaces: 'Libros, Inventario, Movimientos y Perfil', actions: ['Consultar su información', 'Crear y editar sus propios registros operativos', 'Sin acceso a Administración ni Auditoría'] },
 ];
 
 export default function UsuariosPage() {
@@ -14,7 +13,7 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ nombre: '', email: '', password: '', rol: 'usuario' });
+  const [form, setForm] = useState({ nombre: '', email: '', password: '', rol: 'vendedor' });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -29,7 +28,7 @@ export default function UsuariosPage() {
   useEffect(load, []);
 
   const openNew = () => {
-    setForm({ nombre: '', email: '', password: '', rol: 'usuario' });
+    setForm({ nombre: '', email: '', password: '', rol: 'vendedor' });
     setEditingId(null);
     setError('');
     setShowModal(true);
@@ -197,7 +196,6 @@ export default function UsuariosPage() {
                     <option value="vendedor">Vendedor</option>
                     <option value="gerente">Gerente</option>
                     <option value="auditor">Auditor</option>
-                    <option value="usuario">Usuario</option>
                   </select>
                 </div>
               </div>

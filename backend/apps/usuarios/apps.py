@@ -35,7 +35,7 @@ def _seed_default_users():
                 "email": "usuario@test.com",
                 "nombre": "Usuario Prueba",
                 "password": "usuario123",
-                "rol": "usuario",
+                "rol": "vendedor",
             },
         ]
 
@@ -49,7 +49,7 @@ def _seed_default_users():
                     email=email,
                     nombre=user_data["nombre"],
                     password=user_data["password"],
-                    rol=user_data.get("rol", "usuario"),
+                    rol=user_data.get("rol", "vendedor"),
                     is_staff=user_data.get("is_staff", False),
                     is_superuser=user_data.get("is_superuser", False),
                     email_verified=True,
@@ -68,8 +68,8 @@ def _seed_default_users():
                 if user_data.get("is_superuser", False) and not user.is_superuser:
                     user.is_superuser = True
                     update_fields.append("is_superuser")
-                if user.rol != user_data.get("rol", "usuario"):
-                    user.rol = user_data.get("rol", "usuario")
+                if user.rol != user_data.get("rol", "vendedor"):
+                    user.rol = user_data.get("rol", "vendedor")
                     update_fields.append("rol")
                 if user.nombre != user_data["nombre"]:
                     user.nombre = user_data["nombre"]

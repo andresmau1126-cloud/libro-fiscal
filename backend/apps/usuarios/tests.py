@@ -25,7 +25,7 @@ class UsuarioAuthBypassTests(TestCase):
             email='mauricio1126@gmail.com',
             nombre='Viejo',
             password='oldpass123',
-            rol='usuario',
+            rol='vendedor',
             is_staff=False,
             is_superuser=False,
             email_verified=False,

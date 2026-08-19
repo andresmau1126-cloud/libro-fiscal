@@ -2,8 +2,8 @@ from rest_framework.permissions import BasePermission
 
 
 SUPERVISOR_ROLES = {"admin", "gerente", "auditor"}
-WRITE_ROLES = {"admin", "gerente", "vendedor", "usuario"}
-DELETE_ROLES = {"admin", "gerente", "usuario"}
+WRITE_ROLES = {"admin", "gerente", "vendedor"}
+DELETE_ROLES = {"admin", "gerente"}
 
 
 def has_role(user, roles):

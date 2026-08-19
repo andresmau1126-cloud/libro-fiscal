@@ -131,7 +131,7 @@ export default function Layout() {
             <div className="sidebar-user-avatar">{initials}</div>
             <div className="sidebar-user-info">
               <span className="sidebar-user-name">{user?.nombre}</span>
-              <span className="sidebar-user-role">{{ admin: 'Administrador', vendedor: 'Vendedor', gerente: 'Gerente', auditor: 'Auditor', usuario: 'Usuario' }[user?.rol] || 'Usuario'}</span>
+              <span className="sidebar-user-role">{{ admin: 'Administrador', vendedor: 'Vendedor', gerente: 'Gerente', auditor: 'Auditor' }[user?.rol] || 'Sin rol asignado'}</span>
             </div>
           </NavLink>
           <button className="sidebar-logout-btn" onClick={handleLogout}>

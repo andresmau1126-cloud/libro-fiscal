@@ -485,7 +485,7 @@ def usuarios_list_create(request):
         email=data["email"].strip().lower(),
         nombre=data["nombre"].strip(),
         password=data["password"],
-        rol=data.get("rol", "usuario"),
+        rol=data.get("rol", "vendedor"),
         email_verified=True,
     )
 
