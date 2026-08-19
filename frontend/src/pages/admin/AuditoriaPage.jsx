@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { fetchAuditoria, clearAuditoria } from '../../services/api';
 
 export default function AuditoriaPage() {
+  const { user } = useAuth();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,9 +31,11 @@ export default function AuditoriaPage() {
           <h2>Auditoría</h2>
           <p>Registro de acciones del sistema</p>
         </div>
-        <button className="btn btn-outline-danger" onClick={handleClear}>
-          <i className="bi bi-trash3 me-1" /> Limpiar todo
-        </button>
+        {user?.rol === 'admin' && (
+          <button className="btn btn-outline-danger" onClick={handleClear}>
+            <i className="bi bi-trash3 me-1" /> Limpiar todo
+          </button>
+        )}
       </div>
 
       <div className="data-table">

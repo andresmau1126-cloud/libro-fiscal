@@ -97,6 +97,20 @@ export default function Layout() {
             </div>
           )}
 
+          {['admin', 'gerente', 'auditor'].includes(user?.rol) && (
+            <div className="sidebar-section">
+              <div className="sidebar-section-label">Control</div>
+              <ul className="sidebar-nav">
+                <li>
+                  <NavLink to="/auditoria" onClick={closeSidebar}>
+                    <i className="bi bi-journal-text" />
+                    <span>Auditoría</span>
+                  </NavLink>
+                </li>
+              </ul>
+            </div>
+          )}
+
           {/* CUENTA */}
           <div className="sidebar-section">
             <div className="sidebar-section-label">Cuenta</div>

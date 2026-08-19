@@ -6,6 +6,7 @@ import DashboardPage from './pages/dashboard/DashboardPage';
 import LibrosPage from './pages/libros/LibrosPage';
 import InventarioPage from './pages/inventario/InventarioPage';
 import UsuariosPage from './pages/admin/UsuariosPage';
+import AuditoriaPage from './pages/admin/AuditoriaPage';
 import ProfilePage from './pages/perfil/ProfilePage';
 
 function ProtectedRoute({ children }) {
@@ -23,6 +24,14 @@ function AdminRoute({ children }) {
   return children;
 }
 
+function AuditRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="d-flex justify-content-center p-5"><div className="spinner-border text-primary" /></div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!['admin', 'gerente', 'auditor'].includes(user.rol)) return <Navigate to="/" replace />;
+  return children;
+}
+
 function AppRoutes() {
   const { user } = useAuth();
 
@@ -35,6 +44,7 @@ function AppRoutes() {
         <Route path="inventario" element={<InventarioPage />} />
         <Route path="movimientos" element={<Navigate to="/libros" replace />} />
         <Route path="usuarios" element={<AdminRoute><UsuariosPage /></AdminRoute>} />
+        <Route path="auditoria" element={<AuditRoute><AuditoriaPage /></AuditRoute>} />
         <Route path="perfil" element={<ProfilePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
