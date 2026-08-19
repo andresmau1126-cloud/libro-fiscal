@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from .models import Libro
 from .serializers import LibroSerializer, LibroCreateSerializer
 from apps.auditoria.services import audit_log
-from apps.usuarios.permissions import can_view_all, can_write
+from apps.usuarios.permissions import can_delete, can_view_all, can_write
 
 
 def _libros_qs_for_user(user):
@@ -63,7 +63,9 @@ def libros_list_create(request):
 
 @api_view(["GET", "PUT", "DELETE"])
 def libro_detail(request, libro_id):
-    if request.method in {"PUT", "DELETE"} and not can_write(request.user):
+    if request.method == "PUT" and not can_write(request.user):
+        return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
+    if request.method == "DELETE" and not can_delete(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     try:
         libro = _libros_qs_for_user(request.user).get(pk=libro_id)

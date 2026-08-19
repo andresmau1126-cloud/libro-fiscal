@@ -3,6 +3,7 @@ from rest_framework.permissions import BasePermission
 
 SUPERVISOR_ROLES = {"admin", "gerente", "auditor"}
 WRITE_ROLES = {"admin", "gerente", "vendedor", "usuario"}
+DELETE_ROLES = {"admin", "gerente", "usuario"}
 
 
 def has_role(user, roles):
@@ -15,6 +16,10 @@ def can_view_all(user):
 
 def can_write(user):
     return has_role(user, WRITE_ROLES)
+
+
+def can_delete(user):
+    return has_role(user, DELETE_ROLES)
 
 
 class IsAdmin(BasePermission):

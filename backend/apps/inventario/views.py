@@ -10,7 +10,7 @@ from django.http import HttpResponse
 
 from .models import Producto
 from .serializers import ProductoSerializer, ProductoCreateUpdateSerializer
-from apps.usuarios.permissions import can_view_all, can_write
+from apps.usuarios.permissions import can_delete, can_view_all, can_write
 
 
 def _productos_qs_for_user(user):
@@ -64,7 +64,9 @@ def productos_list_create(request):
 
 @api_view(["GET", "PUT", "DELETE"])
 def producto_detail(request, producto_id):
-    if request.method in {"PUT", "DELETE"} and not can_write(request.user):
+    if request.method == "PUT" and not can_write(request.user):
+        return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
+    if request.method == "DELETE" and not can_delete(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     try:
         producto = _productos_qs_for_user(request.user).get(pk=producto_id)
