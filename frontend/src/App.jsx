@@ -5,6 +5,7 @@ import LoginPage from './pages/auth/LoginPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import LibrosPage from './pages/libros/LibrosPage';
 import InventarioPage from './pages/inventario/InventarioPage';
+import VentasPage from './pages/ventas/VentasPage';
 import UsuariosPage from './pages/admin/UsuariosPage';
 import AuditoriaPage from './pages/admin/AuditoriaPage';
 import ProfilePage from './pages/perfil/ProfilePage';
@@ -42,6 +43,7 @@ function AppRoutes() {
         <Route index element={<DashboardPage />} />
         <Route path="libros" element={<LibrosPage />} />
         <Route path="inventario" element={<InventarioPage />} />
+        <Route path="ventas" element={<VentasPage />} />
         <Route path="movimientos" element={<Navigate to="/libros" replace />} />
         <Route path="usuarios" element={<AdminRoute><UsuariosPage /></AdminRoute>} />
         <Route path="auditoria" element={<AuditRoute><AuditoriaPage /></AuditRoute>} />

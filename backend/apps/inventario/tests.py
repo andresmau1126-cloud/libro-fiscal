@@ -4,7 +4,7 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.inventario.models import Producto
+from apps.inventario.models import Producto, Venta
 from apps.inventario.views import _productos_qs_for_user
 from apps.usuarios.models import Usuario
 
@@ -71,6 +71,50 @@ class InventarioBlackBoxAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["nombre"], "Producto Bajo")
+
+    def test_create_sale_decrements_stock_and_returns_total(self):
+        product = Producto.objects.create(
+            nombre="Gas R410",
+            stock_actual=5,
+            precio_venta="12.50",
+            propietario=self.user,
+        )
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            "/api/ventas",
+            {
+                "medio_pago": "efectivo",
+                "detalles": [{"producto_id": product.id, "cantidad": "2"}],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["total"], 25.0)
+        product.refresh_from_db()
+        self.assertEqual(product.stock_actual, 3)
+        self.assertEqual(Venta.objects.filter(vendedor=self.user).count(), 1)
+
+    def test_create_sale_rejects_insufficient_stock(self):
+        product = Producto.objects.create(
+            nombre="Filtro secador",
+            stock_actual=1,
+            precio_venta="8.00",
+            propietario=self.user,
+        )
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            "/api/ventas",
+            {"detalles": [{"producto_id": product.id, "cantidad": "2"}]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        product.refresh_from_db()
+        self.assertEqual(product.stock_actual, 1)
+        self.assertFalse(Venta.objects.exists())
 
     def test_alertas_resumen_returns_expected_counts(self):
         hoy = date.today()

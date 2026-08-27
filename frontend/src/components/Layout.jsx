@@ -79,6 +79,12 @@ export default function Layout() {
                   <span>Inventario</span>
                 </NavLink>
               </li>
+              <li>
+                <NavLink to="/ventas" onClick={closeSidebar}>
+                  <i className="bi bi-cart3" />
+                  <span>Ventas</span>
+                </NavLink>
+              </li>
             </ul>
           </div>
 

@@ -33,3 +33,43 @@ class Producto(models.Model):
 
     def __str__(self):
         return self.nombre
+
+
+class Venta(models.Model):
+    MEDIOS_PAGO = [
+        ("efectivo", "Efectivo"),
+        ("transferencia", "Transferencia"),
+        ("tarjeta", "Tarjeta"),
+    ]
+
+    fecha = models.DateTimeField(auto_now_add=True)
+    cliente = models.CharField(max_length=180, blank=True, default="")
+    medio_pago = models.CharField(max_length=20, choices=MEDIOS_PAGO, default="efectivo")
+    total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    vendedor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="ventas",
+    )
+
+    class Meta:
+        db_table = "inventario_venta"
+        ordering = ["-fecha", "-id"]
+
+    def __str__(self):
+        return f"Venta #{self.id} - {self.total}"
+
+
+class DetalleVenta(models.Model):
+    venta = models.ForeignKey(Venta, on_delete=models.CASCADE, related_name="detalles")
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name="detalles_venta")
+    cantidad = models.DecimalField(max_digits=12, decimal_places=2)
+    precio_unitario = models.DecimalField(max_digits=12, decimal_places=2)
+    subtotal = models.DecimalField(max_digits=14, decimal_places=2)
+
+    class Meta:
+        db_table = "inventario_detalle_venta"
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.producto} x {self.cantidad}"

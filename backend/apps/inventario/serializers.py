@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from rest_framework import serializers
 
 
@@ -57,3 +58,20 @@ class ProductoCreateUpdateSerializer(serializers.Serializer):
             if data.get(field, 0) < 0:
                 raise serializers.ValidationError(f"{field} no puede ser negativo")
         return data
+
+
+class VentaDetalleCreateSerializer(serializers.Serializer):
+    producto_id = serializers.IntegerField(min_value=1)
+    cantidad = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0.01"))
+
+
+class VentaCreateSerializer(serializers.Serializer):
+    cliente = serializers.CharField(max_length=180, required=False, allow_blank=True, default="")
+    medio_pago = serializers.ChoiceField(choices=["efectivo", "transferencia", "tarjeta"], default="efectivo")
+    detalles = VentaDetalleCreateSerializer(many=True, allow_empty=False)
+
+    def validate_detalles(self, value):
+        ids = [item["producto_id"] for item in value]
+        if len(ids) != len(set(ids)):
+            raise serializers.ValidationError("No repita productos; ajuste la cantidad en una sola línea.")
+        return value

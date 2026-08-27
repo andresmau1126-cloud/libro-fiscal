@@ -3,13 +3,14 @@ from rest_framework.decorators import api_view
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from django.db import models
+from django.db import models, transaction
+from django.utils import timezone
 from django.conf import settings
 from django.core.mail import send_mail
 from django.http import HttpResponse
 
-from .models import Producto
-from .serializers import ProductoSerializer, ProductoCreateUpdateSerializer
+from .models import DetalleVenta, Producto, Venta
+from .serializers import ProductoSerializer, ProductoCreateUpdateSerializer, VentaCreateSerializer
 from apps.usuarios.permissions import can_delete, can_view_all, can_write
 
 
@@ -104,6 +105,88 @@ def producto_detail(request, producto_id):
 
     producto.delete()
     return Response({"ok": True})
+
+
+def _venta_data(venta):
+    return {
+        "id": venta.id,
+        "fecha": venta.fecha.isoformat(),
+        "cliente": venta.cliente,
+        "medio_pago": venta.medio_pago,
+        "total": float(venta.total),
+        "detalles": [
+            {
+                "producto_id": detalle.producto_id,
+                "producto": detalle.producto.nombre,
+                "cantidad": float(detalle.cantidad),
+                "precio_unitario": float(detalle.precio_unitario),
+                "subtotal": float(detalle.subtotal),
+            }
+            for detalle in venta.detalles.select_related("producto").all()
+        ],
+    }
+
+
+@api_view(["GET", "POST"])
+def ventas_list_create(request):
+    if request.method == "POST" and not can_write(request.user):
+        return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == "GET":
+        fecha = request.query_params.get("fecha")
+        qs = Venta.objects.filter(vendedor=request.user).prefetch_related("detalles__producto")
+        if fecha:
+            qs = qs.filter(fecha__date=fecha)
+        ventas = [_venta_data(venta) for venta in qs[:100]]
+        return Response({
+            "ventas": ventas,
+            "resumen": {
+                "cantidad": len(ventas),
+                "total": round(sum(item["total"] for item in ventas), 2),
+            },
+        })
+
+    serializer = VentaCreateSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    with transaction.atomic():
+        detalles_data = []
+        total = 0
+        for item in data["detalles"]:
+            try:
+                producto = Producto.objects.select_for_update().get(
+                    pk=item["producto_id"], propietario=request.user
+                )
+            except Producto.DoesNotExist:
+                return Response({"error": "Uno de los productos no existe en su inventario."}, status=status.HTTP_404_NOT_FOUND)
+            if producto.fecha_vencimiento and producto.fecha_vencimiento < timezone.localdate():
+                return Response({"error": f"{producto.nombre} está vencido y no se puede vender."}, status=status.HTTP_400_BAD_REQUEST)
+            cantidad = item["cantidad"]
+            if producto.stock_actual < cantidad:
+                return Response({"error": f"Stock insuficiente para {producto.nombre}. Disponible: {producto.stock_actual}."}, status=status.HTTP_400_BAD_REQUEST)
+            subtotal = cantidad * producto.precio_venta
+            detalles_data.append((producto, cantidad, producto.precio_venta, subtotal))
+            total += subtotal
+
+        venta = Venta.objects.create(
+            cliente=data.get("cliente", "").strip(),
+            medio_pago=data["medio_pago"],
+            total=total,
+            vendedor=request.user,
+        )
+        for producto, cantidad, precio, subtotal in detalles_data:
+            producto.stock_actual -= cantidad
+            producto.save(update_fields=["stock_actual", "updated_at"])
+            DetalleVenta.objects.create(
+                venta=venta,
+                producto=producto,
+                cantidad=cantidad,
+                precio_unitario=precio,
+                subtotal=subtotal,
+            )
+
+    return Response(_venta_data(venta), status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET"])
