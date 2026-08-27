@@ -155,8 +155,8 @@ def ventas_list_create(request):
         total = 0
         for item in data["detalles"]:
             try:
-                producto = Producto.objects.select_for_update().get(
-                    pk=item["producto_id"], propietario=request.user
+                producto = _productos_qs_for_user(request.user).select_for_update().get(
+                    pk=item["producto_id"]
                 )
             except Producto.DoesNotExist:
                 return Response({"error": "Uno de los productos no existe en su inventario."}, status=status.HTTP_404_NOT_FOUND)

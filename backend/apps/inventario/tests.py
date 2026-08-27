@@ -116,6 +116,31 @@ class InventarioBlackBoxAPITests(APITestCase):
         self.assertEqual(product.stock_actual, 1)
         self.assertFalse(Venta.objects.exists())
 
+    def test_admin_can_sell_visible_product_from_inventory(self):
+        product = Producto.objects.create(
+            nombre="Agua gas",
+            stock_actual=3,
+            precio_venta="1800.00",
+            propietario=self.other_user,
+        )
+        admin = Usuario.objects.create_user(
+            email="inventario-admin-sale@test.com",
+            nombre="Administrador",
+            password="123456",
+            rol="admin",
+        )
+        self.client.force_authenticate(user=admin)
+
+        response = self.client.post(
+            "/api/ventas",
+            {"detalles": [{"producto_id": product.id, "cantidad": "1"}]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        product.refresh_from_db()
+        self.assertEqual(product.stock_actual, 2)
+
     def test_alertas_resumen_returns_expected_counts(self):
         hoy = date.today()
         Producto.objects.create(
