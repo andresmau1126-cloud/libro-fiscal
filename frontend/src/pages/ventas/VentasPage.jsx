@@ -6,8 +6,13 @@ const money = (value) => '$ ' + Number(value || 0).toLocaleString('es-CO', {
   maximumFractionDigits: 2,
 });
 
+const localDate = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
+
 export default function VentasPage() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDate();
   const [productos, setProductos] = useState([]);
   const [ventas, setVentas] = useState([]);
   const [fecha, setFecha] = useState(today);
@@ -61,10 +66,12 @@ export default function VentasPage() {
         medio_pago: medioPago,
         detalles: cart.map((item) => ({ producto_id: item.id, cantidad: item.cantidad })),
       });
+      const soldIds = new Set(cart.map((item) => item.id));
       setCart([]);
       setCliente('');
       setMessage({ ok: true, text: 'Venta registrada y stock actualizado.' });
       await load();
+      setProductos((current) => current.filter((product) => !soldIds.has(product.id) || Number(product.stock_actual) > 0));
     } catch (error) {
       setMessage({ ok: false, text: error.response?.data?.error || 'No se pudo registrar la venta.' });
     } finally {
@@ -85,7 +92,7 @@ export default function VentasPage() {
         <div className="col-lg-7">
           <div className="data-table p-3">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5 className="mb-0">Nueva venta</h5>
+              <div><h5 className="mb-0">Nueva venta</h5><small className="text-muted">El stock se actualiza al confirmar el cobro.</small></div>
               <span className="badge text-bg-light">{cart.length} productos</span>
             </div>
             <form onSubmit={checkout}>
@@ -136,7 +143,7 @@ export default function VentasPage() {
 
         <div className="col-lg-5">
           <div className="data-table p-3">
-            <div className="d-flex justify-content-between align-items-center mb-3"><h5 className="mb-0">Ventas del día</h5><input type="date" className="form-control form-control-sm w-auto" value={fecha} onChange={(event) => setFecha(event.target.value)} /></div>
+            <div className="d-flex justify-content-between align-items-center mb-3"><h5 className="mb-0">Ventas del día</h5><div className="d-flex gap-2"><input type="date" className="form-control form-control-sm w-auto" value={fecha} onChange={(event) => setFecha(event.target.value)} /><button type="button" className="btn btn-sm btn-outline-secondary" onClick={load} disabled={loading} title="Actualizar ventas y stock" aria-label="Actualizar ventas y stock"><i className="bi bi-arrow-clockwise" /></button></div></div>
             <div className="display-6 fw-semibold text-success mb-3">{money(ventas.reduce((sum, sale) => sum + sale.total, 0))}</div>
             {loading ? <div className="text-muted">Cargando...</div> : !ventas.length ? <div className="text-muted">No hay ventas para esta fecha.</div> : ventas.map((sale) => <div className="border-top py-2" key={sale.id}><div className="d-flex justify-content-between"><strong>Venta #{sale.id}</strong><span>{money(sale.total)}</span></div><div className="small text-muted">{new Date(sale.fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} · {sale.medio_pago} · {sale.cliente || 'Consumidor final'}</div></div>)}
           </div>
