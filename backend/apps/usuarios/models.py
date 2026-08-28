@@ -24,6 +24,7 @@ class Usuario(AbstractBaseUser):
     ROL_CHOICES = [
         ("admin", "Administrador"),
         ("vendedor", "Vendedor"),
+        ("vendedor_2", "Vendedor 2"),
         ("gerente", "Gerente"),
         ("auditor", "Auditor"),
     ]

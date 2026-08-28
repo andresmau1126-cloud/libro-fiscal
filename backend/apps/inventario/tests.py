@@ -141,6 +141,65 @@ class InventarioBlackBoxAPITests(APITestCase):
         product.refresh_from_db()
         self.assertEqual(product.stock_actual, 2)
 
+    def test_seller_roles_can_create_sales_and_admin_can_view_all_sales_by_role(self):
+        seller_1 = Usuario.objects.create_user(
+            email="vendedor1@test.com",
+            nombre="Vendedor 1",
+            password="123456",
+            rol="vendedor",
+        )
+        seller_2 = Usuario.objects.create_user(
+            email="vendedor2@test.com",
+            nombre="Vendedor 2",
+            password="123456",
+            rol="vendedor_2",
+        )
+        admin = Usuario.objects.create_user(
+            email="admin-sales@test.com",
+            nombre="Administrador Ventas",
+            password="123456",
+            rol="admin",
+        )
+
+        product_1 = Producto.objects.create(
+            nombre="Producto vendedor 1",
+            stock_actual=10,
+            precio_venta="15.00",
+            propietario=seller_1,
+        )
+        product_2 = Producto.objects.create(
+            nombre="Producto vendedor 2",
+            stock_actual=8,
+            precio_venta="20.00",
+            propietario=seller_2,
+        )
+
+        self.client.force_authenticate(user=seller_1)
+        response_1 = self.client.post(
+            "/api/ventas",
+            {"detalles": [{"producto_id": product_1.id, "cantidad": "2"}]},
+            format="json",
+        )
+        self.assertEqual(response_1.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response_1.data["vendedor_rol"], "vendedor")
+
+        self.client.force_authenticate(user=seller_2)
+        response_2 = self.client.post(
+            "/api/ventas",
+            {"detalles": [{"producto_id": product_2.id, "cantidad": "1"}]},
+            format="json",
+        )
+        self.assertEqual(response_2.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response_2.data["vendedor_rol"], "vendedor_2")
+
+        self.client.force_authenticate(user=admin)
+        response = self.client.get("/api/ventas")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["resumen"]["cantidad"], 2)
+        roles = {venta["vendedor_rol"] for venta in response.data["ventas"]}
+        self.assertSetEqual(roles, {"vendedor", "vendedor_2"})
+
     def test_alertas_resumen_returns_expected_counts(self):
         hoy = date.today()
         Producto.objects.create(

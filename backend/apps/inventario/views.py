@@ -11,7 +11,7 @@ from django.http import HttpResponse
 
 from .models import DetalleVenta, Producto, Venta
 from .serializers import ProductoSerializer, ProductoCreateUpdateSerializer, VentaCreateSerializer
-from apps.usuarios.permissions import can_delete, can_view_all, can_write
+from apps.usuarios.permissions import SELLER_ROLES, can_delete, can_view_all, can_write
 
 
 def _productos_qs_for_user(user):
@@ -114,6 +114,9 @@ def _venta_data(venta):
         "cliente": venta.cliente,
         "medio_pago": venta.medio_pago,
         "total": float(venta.total),
+        "vendedor": venta.vendedor.nombre,
+        "vendedor_email": venta.vendedor.email,
+        "vendedor_rol": venta.vendedor.rol,
         "detalles": [
             {
                 "producto_id": detalle.producto_id,
@@ -134,7 +137,11 @@ def ventas_list_create(request):
 
     if request.method == "GET":
         fecha = request.query_params.get("fecha")
-        qs = Venta.objects.filter(vendedor=request.user).prefetch_related("detalles__producto")
+        qs = Venta.objects.select_related("vendedor").prefetch_related("detalles__producto")
+        if not can_view_all(request.user):
+            qs = qs.filter(vendedor=request.user)
+        elif request.user and request.user.rol in SELLER_ROLES:
+            qs = qs.filter(vendedor__rol=request.user.rol)
         if fecha:
             qs = qs.filter(fecha__date=fecha)
         ventas = [_venta_data(venta) for venta in qs[:100]]
@@ -175,6 +182,7 @@ def ventas_list_create(request):
             total=total,
             vendedor=request.user,
         )
+        venta.refresh_from_db()
         for producto, cantidad, precio, subtotal in detalles_data:
             producto.stock_actual -= cantidad
             producto.save(update_fields=["stock_actual", "updated_at"])

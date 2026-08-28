@@ -4,6 +4,7 @@ import { fetchUsuarios, createUsuario, updateUsuario, deleteUsuario } from '../.
 const ROLE_PERMISSIONS = [
   { key: 'admin', label: 'Administrador', icon: 'bi-shield-fill-check', spaces: 'Administración, Libros, Inventario, Movimientos, Auditoría y Exportación', actions: ['Gestionar usuarios', 'Crear, editar y eliminar información operativa', 'Consultar, eliminar y limpiar auditoría'] },
   { key: 'vendedor', label: 'Vendedor', icon: 'bi-cart-check-fill', spaces: 'Libros, Inventario, Movimientos, Exportación y Perfil', actions: ['Consultar sus registros', 'Crear y editar sus libros, movimientos e inventario', 'Exportar información; no elimina registros'] },
+  { key: 'vendedor_2', label: 'Vendedor 2', icon: 'bi-cart-check-fill', spaces: 'Libros, Inventario, Movimientos, Exportación y Perfil', actions: ['Consultar sus registros', 'Crear y editar sus libros, movimientos e inventario', 'Exportar información; no elimina registros'] },
   { key: 'gerente', label: 'Gerente', icon: 'bi-graph-up-arrow', spaces: 'Libros, Inventario, Movimientos, Auditoría, Exportación y Perfil', actions: ['Consultar toda la operación', 'Crear, editar y eliminar libros, movimientos e inventario', 'Consultar auditoría y exportar información'] },
   { key: 'auditor', label: 'Auditor', icon: 'bi-search', spaces: 'Libros, Inventario, Movimientos, Auditoría, Exportación y Perfil', actions: ['Consultar todos los registros operativos', 'Exportar información', 'Consultar auditoría; no crea, edita ni elimina'] },
 ];
@@ -194,6 +195,7 @@ export default function UsuariosPage() {
                   <select className="form-select" value={form.rol} onChange={set('rol')}>
                     <option value="admin">Administrador</option>
                     <option value="vendedor">Vendedor</option>
+                    <option value="vendedor_2">Vendedor 2</option>
                     <option value="gerente">Gerente</option>
                     <option value="auditor">Auditor</option>
                   </select>
