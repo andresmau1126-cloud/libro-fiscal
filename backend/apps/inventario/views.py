@@ -1,7 +1,7 @@
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.decorators import permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.db import models, transaction
 from django.utils import timezone
@@ -20,6 +20,7 @@ def _productos_qs_for_user(user):
 
 
 @api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
 def productos_list_create(request):
     if request.method == "POST" and not can_write(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
@@ -63,6 +64,7 @@ def productos_list_create(request):
 
 
 @api_view(["GET", "PUT", "DELETE"])
+@permission_classes([IsAuthenticated])
 def producto_detail(request, producto_id):
     if request.method == "PUT" and not can_write(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
@@ -130,6 +132,7 @@ def _venta_data(venta):
 
 
 @api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
 def ventas_list_create(request):
     if request.method == "POST" and not can_write(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
