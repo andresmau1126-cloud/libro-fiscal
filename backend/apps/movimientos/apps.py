@@ -5,4 +5,4 @@ class MovimientosConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "apps.movimientos"
     verbose_name = "Movimientos"
-"Prueba de carga"
+    description = "Prueba de carga"

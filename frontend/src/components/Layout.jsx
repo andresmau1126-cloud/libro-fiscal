@@ -99,6 +99,12 @@ export default function Layout() {
                     <span>Usuarios</span>
                   </NavLink>
                 </li>
+                <li>
+                  <NavLink to="/respaldos" onClick={closeSidebar}>
+                    <i className="bi bi-cloud-arrow-down-fill" />
+                    <span>Copias de Seguridad</span>
+                  </NavLink>
+                </li>
               </ul>
             </div>
           )}

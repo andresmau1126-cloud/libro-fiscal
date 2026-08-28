@@ -9,6 +9,7 @@ import VentasPage from './pages/ventas/VentasPage';
 import UsuariosPage from './pages/admin/UsuariosPage';
 import AuditoriaPage from './pages/admin/AuditoriaPage';
 import ProfilePage from './pages/perfil/ProfilePage';
+import Respaldos from './pages/Respaldos';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -47,6 +48,7 @@ function AppRoutes() {
         <Route path="movimientos" element={<Navigate to="/libros" replace />} />
         <Route path="usuarios" element={<AdminRoute><UsuariosPage /></AdminRoute>} />
         <Route path="auditoria" element={<AuditRoute><AuditoriaPage /></AuditRoute>} />
+        <Route path="respaldos" element={<AdminRoute><Respaldos /></AdminRoute>} />
         <Route path="perfil" element={<ProfilePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
