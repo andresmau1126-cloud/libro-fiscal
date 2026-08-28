@@ -17,6 +17,8 @@ from apps.usuarios.permissions import SELLER_ROLES, can_delete, can_view_all, ca
 def _productos_qs_for_user(user):
     if can_view_all(user):
         return Producto.objects.all()
+    if user and getattr(user, "rol", None) in SELLER_ROLES:
+        return Producto.objects.filter(propietario__rol=user.rol)
     return Producto.objects.filter(propietario=user)
 
 
@@ -138,10 +140,12 @@ def ventas_list_create(request):
     if request.method == "GET":
         fecha = request.query_params.get("fecha")
         qs = Venta.objects.select_related("vendedor").prefetch_related("detalles__producto")
-        if not can_view_all(request.user):
-            qs = qs.filter(vendedor=request.user)
+        if can_view_all(request.user):
+            pass
         elif request.user and request.user.rol in SELLER_ROLES:
             qs = qs.filter(vendedor__rol=request.user.rol)
+        else:
+            qs = qs.filter(vendedor=request.user)
         if fecha:
             qs = qs.filter(fecha__date=fecha)
         ventas = [_venta_data(venta) for venta in qs[:100]]

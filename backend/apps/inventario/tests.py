@@ -200,6 +200,64 @@ class InventarioBlackBoxAPITests(APITestCase):
         roles = {venta["vendedor_rol"] for venta in response.data["ventas"]}
         self.assertSetEqual(roles, {"vendedor", "vendedor_2"})
 
+    def test_same_role_users_share_inventory_and_sales_scope(self):
+        seller_1 = Usuario.objects.create_user(
+            email="vendedor-scope-1@test.com",
+            nombre="Vendedor Scope 1",
+            password="123456",
+            rol="vendedor",
+        )
+        seller_2 = Usuario.objects.create_user(
+            email="vendedor-scope-2@test.com",
+            nombre="Vendedor Scope 2",
+            password="123456",
+            rol="vendedor",
+        )
+        seller_3 = Usuario.objects.create_user(
+            email="vendedor2-scope@test.com",
+            nombre="Vendedor 2 Scope",
+            password="123456",
+            rol="vendedor_2",
+        )
+
+        product_1 = Producto.objects.create(
+            nombre="Producto de rol vendedor 1",
+            stock_actual=10,
+            precio_venta="12.00",
+            propietario=seller_1,
+        )
+        product_2 = Producto.objects.create(
+            nombre="Producto de rol vendedor 2",
+            stock_actual=7,
+            precio_venta="15.00",
+            propietario=seller_2,
+        )
+        product_3 = Producto.objects.create(
+            nombre="Producto de vendedor 2",
+            stock_actual=5,
+            precio_venta="18.00",
+            propietario=seller_3,
+        )
+
+        self.client.force_authenticate(user=seller_1)
+        product_response = self.client.get("/api/productos")
+        self.assertEqual(product_response.status_code, status.HTTP_200_OK)
+        self.assertEqual({item["nombre"] for item in product_response.data}, {product_1.nombre, product_2.nombre})
+
+        self.client.force_authenticate(user=seller_2)
+        self.client.post(
+            "/api/ventas",
+            {"detalles": [{"producto_id": product_2.id, "cantidad": "1"}]},
+            format="json",
+        )
+
+        self.client.force_authenticate(user=seller_1)
+        response = self.client.get("/api/ventas")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["resumen"]["cantidad"], 1)
+        self.assertEqual({venta["vendedor_rol"] for venta in response.data["ventas"]}, {"vendedor"})
+        self.assertNotIn(product_3.nombre, {item["nombre"] for item in self.client.get("/api/productos").data})
+
     def test_alertas_resumen_returns_expected_counts(self):
         hoy = date.today()
         Producto.objects.create(
