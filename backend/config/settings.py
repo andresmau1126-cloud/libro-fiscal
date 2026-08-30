@@ -196,7 +196,9 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [FRONTEND_DIR / "static"] if FRONTEND_DIR.exists() and (FRONTEND_DIR / "static").exists() else []
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-WHITENOISE_ROOT = FRONTEND_DIR if FRONTEND_DIR.exists() else None
+# WhiteNoise serves from STATIC_ROOT in production, not from FRONTEND_DIR
+WHITENOISE_AUTOREFRESH = DEBUG
+WHITENOISE_USE_FINDERS = DEBUG
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

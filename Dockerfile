@@ -21,7 +21,10 @@ COPY backend/ ./
 COPY scripts/ ./scripts
 
 # Copy frontend build
-COPY --from=frontend-build /app/frontend/dist /app/frontend_dist
+COPY --from=frontend-build /app/frontend/dist ./frontend_dist
+
+# Ensure proper permissions for static files
+RUN chmod -R 755 frontend_dist && chmod -R 755 scripts
 
 ENV PYTHONUNBUFFERED=1
 ENV DJANGO_SETTINGS_MODULE=config.settings
