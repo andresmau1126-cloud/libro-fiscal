@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './Respaldos.css';
-import { API_BASE_URL } from '../../services/api';
+import { API_BASE_URL } from '../services/api';
 
 const Respaldos = () => {
   const [respaldos, setRespaldos] = useState([]);

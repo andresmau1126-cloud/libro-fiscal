@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.core.mail import send_mail
 from django.http import HttpResponse
+from django.db.models.deletion import ProtectedError
 
 from .models import DetalleVenta, Producto, Venta
 from .serializers import ProductoSerializer, ProductoCreateUpdateSerializer, VentaCreateSerializer
@@ -110,8 +111,14 @@ def producto_detail(request, producto_id):
 
         return Response(ProductoSerializer(producto).data)
 
-    producto.delete()
-    return Response({"ok": True})
+    try:
+        producto.delete()
+        return Response({"ok": True})
+    except ProtectedError:
+        return Response(
+            {"error": "No se puede eliminar este producto porque tiene ventas registradas."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 def _venta_data(venta):
