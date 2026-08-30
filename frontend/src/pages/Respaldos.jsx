@@ -26,11 +26,8 @@ const Respaldos = () => {
   const cargarRespaldos = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_BASE_URL}/respaldos/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        }
+        credentials: 'same-origin',
       });
       
       if (!response.ok) throw new Error('Error al cargar respaldos');
@@ -48,11 +45,8 @@ const Respaldos = () => {
 
   const cargarEstadisticas = async () => {
     try {
-      const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_BASE_URL}/respaldos/estadisticas/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        }
+        credentials: 'same-origin',
       });
       
       if (response.ok) {
@@ -77,15 +71,14 @@ const Respaldos = () => {
     
     try {
       setCrearLoading(true);
-      const token = localStorage.getItem('access_token');
       
       // Usar nombre actual si no se proporcionó
       const nombre = formData.nombre || `Respaldo ${new Date().toLocaleString()}`;
       
       const response = await fetch(`${API_BASE_URL}/respaldos/crear_respaldo/`, {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -128,11 +121,10 @@ const Respaldos = () => {
     }
     
     try {
-      const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_BASE_URL}/respaldos/${id}/restaurar/`, {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -160,11 +152,8 @@ const Respaldos = () => {
 
   const descargarRespaldo = async (id, nombre) => {
     try {
-      const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_BASE_URL}/respaldos/${id}/descargar/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        }
+        credentials: 'same-origin',
       });
       
       if (!response.ok) throw new Error('Error al descargar respaldo');
@@ -190,12 +179,9 @@ const Respaldos = () => {
     }
     
     try {
-      const token = localStorage.getItem('access_token');
       const response = await fetch(`${API_BASE_URL}/respaldos/${id}/`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        }
+        credentials: 'same-origin',
       });
       
       if (!response.ok) throw new Error('Error al eliminar respaldo');

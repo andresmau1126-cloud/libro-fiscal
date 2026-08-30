@@ -141,6 +141,31 @@ class InventarioBlackBoxAPITests(APITestCase):
         product.refresh_from_db()
         self.assertEqual(product.stock_actual, 2)
 
+    def test_delete_product_with_sales_soft_deletes_instead_of_blocking(self):
+        product = Producto.objects.create(
+            nombre="Producto con ventas",
+            stock_actual=5,
+            precio_venta="50.00",
+            propietario=self.user,
+        )
+        self.client.force_authenticate(user=self.user)
+        self.client.post(
+            "/api/ventas",
+            {"detalles": [{"producto_id": product.id, "cantidad": "1"}]},
+            format="json",
+        )
+
+        response = self.client.delete(f"/api/productos/{product.id}")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["ok"])
+        product.refresh_from_db()
+        self.assertFalse(product.activo)
+
+        list_response = self.client.get("/api/productos")
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertNotIn(product.id, [p["id"] for p in list_response.data])
+
     def test_seller_roles_can_create_sales_and_admin_can_view_all_sales_by_role(self):
         seller_1 = Usuario.objects.create_user(
             email="vendedor1@test.com",

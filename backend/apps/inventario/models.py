@@ -12,6 +12,7 @@ class Producto(models.Model):
     precio_venta = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     fecha_vencimiento = models.DateField(null=True, blank=True)
     dias_alerta = models.IntegerField(default=30)
+    activo = models.BooleanField(default=True)
     propietario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -33,6 +34,13 @@ class Producto(models.Model):
 
     def __str__(self):
         return self.nombre
+
+    def delete(self, using=None, keep_parents=False):
+        if self.activo:
+            self.activo = False
+            self.save(update_fields=["activo", "updated_at"])
+            return (1, {self.__class__: 1})
+        return (0, {self.__class__: 0})
 
 
 class Venta(models.Model):

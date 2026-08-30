@@ -22,8 +22,8 @@ from services.scheduler_alertas import (
 
 
 def _productos_qs_for_user(user):
-    # Todos los usuarios ven todos los productos - inventario global
-    return Producto.objects.all()
+    # Todos los usuarios ven todos los productos activos - inventario global
+    return Producto.objects.filter(activo=True)
 
 
 @api_view(["GET", "POST"])
@@ -111,14 +111,9 @@ def producto_detail(request, producto_id):
 
         return Response(ProductoSerializer(producto).data)
 
-    try:
-        producto.delete()
-        return Response({"ok": True})
-    except ProtectedError:
-        return Response(
-            {"error": "No se puede eliminar este producto porque tiene ventas registradas."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    producto.activo = False
+    producto.save(update_fields=["activo", "updated_at"])
+    return Response({"ok": True})
 
 
 def _venta_data(venta):
