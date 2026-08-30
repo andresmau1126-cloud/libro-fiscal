@@ -243,7 +243,7 @@ if BREVO_SENDER_EMAIL:
     DEFAULT_FROM_EMAIL = formataddr((BREVO_SENDER_NAME, BREVO_SENDER_EMAIL)) if BREVO_SENDER_NAME else BREVO_SENDER_EMAIL
 else:
     DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", os.getenv("EMAIL_HOST_USER", ""))
-ALERTA_EMAIL_DESTINO = os.getenv("ALERTA_EMAIL_DESTINO", "maurcio1126@gmail.com")
+ALERTA_EMAIL_DESTINO = os.getenv("ALERTA_EMAIL_DESTINO", "andresmau1126@gmail.com")
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
 
 # ── Security headers (producción) ──

@@ -12,6 +12,12 @@ from django.http import HttpResponse
 from .models import DetalleVenta, Producto, Venta
 from .serializers import ProductoSerializer, ProductoCreateUpdateSerializer, VentaCreateSerializer
 from apps.usuarios.permissions import SELLER_ROLES, can_delete, can_view_all, can_write
+from services.inventario_alertas import enviar_alerta_inventario
+from services.scheduler_alertas import (
+    iniciar_scheduler,
+    detener_scheduler,
+    obtener_estado_scheduler,
+)
 
 
 def _productos_qs_for_user(user):
@@ -279,3 +285,111 @@ def test_mail_page(request):
     </body></html>
     """
     return HttpResponse(html)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def enviar_alertas_inventario_manual(request):
+    """
+    Dispara manualmente el envío de alertas de inventario.
+    Detecta:
+    - Productos con stock por debajo del mínimo
+    - Productos próximos a vencer
+    
+    Query params:
+    - email: email destino (default: ALERTA_EMAIL_DESTINO)
+    """
+    email = request.query_params.get("email") or settings.ALERTA_EMAIL_DESTINO
+    resultado = enviar_alerta_inventario(destino=email)
+    
+    return Response(resultado, status=status.HTTP_200_OK if resultado["ok"] else status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def scheduler_alertas_start(request):
+    """
+    Inicia el scheduler automático de alertas de inventario.
+    
+    Body (JSON):
+    {
+      "hora": 7,      # 0-23 (default: 7 = 7 AM)
+      "minuto": 0     # 0-59 (default: 0)
+    }
+    """
+    try:
+        data = request.data or {}
+        hora = data.get("hora", 7)
+        minuto = data.get("minuto", 0)
+        
+        if not isinstance(hora, int) or not (0 <= hora <= 23):
+            return Response(
+                {"ok": False, "error": "Hora debe ser un entero entre 0-23"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not isinstance(minuto, int) or not (0 <= minuto <= 59):
+            return Response(
+                {"ok": False, "error": "Minuto debe ser un entero entre 0-59"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        iniciar_scheduler(hora=hora, minuto=minuto)
+        estado = obtener_estado_scheduler()
+        
+        return Response(
+            {
+                "ok": True,
+                "mensaje": f"Scheduler iniciado. Alertas programadas para las {hora:02d}:{minuto:02d} diariamente",
+                "estado": estado,
+            },
+            status=status.HTTP_200_OK,
+        )
+    
+    except Exception as e:
+        return Response(
+            {"ok": False, "error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def scheduler_alertas_status(request):
+    """
+    Obtiene el estado actual del scheduler de alertas.
+    
+    Respuesta:
+    {
+      "activo": bool,
+      "proximo_disparo": datetime | null,
+      "timestamp": ISO datetime
+    }
+    """
+    estado = obtener_estado_scheduler()
+    return Response({"ok": True, "estado": estado}, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def scheduler_alertas_stop(request):
+    """
+    Detiene el scheduler automático de alertas de inventario.
+    """
+    try:
+        detener_scheduler()
+        estado = obtener_estado_scheduler()
+        
+        return Response(
+            {
+                "ok": True,
+                "mensaje": "Scheduler detenido",
+                "estado": estado,
+            },
+            status=status.HTTP_200_OK,
+        )
+    
+    except Exception as e:
+        return Response(
+            {"ok": False, "error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
