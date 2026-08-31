@@ -22,8 +22,9 @@ from services.scheduler_alertas import (
 
 
 def _productos_qs_for_user(user):
-    # Todos los usuarios ven todos los productos activos - inventario global
-    return Producto.objects.filter(activo=True)
+    if can_view_all(user):
+        return Producto.objects.filter(activo=True)
+    return Producto.objects.filter(activo=True, propietario=user)
 
 
 @api_view(["GET", "POST"])
@@ -147,10 +148,14 @@ def ventas_list_create(request):
 
     if request.method == "GET":
         fecha = request.query_params.get("fecha")
-        # Todos los usuarios ven todas las ventas - sin filtros por rol
         qs = Venta.objects.select_related("vendedor").prefetch_related("detalles__producto")
-        if fecha:
-            qs = qs.filter(fecha__date=fecha)
+        if can_view_all(request.user):
+            if fecha:
+                qs = qs.filter(fecha__date=fecha)
+        else:
+            qs = qs.filter(vendedor=request.user)
+            if fecha:
+                qs = qs.filter(fecha__date=fecha)
         ventas = [_venta_data(venta) for venta in qs[:100]]
         return Response({
             "ventas": ventas,

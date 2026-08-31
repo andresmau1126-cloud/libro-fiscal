@@ -225,8 +225,7 @@ class InventarioBlackBoxAPITests(APITestCase):
         roles = {venta["vendedor_rol"] for venta in response.data["ventas"]}
         self.assertSetEqual(roles, {"vendedor", "vendedor_2"})
 
-    def test_same_role_users_share_inventory_and_sales_scope(self):
-        # With global inventory, all users see all products and all sales
+    def test_sellers_are_isolated_but_admin_and_manager_see_everything(self):
         seller_1 = Usuario.objects.create_user(
             email="vendedor-scope-1@test.com",
             nombre="Vendedor Scope 1",
@@ -239,55 +238,66 @@ class InventarioBlackBoxAPITests(APITestCase):
             password="123456",
             rol="vendedor",
         )
-        seller_3 = Usuario.objects.create_user(
-            email="vendedor2-scope@test.com",
-            nombre="Vendedor 2 Scope",
+        manager = Usuario.objects.create_user(
+            email="gerente-scope@test.com",
+            nombre="Gerente Scope",
             password="123456",
-            rol="vendedor_2",
+            rol="gerente",
         )
 
         product_1 = Producto.objects.create(
-            nombre="Producto de rol vendedor 1",
+            nombre="Producto de vendedor 1",
             stock_actual=10,
             precio_venta="12.00",
             propietario=seller_1,
         )
         product_2 = Producto.objects.create(
-            nombre="Producto de rol vendedor 2",
+            nombre="Producto de vendedor 2",
             stock_actual=7,
             precio_venta="15.00",
             propietario=seller_2,
         )
-        product_3 = Producto.objects.create(
-            nombre="Producto de vendedor 2",
-            stock_actual=5,
-            precio_venta="18.00",
-            propietario=seller_3,
-        )
 
-        # seller_1 now sees all products (global inventory)
         self.client.force_authenticate(user=seller_1)
-        product_response = self.client.get("/api/productos")
-        self.assertEqual(product_response.status_code, status.HTTP_200_OK)
-        self.assertEqual({item["nombre"] for item in product_response.data}, {product_1.nombre, product_2.nombre, product_3.nombre})
+        response = self.client.get("/api/productos")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual({item["nombre"] for item in response.data}, {product_1.nombre})
 
-        # seller_2 makes a sale
-        self.client.force_authenticate(user=seller_2)
-        self.client.post(
+        sale_response = self.client.post(
             "/api/ventas",
             {"detalles": [{"producto_id": product_2.id, "cantidad": "1"}]},
             format="json",
         )
+        self.assertEqual(sale_response.status_code, status.HTTP_404_NOT_FOUND)
 
-        # seller_1 now sees all sales (global sales visibility)
-        self.client.force_authenticate(user=seller_1)
-        response = self.client.get("/api/ventas")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["resumen"]["cantidad"], 1)
-        # Now they see all roles, not just their own
-        self.assertEqual({venta["vendedor_rol"] for venta in response.data["ventas"]}, {"vendedor"})
-        # And they can see all products
-        self.assertIn(product_3.nombre, {item["nombre"] for item in self.client.get("/api/productos").data})
+        self.client.force_authenticate(user=seller_2)
+        sale_by_seller_2 = self.client.post(
+            "/api/ventas",
+            {"detalles": [{"producto_id": product_2.id, "cantidad": "1"}]},
+            format="json",
+        )
+        self.assertEqual(sale_by_seller_2.status_code, status.HTTP_201_CREATED)
+
+        self.client.force_authenticate(user=manager)
+        inventory_response = self.client.get("/api/productos")
+        self.assertEqual(inventory_response.status_code, status.HTTP_200_OK)
+        self.assertEqual({item["nombre"] for item in inventory_response.data}, {product_1.nombre, product_2.nombre})
+
+        sales_response = self.client.get("/api/ventas")
+        self.assertEqual(sales_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(sales_response.data["resumen"]["cantidad"], 1)
+        self.assertEqual({venta["vendedor_rol"] for venta in sales_response.data["ventas"]}, {"vendedor"})
+
+        admin = Usuario.objects.create_user(
+            email="admin-scope@test.com",
+            nombre="Admin Scope",
+            password="123456",
+            rol="admin",
+        )
+        self.client.force_authenticate(user=admin)
+        admin_sales = self.client.get("/api/ventas")
+        self.assertEqual(admin_sales.status_code, status.HTTP_200_OK)
+        self.assertEqual(admin_sales.data["resumen"]["cantidad"], 1)
 
     # Test removed: alertas-resumen endpoint not implemented
     # def test_alertas_resumen_returns_expected_counts(self):
@@ -311,9 +321,14 @@ class InventarioWhiteBoxTests(TestCase):
         Producto.objects.create(nombre="P1", propietario=self.user)
         Producto.objects.create(nombre="P2", propietario=self.admin)
 
-    def test_productos_qs_for_regular_user_returns_all_products(self):
-        # With global inventory, all users see all products
+    def test_productos_qs_for_regular_user_returns_only_its_products(self):
         qs = _productos_qs_for_user(self.user)
+        self.assertEqual(qs.count(), 1)
+        product_names = {p.nombre for p in qs}
+        self.assertEqual(product_names, {"P1"})
+
+    def test_productos_qs_for_manager_returns_all_products(self):
+        qs = _productos_qs_for_user(self.admin)
         self.assertEqual(qs.count(), 2)
         product_names = {p.nombre for p in qs}
         self.assertEqual(product_names, {"P1", "P2"})

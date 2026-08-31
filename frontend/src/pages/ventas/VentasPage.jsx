@@ -11,19 +11,47 @@ const localDate = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 };
 
+const STORAGE_KEY = 'libro-fiscal-tender-state-v1';
+
 export default function VentasPage() {
   const today = localDate();
+  const getInitialState = () => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return {
+        fecha: parsed.fecha || today,
+        cliente: parsed.cliente || '',
+        medioPago: parsed.medioPago || 'efectivo',
+        cart: Array.isArray(parsed.cart) ? parsed.cart : [],
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const initialState = getInitialState();
+
   const [productos, setProductos] = useState([]);
   const [ventas, setVentas] = useState([]);
-  const [fecha, setFecha] = useState(today);
-  const [cliente, setCliente] = useState('');
-  const [medioPago, setMedioPago] = useState('efectivo');
-  const [cart, setCart] = useState([]);
+  const [fecha, setFecha] = useState(initialState?.fecha || today);
+  const [cliente, setCliente] = useState(initialState?.cliente || '');
+  const [medioPago, setMedioPago] = useState(initialState?.medioPago || 'efectivo');
+  const [cart, setCart] = useState(initialState?.cart || []);
   const [selectedId, setSelectedId] = useState('');
   const [cantidad, setCantidad] = useState('1');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const payload = JSON.stringify({ fecha, cliente, medioPago, cart });
+      window.localStorage.setItem(STORAGE_KEY, payload);
+    }
+  }, [fecha, cliente, medioPago, cart]);
 
   const load = async () => {
     setLoading(true);
@@ -69,6 +97,12 @@ export default function VentasPage() {
       const soldIds = new Set(cart.map((item) => item.id));
       setCart([]);
       setCliente('');
+      setMedioPago('efectivo');
+      setSelectedId('');
+      setCantidad('1');
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(STORAGE_KEY);
+      }
       setMessage({ ok: true, text: 'Venta registrada y stock actualizado.' });
       await load();
       setProductos((current) => current.filter((product) => !soldIds.has(product.id) || Number(product.stock_actual) > 0));
