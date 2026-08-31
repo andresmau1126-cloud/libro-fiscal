@@ -8,6 +8,7 @@ import InventarioPage from './pages/inventario/InventarioPage';
 import VentasPage from './pages/ventas/VentasPage';
 import UsuariosPage from './pages/admin/UsuariosPage';
 import AuditoriaPage from './pages/admin/AuditoriaPage';
+import VentasControlPage from './pages/admin/VentasControlPage';
 import ProfilePage from './pages/perfil/ProfilePage';
 import Respaldos from './pages/Respaldos';
 
@@ -48,6 +49,7 @@ function AppRoutes() {
         <Route path="movimientos" element={<Navigate to="/libros" replace />} />
         <Route path="usuarios" element={<AdminRoute><UsuariosPage /></AdminRoute>} />
         <Route path="auditoria" element={<AuditRoute><AuditoriaPage /></AuditRoute>} />
+        <Route path="ventas-control" element={<AuditRoute><VentasControlPage /></AuditRoute>} />
         <Route path="respaldos" element={<AdminRoute><Respaldos /></AdminRoute>} />
         <Route path="perfil" element={<ProfilePage />} />
       </Route>

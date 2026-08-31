@@ -114,6 +114,12 @@ export default function Layout() {
               <div className="sidebar-section-label">Control</div>
               <ul className="sidebar-nav">
                 <li>
+                  <NavLink to="/ventas-control" onClick={closeSidebar}>
+                    <i className="bi bi-clipboard-data" />
+                    <span>Ventas por Vendedor</span>
+                  </NavLink>
+                </li>
+                <li>
                   <NavLink to="/auditoria" onClick={closeSidebar}>
                     <i className="bi bi-journal-text" />
                     <span>Auditoría</span>
