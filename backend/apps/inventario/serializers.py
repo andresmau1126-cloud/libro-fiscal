@@ -75,3 +75,91 @@ class VentaCreateSerializer(serializers.Serializer):
         if len(ids) != len(set(ids)):
             raise serializers.ValidationError("No repita productos; ajuste la cantidad en una sola línea.")
         return value
+
+
+# ============================================================================
+# SERIALIZERS PARA INVENTARIO CENTRALIZADO Y RASTREO
+# ============================================================================
+
+class HistorialInventarioSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    producto = serializers.CharField(source="producto.nombre")
+    producto_id = serializers.IntegerField(source="producto.id")
+    tipo_movimiento = serializers.CharField()
+    cantidad_anterior = serializers.FloatField()
+    cantidad_movida = serializers.FloatField()
+    cantidad_posterior = serializers.FloatField()
+    usuario = serializers.CharField(source="usuario.nombre")
+    usuario_id = serializers.IntegerField(source="usuario.id")
+    vendedor = serializers.SerializerMethodField()
+    vendedor_id = serializers.SerializerMethodField()
+    razon = serializers.CharField()
+    fecha = serializers.DateTimeField()
+    
+    def get_vendedor(self, obj):
+        return obj.vendedor.nombre if obj.vendedor else None
+    
+    def get_vendedor_id(self, obj):
+        return obj.vendedor.id if obj.vendedor else None
+
+
+class HistorialVentasSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    venta_id = serializers.IntegerField(source="venta.id")
+    vendedor = serializers.CharField(source="vendedor.nombre")
+    vendedor_id = serializers.IntegerField(source="vendedor.id")
+    fecha_venta = serializers.DateTimeField()
+    cantidad_productos = serializers.IntegerField()
+    cantidad_total_unidades = serializers.FloatField()
+    monto_total = serializers.FloatField()
+    monto_costo = serializers.FloatField()
+    ganancia = serializers.FloatField()
+    margen_ganancia = serializers.FloatField()
+    cliente = serializers.CharField()
+    medio_pago = serializers.CharField()
+    dispositivo = serializers.CharField()
+
+
+class EstadoInventarioCentralizadoSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    producto_id = serializers.IntegerField(source="producto.id")
+    producto_nombre = serializers.CharField(source="producto.nombre")
+    stock_disponible = serializers.FloatField()
+    stock_minimo = serializers.FloatField(source="producto.stock_minimo")
+    stock_actual = serializers.FloatField(source="producto.stock_actual")
+    precio_venta = serializers.FloatField(source="producto.precio_venta")
+    costo_unitario = serializers.FloatField(source="producto.costo_unitario")
+    categoria = serializers.CharField(source="producto.categoria")
+    es_critico = serializers.BooleanField()
+    ultima_actualizacion = serializers.DateTimeField()
+    usuario_actualizo = serializers.SerializerMethodField()
+    version = serializers.IntegerField()
+    
+    def get_usuario_actualizo(self, obj):
+        return obj.usuario_actualizo.nombre if obj.usuario_actualizo else None
+
+
+class ResumenVentasPorVendedorSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    vendedor = serializers.CharField(source="vendedor.nombre")
+    vendedor_id = serializers.IntegerField(source="vendedor.id")
+    fecha = serializers.DateField()
+    cantidad_ventas = serializers.IntegerField()
+    cantidad_unidades = serializers.FloatField()
+    monto_total = serializers.FloatField()
+    monto_costo = serializers.FloatField()
+    ganancia_total = serializers.FloatField()
+    margen_promedio = serializers.FloatField()
+
+
+class EstadisticasVendedorSerializer(serializers.Serializer):
+    """Serializer para estadísticas consolidadas de un vendedor"""
+    vendedor_id = serializers.IntegerField()
+    vendedor_nombre = serializers.CharField()
+    cantidad_ventas_hoy = serializers.IntegerField()
+    monto_vendido_hoy = serializers.FloatField()
+    ganancia_hoy = serializers.FloatField()
+    cantidad_ventas_mes = serializers.IntegerField()
+    monto_vendido_mes = serializers.FloatField()
+    ganancia_mes = serializers.FloatField()
+    margen_promedio_mes = serializers.FloatField()

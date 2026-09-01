@@ -10,8 +10,18 @@ from django.core.mail import send_mail
 from django.http import HttpResponse
 from django.db.models.deletion import ProtectedError
 
-from .models import DetalleVenta, Producto, Venta
-from .serializers import ProductoSerializer, ProductoCreateUpdateSerializer, VentaCreateSerializer
+from .models import (
+    DetalleVenta, Producto, Venta,
+    HistorialInventario, HistorialVentas, EstadoInventarioCentralizado,
+    ResumenVentasPorVendedor,
+)
+from .serializers import (
+    ProductoSerializer, ProductoCreateUpdateSerializer, VentaCreateSerializer,
+    HistorialInventarioSerializer, HistorialVentasSerializer,
+    EstadoInventarioCentralizadoSerializer, ResumenVentasPorVendedorSerializer,
+    EstadisticasVendedorSerializer,
+)
+from .services import InventarioCentralizadoService, VentasService
 from apps.usuarios.permissions import SELLER_ROLES, can_delete, can_view_all, can_write
 from services.inventario_alertas import enviar_alerta_inventario
 from services.scheduler_alertas import (
@@ -400,3 +410,214 @@ def scheduler_alertas_stop(request):
             {"ok": False, "error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+# ============================================================================
+# ENDPOINTS PARA INVENTARIO CENTRALIZADO Y RASTREO EN TIEMPO REAL
+# ============================================================================
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def inventario_centralizado_list(request):
+    """
+    Obtiene el estado centralizado del inventario compartido en tiempo real.
+    
+    Query params:
+    - critico: "1" o "true" para filtrar solo productos con stock crítico
+    - categoria: filtrar por categoría
+    """
+    critico = request.query_params.get("critico", "").strip() in ("1", "true")
+    categoria = request.query_params.get("categoria", "").strip()
+    
+    inventario = InventarioCentralizadoService.obtener_inventario_centralizado(
+        filtro_critico=critico
+    )
+    
+    if categoria:
+        inventario = inventario.filter(producto__categoria__icontains=categoria)
+    
+    serializer = EstadoInventarioCentralizadoSerializer(inventario, many=True)
+    return Response({
+        "inventario": serializer.data,
+        "total_items": inventario.count(),
+        "timestamp": timezone.now().isoformat(),
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def historial_inventario_producto(request, producto_id):
+    """
+    Obtiene el historial de movimientos de inventario de un producto.
+    
+    Query params:
+    - dias: últimos N días a buscar (default: 30)
+    """
+    dias = int(request.query_params.get("dias", 30))
+    
+    try:
+        producto = _productos_qs_for_user(request.user).get(pk=producto_id)
+    except Producto.DoesNotExist:
+        return Response(
+            {"error": "Producto no existe"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+    historial = InventarioCentralizadoService.obtener_historial_inventario_por_producto(
+        producto_id, dias=dias
+    )
+    
+    serializer = HistorialInventarioSerializer(historial, many=True)
+    return Response({
+        "producto_id": producto_id,
+        "producto_nombre": producto.nombre,
+        "historial": serializer.data,
+        "total_movimientos": historial.count(),
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def historial_ventas_vendedor(request):
+    """
+    Obtiene el historial de ventas de un vendedor.
+    
+    Query params:
+    - vendedor_id: ID del vendedor (si no se proporciona, usa el usuario actual)
+    - dias: últimos N días (default: 30)
+    
+    Nota: Solo gerentes, administradores y auditores pueden ver vendedor_id diferentes
+    """
+    vendedor_id = request.query_params.get("vendedor_id")
+    dias = int(request.query_params.get("dias", 30))
+    
+    # Validar permisos
+    if vendedor_id:
+        vendedor_id = int(vendedor_id)
+        if not can_view_all(request.user) and vendedor_id != request.user.id:
+            return Response(
+                {"error": "No tiene permisos para ver historial de otro vendedor"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+    else:
+        vendedor_id = request.user.id
+    
+    historial = InventarioCentralizadoService.obtener_historial_ventas_vendedor(
+        vendedor_id, dias=dias
+    )
+    
+    serializer = HistorialVentasSerializer(historial, many=True)
+    return Response({
+        "vendedor_id": vendedor_id,
+        "historial": serializer.data,
+        "total_ventas": historial.count(),
+        "timestamp": timezone.now().isoformat(),
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def estadisticas_vendedor(request):
+    """
+    Obtiene estadísticas completas de un vendedor.
+    
+    Query params:
+    - vendedor_id: ID del vendedor (si no se proporciona, usa el usuario actual)
+    """
+    vendedor_id = request.query_params.get("vendedor_id")
+    
+    if vendedor_id:
+        vendedor_id = int(vendedor_id)
+        if not can_view_all(request.user) and vendedor_id != request.user.id:
+            return Response(
+                {"error": "No tiene permisos para ver estadísticas de otro vendedor"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+    else:
+        vendedor_id = request.user.id
+    
+    estadisticas = InventarioCentralizadoService.obtener_estadisticas_vendedor(
+        vendedor_id
+    )
+    
+    serializer = EstadisticasVendedorSerializer(estadisticas)
+    return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def resumen_ventas_diarias(request):
+    """
+    Obtiene el resumen de ventas diarias.
+    
+    Query params:
+    - vendedor_id: ID del vendedor (si no se proporciona, muestra todos)
+    - fecha: fecha específica (YYYY-MM-DD)
+    """
+    vendedor_id = request.query_params.get("vendedor_id")
+    fecha = request.query_params.get("fecha")
+    
+    resumen = ResumenVentasPorVendedor.objects.select_related("vendedor")
+    
+    if vendedor_id:
+        if not can_view_all(request.user) and int(vendedor_id) != request.user.id:
+            return Response(
+                {"error": "No tiene permisos"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        resumen = resumen.filter(vendedor_id=vendedor_id)
+    elif not can_view_all(request.user):
+        resumen = resumen.filter(vendedor=request.user)
+    
+    if fecha:
+        resumen = resumen.filter(fecha=fecha)
+    
+    serializer = ResumenVentasPorVendedorSerializer(resumen, many=True)
+    return Response({
+        "resumen": serializer.data,
+        "total_registros": resumen.count(),
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def resumen_inventario_actual(request):
+    """
+    Obtiene un resumen general del estado actual del inventario.
+    
+    Solo disponible para gerentes, administradores y auditores.
+    """
+    if not can_view_all(request.user):
+        return Response(
+            {"error": "Acceso solo para gerentes, administradores y auditores"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    resumen = InventarioCentralizadoService.obtener_resumen_inventario_hoy()
+    return Response(resumen)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def productos_criticos(request):
+    """
+    Obtiene la lista de productos con stock crítico (por debajo del mínimo).
+    
+    Solo disponible para gerentes, administradores y auditores.
+    """
+    if not can_view_all(request.user):
+        return Response(
+            {"error": "Acceso solo para gerentes, administradores y auditores"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    criticos = InventarioCentralizadoService.obtener_inventario_centralizado(
+        filtro_critico=True
+    )
+    
+    serializer = EstadoInventarioCentralizadoSerializer(criticos, many=True)
+    return Response({
+        "productos_criticos": serializer.data,
+        "total": criticos.count(),
+        "timestamp": timezone.now().isoformat(),
+    })

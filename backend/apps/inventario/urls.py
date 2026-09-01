@@ -11,4 +11,13 @@ urlpatterns = [
     path("scheduler/start", views.scheduler_alertas_start, name="scheduler-start"),
     path("scheduler/status", views.scheduler_alertas_status, name="scheduler-status"),
     path("scheduler/stop", views.scheduler_alertas_stop, name="scheduler-stop"),
+    
+    # Endpoints para inventario centralizado y rastreo
+    path("inventario-centralizado", views.inventario_centralizado_list, name="inventario-centralizado"),
+    path("historial/inventario/<int:producto_id>", views.historial_inventario_producto, name="historial-inventario-producto"),
+    path("historial/ventas", views.historial_ventas_vendedor, name="historial-ventas"),
+    path("estadisticas/vendedor", views.estadisticas_vendedor, name="estadisticas-vendedor"),
+    path("resumen/ventas-diarias", views.resumen_ventas_diarias, name="resumen-ventas-diarias"),
+    path("resumen/inventario", views.resumen_inventario_actual, name="resumen-inventario"),
+    path("productos/criticos", views.productos_criticos, name="productos-criticos"),
 ]
