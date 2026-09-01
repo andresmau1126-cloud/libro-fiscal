@@ -235,6 +235,43 @@ def ventas_list_create(request):
     return Response(_venta_data(venta), status=status.HTTP_201_CREATED)
 
 
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def venta_delete(request, venta_id):
+    """
+    Elimina una venta y restaura el stock de los productos.
+    
+    Solo el vendedor que registró la venta o admin/gerente pueden eliminar.
+    Restaura automáticamente el stock de todos los productos.
+    """
+    try:
+        venta = Venta.objects.get(pk=venta_id)
+    except Venta.DoesNotExist:
+        return Response({"error": "Venta no existe"}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Verificar permisos: solo vendedor de la venta o admin/gerente
+    if not can_view_all(request.user) and venta.vendedor_id != request.user.id:
+        return Response(
+            {"error": "No tiene permisos para eliminar esta venta"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Restaurar stock de cada producto
+    with transaction.atomic():
+        for detalle in venta.detalles.all():
+            detalle.producto.stock_actual += detalle.cantidad
+            detalle.producto.save(update_fields=["stock_actual", "updated_at"])
+        
+        # Eliminar la venta (esto elimina los detalles por CASCADE)
+        venta_id_log = venta.id
+        venta.delete()
+    
+    return Response({
+        "ok": True,
+        "mensaje": f"Venta #{venta_id_log} eliminada y stock restaurado"
+    })
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def test_mail(request):

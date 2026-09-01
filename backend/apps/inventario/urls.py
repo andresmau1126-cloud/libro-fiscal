@@ -6,6 +6,7 @@ urlpatterns = [
     path("productos/<int:producto_id>", views.producto_detail, name="producto-detail"),
     path("ventas", views.ventas_list_create, name="ventas-list-create"),
     path("ventas/", views.ventas_list_create, name="ventas-list-create-slash"),
+    path("ventas/<int:venta_id>", views.venta_delete, name="venta-delete"),
     path("test-mail", views.test_mail, name="test-mail"),
     path("alertas-inventario", views.enviar_alertas_inventario_manual, name="alertas-inventario"),
     path("scheduler/start", views.scheduler_alertas_start, name="scheduler-start"),

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { createVenta, fetchProductos, fetchVentas } from '../../services/api';
+import { createVenta, deleteVenta, fetchProductos, fetchVentas } from '../../services/api';
 
 const money = (value) => '$ ' + Number(value || 0).toLocaleString('es-CO', {
   minimumFractionDigits: 2,
@@ -113,6 +113,21 @@ export default function VentasPage() {
     }
   };
 
+  const handleDeleteVenta = async (ventaId, ventaTotal) => {
+    if (!window.confirm(`¿Eliminar venta #${ventaId} (${money(ventaTotal)})? Se restaurará el stock.`)) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      await deleteVenta(ventaId);
+      setMessage({ ok: true, text: 'Venta eliminada y stock restaurado.' });
+      await load();
+    } catch (error) {
+      setMessage({ ok: false, text: error.response?.data?.error || 'No se pudo eliminar la venta.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="container-fluid py-3">
       <div className="page-header mb-3">
@@ -179,7 +194,7 @@ export default function VentasPage() {
           <div className="data-table p-3">
             <div className="d-flex justify-content-between align-items-center mb-3"><h5 className="mb-0">Ventas del día</h5><div className="d-flex gap-2"><input type="date" className="form-control form-control-sm w-auto" value={fecha} onChange={(event) => setFecha(event.target.value)} /><button type="button" className="btn btn-sm btn-outline-secondary" onClick={load} disabled={loading} title="Actualizar ventas y stock" aria-label="Actualizar ventas y stock"><i className="bi bi-arrow-clockwise" /></button></div></div>
             <div className="display-6 fw-semibold text-success mb-3">{money(ventas.reduce((sum, sale) => sum + sale.total, 0))}</div>
-            {loading ? <div className="text-muted">Cargando...</div> : !ventas.length ? <div className="text-muted">No hay ventas para esta fecha.</div> : ventas.map((sale) => <div className="border-top py-2" key={sale.id}><div className="d-flex justify-content-between"><strong>Venta #{sale.id}</strong><span>{money(sale.total)}</span></div><div className="small text-muted">{new Date(sale.fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} · {sale.medio_pago} · {sale.cliente || 'Consumidor final'}</div>{sale.vendedor && <div className="small text-muted">Vendedor: {sale.vendedor} ({sale.vendedor_rol === 'vendedor_2' ? 'Vendedor 2' : 'Vendedor'})</div>}</div>)}
+            {loading ? <div className="text-muted">Cargando...</div> : !ventas.length ? <div className="text-muted">No hay ventas para esta fecha.</div> : ventas.map((sale) => <div className="border-top py-2" key={sale.id}><div className="d-flex justify-content-between align-items-start"><div><strong>Venta #{sale.id}</strong><div className="small text-muted">{new Date(sale.fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} · {sale.medio_pago} · {sale.cliente || 'Consumidor final'}</div>{sale.vendedor && <div className="small text-muted">Vendedor: {sale.vendedor} ({sale.vendedor_rol === 'vendedor_2' ? 'Vendedor 2' : 'Vendedor'})</div>}</div><div className="text-end"><div>{money(sale.total)}</div><button type="button" className="btn btn-sm btn-outline-danger mt-1" onClick={() => handleDeleteVenta(sale.id, sale.total)} disabled={saving} title="Eliminar venta"><i className="bi bi-trash" /></button></div></div></div>)}
           </div>
         </div>
       </div>

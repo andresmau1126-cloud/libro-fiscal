@@ -98,5 +98,6 @@ export const updateProducto = (id, data) => api.put(`/productos/${id}`, data).th
 export const deleteProducto = (id) => api.delete(`/productos/${id}`).then(r => r.data);
 export const fetchVentas = (fecha = '') => api.get(`/ventas${fecha ? `?fecha=${fecha}` : ''}`).then(r => r.data);
 export const createVenta = (data) => api.post('/ventas', data).then(r => r.data);
+export const deleteVenta = (id) => api.delete(`/ventas/${id}`).then(r => r.data);
 
 export default api;
