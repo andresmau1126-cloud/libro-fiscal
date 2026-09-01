@@ -9,7 +9,6 @@ import VentasPage from './pages/ventas/VentasPage';
 import UsuariosPage from './pages/admin/UsuariosPage';
 import AuditoriaPage from './pages/admin/AuditoriaPage';
 import VentasControlPage from './pages/admin/VentasControlPage';
-import MonitoreoTurnosPage from './pages/admin/MonitoreoTurnosPage';
 import ProfilePage from './pages/perfil/ProfilePage';
 import Respaldos from './pages/Respaldos';
 
@@ -51,7 +50,6 @@ function AppRoutes() {
         <Route path="usuarios" element={<AdminRoute><UsuariosPage /></AdminRoute>} />
         <Route path="auditoria" element={<AuditRoute><AuditoriaPage /></AuditRoute>} />
         <Route path="ventas-control" element={<AuditRoute><VentasControlPage /></AuditRoute>} />
-        <Route path="monitoreo/turnos" element={<AuditRoute><MonitoreoTurnosPage /></AuditRoute>} />
         <Route path="respaldos" element={<AdminRoute><Respaldos /></AdminRoute>} />
         <Route path="perfil" element={<ProfilePage />} />
       </Route>
