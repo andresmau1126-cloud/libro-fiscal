@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchVentas } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { deleteVenta, fetchVentas } from '../../services/api';
 
 const money = (value) => '$ ' + Number(value || 0).toLocaleString('es-CO', {
   minimumFractionDigits: 2,
@@ -20,10 +21,27 @@ const formatDate = (value) => {
 };
 
 export default function VentasControlPage() {
+  const { user } = useAuth();
   const [ventas, setVentas] = useState([]);
   const [fecha, setFecha] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const canDeleteVenta = ['admin', 'gerente'].includes(user?.rol);
+
+  const handleDeleteVenta = async (sale) => {
+    if (!canDeleteVenta) return;
+    const ok = window.confirm(`¿Eliminar la venta #${sale.id} por ${money(sale.total)}?\nSe restaurará el stock de los productos.`);
+    if (!ok) return;
+
+    try {
+      setError('');
+      await deleteVenta(sale.id);
+      await load(fecha);
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo eliminar la venta.');
+    }
+  };
 
   const load = async (selectedDate = '') => {
     setLoading(true);
@@ -151,6 +169,7 @@ export default function VentasControlPage() {
                     <th>Medio</th>
                     <th>Fecha</th>
                     <th className="text-end">Total</th>
+                    {canDeleteVenta && <th className="text-end">Acción</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -169,6 +188,17 @@ export default function VentasControlPage() {
                       <td>{sale.medio_pago}</td>
                       <td>{formatDate(sale.fecha)}</td>
                       <td className="text-end fw-semibold">{money(sale.total)}</td>
+                      {canDeleteVenta && (
+                        <td className="text-end">
+                          <button
+                            className="btn btn-outline-danger btn-sm"
+                            onClick={() => handleDeleteVenta(sale)}
+                            title="Eliminar venta y restaurar stock"
+                          >
+                            <i className="bi bi-trash3" />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

@@ -120,6 +120,12 @@ export default function Layout() {
                   </NavLink>
                 </li>
                 <li>
+                  <NavLink to="/monitoreo/turnos" onClick={closeSidebar}>
+                    <i className="bi bi-graph-up-arrow" />
+                    <span>Monitoreo de Turnos</span>
+                  </NavLink>
+                </li>
+                <li>
                   <NavLink to="/auditoria" onClick={closeSidebar}>
                     <i className="bi bi-journal-text" />
                     <span>Auditoría</span>

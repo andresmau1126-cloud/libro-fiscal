@@ -68,6 +68,7 @@ class VentaDetalleCreateSerializer(serializers.Serializer):
 class VentaCreateSerializer(serializers.Serializer):
     cliente = serializers.CharField(max_length=180, required=False, allow_blank=True, default="")
     medio_pago = serializers.ChoiceField(choices=["efectivo", "transferencia", "tarjeta"], default="efectivo")
+    turno = serializers.ChoiceField(choices=["mañana", "tarde", "noche"], default="mañana", required=False)
     detalles = VentaDetalleCreateSerializer(many=True, allow_empty=False)
 
     def validate_detalles(self, value):

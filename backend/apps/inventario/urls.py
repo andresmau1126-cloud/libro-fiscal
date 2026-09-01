@@ -21,4 +21,8 @@ urlpatterns = [
     path("resumen/ventas-diarias", views.resumen_ventas_diarias, name="resumen-ventas-diarias"),
     path("resumen/inventario", views.resumen_inventario_actual, name="resumen-inventario"),
     path("productos/criticos", views.productos_criticos, name="productos-criticos"),
+    
+    # Endpoints para monitoreo de turnos
+    path("monitoreo/turnos-hoy", views.monitoreo_turnos_hoy, name="monitoreo-turnos-hoy"),
+    path("reportes/turnos", views.reportes_turnos, name="reportes-turnos"),
 ]

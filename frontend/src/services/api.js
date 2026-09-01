@@ -23,6 +23,9 @@ const api = axios.create({
 // Export API_BASE_URL for use in components
 export const API_BASE_URL = envApiBase || fallbackApiBase;
 
+// Export api client for custom requests
+export { api };
+
 // Redirect to login on 401 (except auth endpoints)
 api.interceptors.response.use(
   (res) => res,

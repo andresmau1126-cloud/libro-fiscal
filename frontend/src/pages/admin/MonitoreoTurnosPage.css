@@ -1,0 +1,30 @@
+.turno-card {
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.turno-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.turno-card .text-right {
+  text-align: right;
+}
+
+.turno-card Table {
+  margin-bottom: 0;
+}
+
+.turno-card Table td {
+  padding: 0.5rem 0.25rem;
+  vertical-align: middle;
+}
+
+.turno-card Table strong {
+  color: #333;
+}
+
+.turno-card Table small {
+  font-size: 0.75rem;
+}

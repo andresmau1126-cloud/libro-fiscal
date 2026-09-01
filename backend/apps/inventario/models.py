@@ -49,10 +49,16 @@ class Venta(models.Model):
         ("transferencia", "Transferencia"),
         ("tarjeta", "Tarjeta"),
     ]
+    TURNOS = [
+        ("mañana", "Mañana (06:00 - 14:00)"),
+        ("tarde", "Tarde (14:00 - 22:00)"),
+        ("noche", "Noche (22:00 - 06:00)"),
+    ]
 
     fecha = models.DateTimeField(auto_now_add=True)
     cliente = models.CharField(max_length=180, blank=True, default="")
     medio_pago = models.CharField(max_length=20, choices=MEDIOS_PAGO, default="efectivo")
+    turno = models.CharField(max_length=10, choices=TURNOS, default="mañana")
     total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     vendedor = models.ForeignKey(
         settings.AUTH_USER_MODEL,

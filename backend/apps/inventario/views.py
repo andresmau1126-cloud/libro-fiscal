@@ -149,6 +149,7 @@ def _venta_data(venta):
         "fecha": venta.fecha.isoformat(),
         "cliente": venta.cliente,
         "medio_pago": venta.medio_pago,
+        "turno": venta.turno,
         "total": float(venta.total),
         "vendedor": venta.vendedor.nombre,
         "vendedor_email": venta.vendedor.email,
@@ -217,6 +218,7 @@ def ventas_list_create(request):
         venta = Venta.objects.create(
             cliente=data.get("cliente", "").strip(),
             medio_pago=data["medio_pago"],
+            turno=data.get("turno", "mañana"),
             total=total,
             vendedor=request.user,
         )
@@ -673,4 +675,236 @@ def productos_criticos(request):
         "productos_criticos": serializer.data,
         "total": criticos.count(),
         "timestamp": timezone.now().isoformat(),
+    })
+
+
+# ============================================================================
+# ENDPOINTS PARA MONITOREO DE TURNOS Y VENTAS EN TIEMPO REAL
+# ============================================================================
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def monitoreo_turnos_hoy(request):
+    """
+    Dashboard en tiempo real: ventas totales por turno del día actual.
+    
+    Solo disponible para gerentes, administradores y auditores.
+    
+    Respuesta:
+    {
+      "fecha": "2026-09-01",
+      "turnos": [
+        {
+          "nombre": "mañana",
+          "vendedores": [
+            {
+              "id": 1,
+              "nombre": "Juan",
+              "ventas": 5,
+              "total": 450.00,
+              "promedio": 90.00
+            }
+          ],
+          "total_ventas": 5,
+          "total_dinero": 450.00,
+          "promedio_venta": 90.00
+        }
+      ],
+      "resumen_total": {
+        "ventas": 15,
+        "dinero": 1350.00,
+        "promedio": 90.00
+      }
+    }
+    """
+    if not can_view_all(request.user):
+        return Response(
+            {"error": "Acceso solo para gerentes, administradores y auditores"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    hoy = timezone.localdate()
+    ventas = Venta.objects.filter(
+        fecha__date=hoy
+    ).select_related("vendedor").values(
+        "turno", "vendedor__id", "vendedor__nombre"
+    ).annotate(
+        cantidad=models.Count("id"),
+        total_dinero=models.Sum("total")
+    ).order_by("turno", "vendedor__nombre")
+    
+    # Agrupar por turno y vendedor
+    turnos_dict = {}
+    for turno_name, turno_label in Venta.TURNOS:
+        turnos_dict[turno_name] = {
+            "nombre": turno_name,
+            "label": turno_label,
+            "vendedores": [],
+            "total_ventas": 0,
+            "total_dinero": 0.0,
+            "promedio_venta": 0.0
+        }
+    
+    total_general_ventas = 0
+    total_general_dinero = 0.0
+    
+    for row in ventas:
+        turno = row["turno"]
+        if turno not in turnos_dict:
+            continue
+        
+        vendedor_data = {
+            "id": row["vendedor__id"],
+            "nombre": row["vendedor__nombre"],
+            "ventas": row["cantidad"],
+            "total": float(row["total_dinero"] or 0),
+            "promedio": float((row["total_dinero"] or 0) / row["cantidad"]) if row["cantidad"] else 0
+        }
+        
+        turnos_dict[turno]["vendedores"].append(vendedor_data)
+        turnos_dict[turno]["total_ventas"] += row["cantidad"]
+        turnos_dict[turno]["total_dinero"] += float(row["total_dinero"] or 0)
+        
+        total_general_ventas += row["cantidad"]
+        total_general_dinero += float(row["total_dinero"] or 0)
+    
+    # Calcular promedios de turno
+    for turno_data in turnos_dict.values():
+        if turno_data["total_ventas"] > 0:
+            turno_data["promedio_venta"] = round(
+                turno_data["total_dinero"] / turno_data["total_ventas"], 2
+            )
+    
+    return Response({
+        "fecha": hoy.isoformat(),
+        "turnos": list(turnos_dict.values()),
+        "resumen_total": {
+            "ventas": total_general_ventas,
+            "dinero": round(total_general_dinero, 2),
+            "promedio": round(total_general_dinero / total_general_ventas, 2) if total_general_ventas > 0 else 0
+        },
+        "timestamp": timezone.now().isoformat()
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def reportes_turnos(request):
+    """
+    Reportes históricos: compare ventas por turnos y vendedores en un rango de fechas.
+    
+    Solo disponible para gerentes, administradores y auditores.
+    
+    Query params:
+    - fecha_inicio: YYYY-MM-DD (default: últimos 7 días)
+    - fecha_fin: YYYY-MM-DD (default: hoy)
+    - vendedor_id: ID específico del vendedor (opcional)
+    - turno: mañana, tarde, noche (opcional)
+    
+    Respuesta:
+    {
+      "periodo": {"inicio": "2026-08-25", "fin": "2026-09-01"},
+      "reportes": [
+        {
+          "turno": "mañana",
+          "vendedor": "Juan",
+          "total_ventas": 15,
+          "total_dinero": 1350.00,
+          "promedio_venta": 90.00,
+          "productos_vendidos": 45
+        }
+      ],
+      "ranking": [
+        {"vendedor": "Juan", "ventas": 45, "dinero": 4050.00, "promedio": 90.00},
+        {"vendedor": "María", "ventas": 30, "dinero": 2700.00, "promedio": 90.00}
+      ]
+    }
+    """
+    if not can_view_all(request.user):
+        return Response(
+            {"error": "Acceso solo para gerentes, administradores y auditores"},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    # Parsear fechas
+    from datetime import timedelta
+    fecha_fin = timezone.localdate()
+    fecha_inicio = request.query_params.get("fecha_inicio")
+    if fecha_inicio:
+        from django.utils.dateparse import parse_date
+        fecha_inicio = parse_date(fecha_inicio)
+    else:
+        fecha_inicio = fecha_fin - timedelta(days=7)
+    
+    fecha_fin_param = request.query_params.get("fecha_fin")
+    if fecha_fin_param:
+        from django.utils.dateparse import parse_date
+        fecha_fin = parse_date(fecha_fin_param)
+    
+    # Filtrar ventas
+    ventas_qs = Venta.objects.filter(
+        fecha__date__gte=fecha_inicio,
+        fecha__date__lte=fecha_fin
+    ).select_related("vendedor").prefetch_related("detalles__producto")
+    
+    vendedor_id = request.query_params.get("vendedor_id")
+    if vendedor_id:
+        ventas_qs = ventas_qs.filter(vendedor_id=vendedor_id)
+    
+    turno = request.query_params.get("turno")
+    if turno:
+        ventas_qs = ventas_qs.filter(turno=turno)
+    
+    # Agrupar por turno y vendedor
+    reportes = []
+    ranking_dict = {}
+    
+    for venta in ventas_qs:
+        turno_name = venta.turno
+        vendedor_name = venta.vendedor.nombre
+        
+        # Contar productos vendidos
+        productos_count = sum(d.cantidad for d in venta.detalles.all())
+        
+        # Agregar al reporte
+        reportes.append({
+            "turno": turno_name,
+            "vendedor": vendedor_name,
+            "venta_id": venta.id,
+            "fecha": venta.fecha.date().isoformat(),
+            "total_dinero": float(venta.total),
+            "productos_vendidos": int(productos_count)
+        })
+        
+        # Agregar al ranking
+        if vendedor_name not in ranking_dict:
+            ranking_dict[vendedor_name] = {
+                "vendedor": vendedor_name,
+                "ventas": 0,
+                "dinero": 0.0,
+                "promedio": 0.0
+            }
+        
+        ranking_dict[vendedor_name]["ventas"] += 1
+        ranking_dict[vendedor_name]["dinero"] += float(venta.total)
+    
+    # Calcular promedios en ranking
+    for vendedor_data in ranking_dict.values():
+        if vendedor_data["ventas"] > 0:
+            vendedor_data["promedio"] = round(
+                vendedor_data["dinero"] / vendedor_data["ventas"], 2
+            )
+    
+    # Ordenar ranking por dinero (descendente)
+    ranking = sorted(ranking_dict.values(), key=lambda x: x["dinero"], reverse=True)
+    
+    return Response({
+        "periodo": {
+            "inicio": fecha_inicio.isoformat(),
+            "fin": fecha_fin.isoformat()
+        },
+        "reportes": reportes,
+        "total_registros": len(reportes),
+        "ranking": ranking,
+        "timestamp": timezone.now().isoformat()
     })
