@@ -146,6 +146,7 @@ export default function VentasControlPage() {
                 <thead>
                   <tr>
                     <th>Venta</th>
+                    <th>Productos</th>
                     <th>Cliente</th>
                     <th>Medio</th>
                     <th>Fecha</th>
@@ -156,6 +157,14 @@ export default function VentasControlPage() {
                   {group.ventas.map((sale) => (
                     <tr key={sale.id}>
                       <td>#{sale.id}</td>
+                      <td>
+                        {sale.detalles?.length ? sale.detalles.map((detalle) => (
+                          <div key={detalle.producto_id}>
+                            {detalle.producto} <span className="text-muted">x {detalle.cantidad}</span>
+                            <div className="small text-muted">{money(detalle.subtotal)}</div>
+                          </div>
+                        )) : <span className="text-muted">Sin detalle</span>}
+                      </td>
                       <td>{sale.cliente || 'Consumidor final'}</td>
                       <td>{sale.medio_pago}</td>
                       <td>{formatDate(sale.fecha)}</td>

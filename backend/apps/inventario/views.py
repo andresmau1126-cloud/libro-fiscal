@@ -32,9 +32,15 @@ from services.scheduler_alertas import (
 
 
 def _productos_qs_for_user(user):
+    """Usado para ediciones: solo ve productos propios (o todos si es admin/gerente)"""
     if can_view_all(user):
         return Producto.objects.filter(activo=True)
     return Producto.objects.filter(activo=True, propietario=user)
+
+
+def _productos_qs_visible_to_user(user):
+    """Inventario compartido: TODOS ven los MISMOS productos"""
+    return Producto.objects.filter(activo=True)
 
 
 @api_view(["GET", "POST"])
@@ -42,9 +48,10 @@ def _productos_qs_for_user(user):
 def productos_list_create(request):
     if request.method == "POST" and not can_write(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
-    productos_qs = _productos_qs_for_user(request.user)
 
     if request.method == "GET":
+        # Inventario compartido: TODOS ven los mismos productos
+        productos_qs = _productos_qs_visible_to_user(request.user)
         query = (request.query_params.get("q") or "").strip()
         low_stock = (request.query_params.get("low_stock") or "").strip() in ("1", "true", "yes")
 
@@ -54,6 +61,9 @@ def productos_list_create(request):
             productos_qs = productos_qs.filter(stock_actual__lte=models.F("stock_minimo"))
 
         return Response(ProductoSerializer(productos_qs.order_by("nombre", "id"), many=True).data)
+    
+    # POST: crear producto
+    productos_qs = _productos_qs_for_user(request.user)
 
     serializer = ProductoCreateUpdateSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -88,8 +98,14 @@ def producto_detail(request, producto_id):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     if request.method == "DELETE" and not can_delete(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
+    
+    # GET: cualquiera puede ver cualquier producto (inventario compartido)
+    # PUT/DELETE: solo propietario o admin/gerente
     try:
-        producto = _productos_qs_for_user(request.user).get(pk=producto_id)
+        if request.method == "GET":
+            producto = _productos_qs_visible_to_user(request.user).get(pk=producto_id)
+        else:
+            producto = _productos_qs_for_user(request.user).get(pk=producto_id)
     except Producto.DoesNotExist:
         return Response({"error": "producto no existe"}, status=status.HTTP_404_NOT_FOUND)
 
