@@ -16,6 +16,7 @@ export default function UsuariosPage() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ nombre: '', email: '', password: '', rol: 'vendedor' });
   const [error, setError] = useState('');
+  const [message, setMessage] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const load = () => {
@@ -50,16 +51,33 @@ export default function UsuariosPage() {
       const payload = { nombre: form.nombre, email: form.email, rol: form.rol };
       if (form.password) payload.password = form.password;
 
+      console.log('Guardando usuario:', { id: editingId, payload });
+
       if (editingId) {
-        await updateUsuario(editingId, payload);
+        const response = await updateUsuario(editingId, payload);
+        console.log('Respuesta de actualización:', response);
       } else {
         payload.password = form.password;
-        await createUsuario(payload);
+        const response = await createUsuario(payload);
+        console.log('Respuesta de creación:', response);
       }
+      
       setShowModal(false);
-      load();
+      setForm({ nombre: '', email: '', password: '', rol: 'vendedor' });
+      setEditingId(null);
+      
+      // Agregar un pequeño delay para asegurar que el servidor actualice
+      setTimeout(() => {
+        console.log('Recargando lista de usuarios...');
+        load();
+      }, 300);
+      
+      setMessage({ type: 'success', text: editingId ? 'Usuario actualizado correctamente.' : 'Usuario creado correctamente.' });
+      setTimeout(() => setMessage(null), 3000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al guardar');
+      const errorMsg = err.response?.data?.error || err.message || 'Error al guardar';
+      console.error('Error al guardar usuario:', err);
+      setError(errorMsg);
     } finally {
       setSaving(false);
     }
@@ -88,6 +106,12 @@ export default function UsuariosPage() {
           <i className="bi bi-person-plus-fill" /> Nuevo Usuario
         </button>
       </div>
+
+      {message && (
+        <div className={`alert alert-${message.type === 'success' ? 'success' : 'danger'} mb-3`} role="alert">
+          {message.text}
+        </div>
+      )}
 
       <section className="role-permissions-panel" aria-labelledby="role-permissions-title">
         <div className="role-permissions-heading">

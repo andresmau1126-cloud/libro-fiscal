@@ -201,7 +201,8 @@ def ventas_list_create(request):
         total = 0
         for item in data["detalles"]:
             try:
-                producto = _productos_qs_for_user(request.user).select_for_update().get(
+                # Usar inventario compartido: permitir vender cualquier producto activo
+                producto = _productos_qs_visible_to_user(request.user).select_for_update().get(
                     pk=item["producto_id"]
                 )
             except Producto.DoesNotExist:
@@ -511,7 +512,8 @@ def historial_inventario_producto(request, producto_id):
     dias = int(request.query_params.get("dias", 30))
     
     try:
-        producto = _productos_qs_for_user(request.user).get(pk=producto_id)
+        # Inventario compartido: permitir ver historial de cualquier producto
+        producto = _productos_qs_visible_to_user(request.user).get(pk=producto_id)
     except Producto.DoesNotExist:
         return Response(
             {"error": "Producto no existe"},
