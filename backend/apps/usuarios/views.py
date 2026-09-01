@@ -38,7 +38,17 @@ def _get_email_sender():
     return django_settings.DEFAULT_FROM_EMAIL or django_settings.EMAIL_HOST_USER
 
 
+def _email_delivery_available():
+    sender = _get_email_sender()
+    host_user = getattr(django_settings, "EMAIL_HOST_USER", "") or ""
+    host_password = getattr(django_settings, "EMAIL_HOST_PASSWORD", "") or ""
+    return bool(sender and host_user and host_password)
+
+
 def _send_registration_security_code(user, code):
+    if not _email_delivery_available():
+        raise RuntimeError("SMTP no configurado para envío de códigos")
+
     subject = "Código de seguridad para tu registro"
     message = (
         f"Hola {user.nombre},\n\n"
@@ -101,7 +111,7 @@ def register(request):
 
     try:
         _send_registration_security_code(user, security_code)
-    except (BadHeaderError, Exception):
+    except (BadHeaderError, RuntimeError, Exception):
         user.email_verified = True
         user.email_verification_code = ""
         user.save(update_fields=["email_verification_code", "email_verified"])

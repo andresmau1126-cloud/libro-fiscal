@@ -174,3 +174,31 @@ class UsuarioAuthBypassTests(TestCase):
         self.assertTrue(user.email_verified)
         self.assertEqual(user.email_verification_code, '')
         self.assertTrue(response.cookies.get('session_token'))
+
+    @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        EMAIL_HOST_USER='',
+        EMAIL_HOST_PASSWORD='',
+    )
+    def test_register_auto_verifies_when_email_credentials_are_missing(self):
+        client = Client(HTTP_HOST='localhost')
+        client.cookies.clear()
+
+        response = client.post(
+            '/api/auth/register/',
+            data=json.dumps({
+                'nombre': 'Usuario Sin SMTP',
+                'email': 'sinsmtp@example.com',
+                'password': 'secret123',
+            }),
+            content_type='application/json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertFalse(response.json().get('requires_verification', True))
+        self.assertIn('autorizada', response.json()['message'])
+
+        user = Usuario.objects.get(email='sinsmtp@example.com')
+        self.assertTrue(user.email_verified)
+        self.assertEqual(user.email_verification_code, '')
+        self.assertTrue(response.cookies.get('session_token'))
