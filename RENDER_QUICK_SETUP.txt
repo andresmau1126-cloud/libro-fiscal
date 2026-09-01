@@ -1,0 +1,248 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║      🚀 DEPLOYMENT RENDER - LISTA DE CHEQUEO RÁPIDA                        ║
+║                                                                            ║
+║      Sistema de Inventario Centralizado - Listo para Producción           ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+═════════════════════════════════════════════════════════════════════════════
+✅ PASO 1: LOGIN EN RENDER
+═════════════════════════════════════════════════════════════════════════════
+
+1. Ir a: https://dashboard.render.com
+2. Click en "GitHub" para iniciar sesión
+3. Autorizar Render en GitHub
+4. Seleccionar repositorio: libro-fiscal
+5. Confirmar acceso
+
+
+═════════════════════════════════════════════════════════════════════════════
+✅ PASO 2: CREAR POSTGRESQL DATABASE
+═════════════════════════════════════════════════════════════════════════════
+
+En Dashboard:
+  1. Click "New +" (esquina superior derecha)
+  2. Seleccionar "PostgreSQL"
+  3. Llenar formulario:
+     • Name:                 postgres-libro-fiscal
+     • Database Name:        libro_fiscal
+     • Region:               Ohio
+     • PostgreSQL Version:   15
+     • Plan:                 Standard ($15/mes)
+  4. Click "Create Database"
+  5. ESPERAR ~2 minutos a que esté listo
+  6. Click en el nombre: postgres-libro-fiscal
+  7. COPIAR → Connection String
+  8. GUARDAR en un documento (la usarás en Paso 5)
+
+
+═════════════════════════════════════════════════════════════════════════════
+✅ PASO 3: CREAR REDIS CACHE
+═════════════════════════════════════════════════════════════════════════════
+
+En Dashboard:
+  1. Click "New +"
+  2. Seleccionar "Redis"
+  3. Llenar formulario:
+     • Name:              redis-libro-fiscal
+     • Region:            Ohio
+     • Plan:              Standard ($15/mes)
+     • Maxmemory Policy:  allkeys-lru
+  4. Click "Create"
+  5. ESPERAR ~2 minutos a que esté listo
+  6. Click en el nombre: redis-libro-fiscal
+  7. COPIAR → Connection String
+  8. GUARDAR en un documento (la usarás en Paso 5)
+
+
+═════════════════════════════════════════════════════════════════════════════
+✅ PASO 4: CREAR WEB SERVICE (DEPLOYMENT)
+═════════════════════════════════════════════════════════════════════════════
+
+En Dashboard:
+  1. Click "New +"
+  2. Seleccionar "Web Service"
+  3. Conectar repositorio:
+     • Click "GitHub"
+     • Seleccionar: libro-fiscal
+     • Rama: main
+     • Click "Connect"
+  4. Configurar el servicio:
+     • Name:           libro-fiscal-api
+     • Environment:    Python 3
+     • Build Command:
+       cd backend && pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+     • Start Command:
+       cd backend && daphne -b 0.0.0.0 -p $PORT config.asgi:application
+     • Region:        Ohio
+     • Plan:          Standard ($7/mes)
+  5. Click "Create Web Service"
+  6. Se abrirá automáticamente el nuevo servicio
+
+
+═════════════════════════════════════════════════════════════════════════════
+✅ PASO 5: AGREGAR VARIABLES DE ENTORNO
+═════════════════════════════════════════════════════════════════════════════
+
+En el Web Service (libro-fiscal-api):
+  1. Ir a pestaña "Environment"
+  2. Click "Add Environment Variable"
+  3. Agregar cada variable (copiar exactamente):
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Variable 1: DEBUG                                                       │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Key:   DEBUG                                                            │
+│ Value: false                                                            │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Variable 2: ALLOWED_HOSTS                                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Key:   ALLOWED_HOSTS                                                    │
+│ Value: libro-fiscal-api.onrender.com                                    │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Variable 3: SECRET_KEY                                                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Key:   SECRET_KEY                                                       │
+│ Value: +@=uh+iud++vk3scel#m5xp_rgej%snn5#9qpiu5@6=+8_=2i0             │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Variable 4: DATABASE_URL                                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Key:   DATABASE_URL                                                     │
+│ Value: [COPIAR DE POSTGRESQL DEL PASO 2]                                │
+│ Ejemplo: postgresql://user:pass@dpg-xxxxx.ohio-postgres.render.com... │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Variable 5: REDIS_URL                                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Key:   REDIS_URL                                                        │
+│ Value: [COPIAR DE REDIS DEL PASO 3]                                     │
+│ Ejemplo: rediss://default:password@red-xxxxx.c331.ohio-postgres...    │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Variable 6: CHANNEL_LAYER_BACKEND                                       │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Key:   CHANNEL_LAYER_BACKEND                                            │
+│ Value: channels_redis.core.RedisChannelLayer                            │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Variable 7: ASGI_APPLICATION                                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Key:   ASGI_APPLICATION                                                 │
+│ Value: config.asgi.application                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+═════════════════════════════════════════════════════════════════════════════
+🚀 PASO 6: ESPERAR DEPLOYMENT
+═════════════════════════════════════════════════════════════════════════════
+
+Una vez agregadas todas las variables:
+  1. Ir a pestaña "Logs"
+  2. Ver en vivo cómo se compila
+  3. ESPERAR ~3-5 minutos
+  4. Buscar: "Starting Daphne 4.x"
+  5. Cuando veas eso → ✅ DEPLOYMENT EXITOSO
+
+
+═════════════════════════════════════════════════════════════════════════════
+✅ PASO 7: VERIFICACIÓN
+═════════════════════════════════════════════════════════════════════════════
+
+Una vez que Daphne esté corriendo:
+
+1. Ir a: https://libro-fiscal-api.onrender.com
+   → Debe mostrar un error 404 (eso es correcto, no es una web)
+
+2. Probar API con curl o Postman:
+   curl https://libro-fiscal-api.onrender.com/api/inventario/ \
+     -H "Authorization: Token YOUR_TOKEN"
+
+3. Crear usuario admin (ver paso 8)
+
+
+═════════════════════════════════════════════════════════════════════════════
+📊 COSTO MENSUAL ESTIMADO
+═════════════════════════════════════════════════════════════════════════════
+
+• PostgreSQL Database: $15
+• Redis Cache:         $15
+• Web Service:          $7
+─────────────────────────────
+Total:                 $37/mes
+
+
+═════════════════════════════════════════════════════════════════════════════
+🆘 PROBLEMAS COMUNES
+═════════════════════════════════════════════════════════════════════════════
+
+"Build failed" o "Error en logs":
+  → Ver logs completos (click en mensaje de error)
+  → Buscar "ERROR" en los logs
+  → Revisar que requirements.txt existe
+  → Hacer click "Restart service"
+
+"Database connection failed":
+  → Verificar que DATABASE_URL es correcto
+  → Esperar 1-2 minutos a que PostgreSQL esté listo
+  → Hacer click "Restart service"
+
+"Redis connection failed":
+  → Verificar que REDIS_URL es correcto
+  → Sistema funcionará sin Redis (usando memory)
+  → No crítico para demo
+
+La API no responde:
+  → Ver logs en Dashboard
+  → Verificar que Daphne dice "Starting..."
+  → Ir a https://libro-fiscal-api.onrender.com/api/inventario/ (con Auth header)
+
+
+═════════════════════════════════════════════════════════════════════════════
+📚 DOCUMENTACIÓN ADICIONAL
+═════════════════════════════════════════════════════════════════════════════
+
+Ver archivos en el proyecto:
+• RENDER_SETUP_PASO_A_PASO.md      (Guía detallada)
+• RENDER_ENV_VARIABLES.md          (Variables de entorno)
+• DEPLOY_RENDER_INVENTARIO_CENTRALIZADO.md (Referencia)
+• CONFIGURACION_PERSISTENCIA.md    (Troubleshooting)
+
+
+═════════════════════════════════════════════════════════════════════════════
+✅ PRÓXIMO: CREAR USUARIOS Y DATOS
+═════════════════════════════════════════════════════════════════════════════
+
+Una vez que el deployment esté listo:
+
+1. Crear usuario admin:
+   curl -X POST https://libro-fiscal-api.onrender.com/api/usuarios/ \
+     -H "Content-Type: application/json" \
+     -d '{"username":"admin", "password":"admin123", "email":"admin@libro.com", "rol":"admin"}'
+
+2. Obtener token:
+   curl -X POST https://libro-fiscal-api.onrender.com/api/token/ \
+     -d '{"username":"admin", "password":"admin123"}'
+
+3. Crear vendedor de prueba:
+   curl -X POST https://libro-fiscal-api.onrender.com/api/usuarios/ \
+     -H "Authorization: Token YOUR_TOKEN" \
+     -d '{"username":"vendedor1", "password":"vendedor123", "rol":"vendedor"}'
+
+4. Comenzar a usar el sistema
+
+
+═════════════════════════════════════════════════════════════════════════════
+
+                        ✅ ¡LISTO PARA COMENZAR!
+
+═════════════════════════════════════════════════════════════════════════════
