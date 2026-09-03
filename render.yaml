@@ -77,7 +77,7 @@ services:
     plan: starter
     schedule: "30 7 * * *" # Render usa UTC.
     dockerfilePath: Dockerfile
-    command: python manage.py respaldo_postgres --retention-days 30
+    startCommand: python manage.py respaldo_postgres --retention-days 30
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings
@@ -106,7 +106,7 @@ services:
     plan: starter
     schedule: "0 7 * * *"  # Ejecuta diariamente a las 07:00 UTC (ajusta según tu zona)
     dockerfilePath: Dockerfile
-    command: python manage.py enviar_alertas_multicanal --force-whatsapp
+    startCommand: python manage.py enviar_alertas_multicanal --force-whatsapp
     envVars:
       - key: DEBUG
         value: "false"

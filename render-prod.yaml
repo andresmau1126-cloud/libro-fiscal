@@ -68,7 +68,7 @@ services:
     plan: starter
     schedule: "30 7 * * *"  # Render usa UTC.
     dockerfilePath: Dockerfile
-    command: python manage.py respaldo_postgres --retention-days 30
+    startCommand: python manage.py respaldo_postgres --retention-days 30
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings
