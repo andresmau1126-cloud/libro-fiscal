@@ -105,6 +105,28 @@ Para cada respaldo se guarda:
 3. **Espacio en servidor**: Los respaldos ocupan espacio
 4. **No es backup remoto**: Los respaldos están en el mismo servidor
 
+## Respaldo automático en Render
+
+En producción, el respaldo diario se ejecuta mediante el Cron Job `respaldo-postgres-diario` a las 07:30 UTC. El comando usa `pg_dump` para PostgreSQL, sube un archivo `.dump` a un bucket S3 compatible y elimina los archivos con más de 30 días.
+
+Para activarlo en Render, configura estas variables secretas en el Cron Job:
+
+```text
+BACKUP_S3_BUCKET=nombre-del-bucket
+BACKUP_S3_ACCESS_KEY_ID=...
+BACKUP_S3_SECRET_ACCESS_KEY=...
+```
+
+También puedes definir:
+
+```text
+BACKUP_S3_REGION=us-east-1
+BACKUP_S3_ENDPOINT_URL=https://...   # Necesario para R2, MinIO u otro S3 compatible
+BACKUP_S3_PREFIX=libro-fiscal
+```
+
+`BACKUP_S3_ENDPOINT_URL` se deja vacío cuando se usa Amazon S3. Las credenciales deben tener permiso para listar, subir y eliminar objetos del bucket. Render usa UTC; para otra hora hay que cambiar el horario cron.
+
 ## Casos de Uso
 
 ### Caso 1: Error en datos
