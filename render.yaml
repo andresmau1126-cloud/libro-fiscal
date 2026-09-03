@@ -70,8 +70,7 @@ services:
         value: ""  # API key de CallMeBot - opcional
 
 databases:
-  - type: postgres
-    name: libro-fiscal-db
+  - name: libro-fiscal-db
     databaseName: libro_fiscal
     plan: starter
 
