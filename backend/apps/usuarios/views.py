@@ -1,7 +1,9 @@
+import logging
 import secrets
 
 from django.conf import settings as django_settings
 from django.core.mail import BadHeaderError, send_mail
+from django.db import transaction
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -25,6 +27,8 @@ from .permissions import IsAdmin
 from .otp_service import crear_otp, enviar_otp_email, verificar_otp
 from .utils import is_bypass_email
 from apps.auditoria.services import audit_log
+
+logger = logging.getLogger(__name__)
 
 _COOKIE_SECURE = not django_settings.DEBUG
 _COOKIE_SAMESITE = "None" if _COOKIE_SECURE else "Lax"
@@ -110,30 +114,19 @@ def register(request):
     user.save(update_fields=["email_verification_code", "email_verified"])
 
     try:
-        _send_registration_security_code(user, security_code)
-    except (BadHeaderError, RuntimeError, Exception):
-        user.email_verified = True
-        user.email_verification_code = ""
-        user.save(update_fields=["email_verification_code", "email_verified"])
-        token = create_session(
-            user,
-            ip=request.META.get("REMOTE_ADDR"),
-            user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
-        )
-        response = Response(
+        with transaction.atomic():
+            _send_registration_security_code(user, security_code)
+    except Exception:
+        logger.exception("Error enviando código de registro a %s", user.email)
+        user.delete()
+        return Response(
             {
-                "message": "Registro exitoso. Tu cuenta quedó autorizada para comenzar.",
-                "requires_verification": False,
-                "user": UsuarioSerializer(user).data,
+                "error": "No se pudo enviar el código de seguridad. Verifica la configuración del correo e inténtalo nuevamente.",
+                "requires_verification": True,
+                "email": user.email,
             },
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-        response.set_cookie(
-            "session_token", token,
-            httponly=True, samesite=_COOKIE_SAMESITE,
-            secure=_COOKIE_SECURE, max_age=86400, path="/",
-        )
-        return response
 
     return Response(
         {
@@ -206,21 +199,13 @@ def request_otp(request):
         email_enviado = False
 
     if not email_enviado:
-        token = create_session(
-            user,
-            ip=request.META.get("REMOTE_ADDR"),
-            user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
+        return Response(
+            {
+                "error": "No se pudo enviar el código de acceso. Verifica la configuración del correo e inténtalo nuevamente.",
+                "email": user.email,
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-        response = Response({
-            "message": "Inicio de sesión habilitado. Tu cuenta quedó lista para usar.",
-            "user": UsuarioSerializer(user).data,
-        })
-        response.set_cookie(
-            "session_token", token,
-            httponly=True, samesite=_COOKIE_SAMESITE,
-            secure=_COOKIE_SECURE, max_age=86400, path="/",
-        )
-        return response
 
     return Response({
         "message": "Código OTP enviado al email",

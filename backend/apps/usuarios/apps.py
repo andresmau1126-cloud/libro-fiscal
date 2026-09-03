@@ -13,7 +13,7 @@ def _seed_default_users():
                 "password": "admin123",
                 "is_superuser": True,
                 "is_staff": True,
-                "rol": "admin",
+                "rol": "gerente",
             },
             {
                 "email": "andresmau1126@gmail.com",
@@ -22,6 +22,27 @@ def _seed_default_users():
                 "is_superuser": True,
                 "is_staff": True,
                 "rol": "admin",
+            },
+            {
+                "email": "mauro1126benelli@gmail.com",
+                "nombre": "Mauro Benelli",
+                "password": "admin123",
+                "is_staff": True,
+                "rol": "auditor",
+            },
+            {
+                "email": "yo1126top76f@gmail.com",
+                "nombre": "Yoel",
+                "password": "admin123",
+                "is_staff": True,
+                "rol": "vendedor_2",
+            },
+            {
+                "email": "andresmau.colamericano7b@gmail.com",
+                "nombre": "Andrés Colamericano",
+                "password": "admin123",
+                "is_staff": True,
+                "rol": "vendedor",
             },
             {
                 "email": "admin@test.com",
@@ -68,7 +89,10 @@ def _seed_default_users():
                 if user_data.get("is_superuser", False) and not user.is_superuser:
                     user.is_superuser = True
                     update_fields.append("is_superuser")
-                if user.rol != user_data.get("rol", "vendedor"):
+                # No sobrescribir el rol persistido en la base de datos.
+                # Los cambios de permisos realizados desde la UI o desde la DB
+                # deben mantenerse incluso después de reinicios de Render.
+                if not user.rol:
                     user.rol = user_data.get("rol", "vendedor")
                     update_fields.append("rol")
                 if user.nombre != user_data["nombre"]:

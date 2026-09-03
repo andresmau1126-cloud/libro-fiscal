@@ -45,8 +45,9 @@ export default function MonitoreoTurnosPage() {
         const data = await api.get("/api/monitoreo/turnos-hoy").then(r => r.data);
         setMonitoreo(data);
       } catch (err) {
-        setError(err.response?.data?.error || "Error al cargar monitoreo de turnos");
-        console.error("Error:", err);
+        const backendError = err.response?.data?.error || err.message || "Error al cargar monitoreo de turnos";
+        setError(backendError);
+        console.error("Error al cargar monitoreo de turnos:", err);
       }
     };
 
@@ -68,8 +69,9 @@ export default function MonitoreoTurnosPage() {
         }).then(r => r.data);
         setReportes(data);
       } catch (err) {
-        setError(err.response?.data?.error || "Error al cargar reportes");
-        console.error("Error:", err);
+        const backendError = err.response?.data?.error || err.message || "Error al cargar reportes";
+        setError(backendError);
+        console.error("Error al cargar reportes:", err);
       } finally {
         setLoading(false);
       }

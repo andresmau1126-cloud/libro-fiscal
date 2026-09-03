@@ -20,3 +20,24 @@ class RenderDeploymentConfigTests(SimpleTestCase):
             reloaded_settings = importlib.reload(settings_module)
 
         self.assertEqual(reloaded_settings.DATABASES["default"]["ENGINE"], "django.db.backends.postgresql")
+
+    def test_render_production_allows_onrender_cookies_and_cors(self) -> None:
+        from config import settings as settings_module
+
+        with patch.dict(
+            os.environ,
+            {
+                "DEBUG": "false",
+                "RENDER_EXTERNAL_HOSTNAME": "libro-fiscal.onrender.com",
+                "CORS_ALLOWED_ORIGINS": "https://frontend.onrender.com",
+                "CSRF_TRUSTED_ORIGINS": "https://frontend.onrender.com",
+            },
+            clear=False,
+        ):
+            reloaded_settings = importlib.reload(settings_module)
+
+        self.assertIn("https://frontend.onrender.com", reloaded_settings.CORS_ALLOWED_ORIGINS)
+        self.assertIn("https://libro-fiscal.onrender.com", reloaded_settings.CORS_ALLOWED_ORIGINS)
+        self.assertIn("https://libro-fiscal.onrender.com", reloaded_settings.CSRF_TRUSTED_ORIGINS)
+        self.assertEqual(reloaded_settings.SESSION_COOKIE_SAMESITE, "None")
+        self.assertTrue(reloaded_settings.SESSION_COOKIE_SECURE)

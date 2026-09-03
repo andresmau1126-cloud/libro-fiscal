@@ -56,11 +56,6 @@ class TokenCookieAuthentication(BaseAuthentication):
 
 
 def create_session(usuario, ip=None, user_agent=""):
-    if not getattr(usuario, 'email_verified', False):
-        usuario.email_verified = True
-        usuario.email_verification_code = ""
-        usuario.save(update_fields=["email_verified", "email_verification_code"])
-
     token = secrets.token_urlsafe(48)
     hours = getattr(settings, "SESSION_TOKEN_EXPIRY_HOURS", 24)
     expires = timezone.now() + timedelta(hours=hours)

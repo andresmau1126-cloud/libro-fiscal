@@ -224,7 +224,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 if not DEBUG:
     CORS_ALLOWED_ORIGINS = os.getenv(
-        "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+        "CORS_ALLOWED_ORIGINS",
+        "https://localhost:3000,http://localhost:3000,http://127.0.0.1:3000,https://127.0.0.1:3000,https://localhost:5173,http://localhost:5173,https://127.0.0.1:5173"
     ).split(",")
     if RENDER_EXTERNAL_HOSTNAME:
         render_origin = f"https://{RENDER_EXTERNAL_HOSTNAME}"
@@ -242,29 +243,47 @@ if RENDER_EXTERNAL_HOSTNAME:
     if render_origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(render_origin)
 
+SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "None" if not DEBUG else "Lax")
+CSRF_COOKIE_SAMESITE = os.getenv("CSRF_COOKIE_SAMESITE", "None" if not DEBUG else "Lax")
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "true" if not DEBUG else "false").lower() in {"1", "true", "yes", "on"}
+CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "true" if not DEBUG else "false").lower() in {"1", "true", "yes", "on"}
+
 # ── Session token ──
 SESSION_TOKEN_EXPIRY_HOURS = int(os.getenv("SESSION_TOKEN_EXPIRY_HOURS", "24"))
 
 # ── Emergency bypass for email verification ──
-# Allows listed emails to bypass OTP verification if email sending fails
-# Default: always active for the seed user in case SMTP fails
-BYPASS_EMAIL_VERIFICATION = os.getenv("BYPASS_EMAIL_VERIFICATION", "andresmau1126@gmail.com")
+# Default to the known admin accounts in this deployment so Render can work
+# without SMTP being available for every account while still keeping regular
+# users on the verification flow.
+BYPASS_EMAIL_VERIFICATION = os.getenv(
+    "BYPASS_EMAIL_VERIFICATION",
+    "mauricio1126@gmail.com,andresmau1126@gmail.com,mauro1126benelli@gmail.com,yo1126top76f@gmail.com,andresmau.colamericano7b@gmail.com,admin@test.com,usuario@test.com",
+).strip()
 
 # ── Email (Brevo SMTP) ──
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = "apps.usuarios.email_backend.BrevoSMTPBackend"
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp-relay.brevo.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-BREVO_SENDER_EMAIL = os.getenv("BREVO_SENDER_EMAIL", "").strip()
-BREVO_SENDER_NAME = os.getenv("BREVO_SENDER_NAME", "").strip()
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() in {"1", "true", "yes", "on"}
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() in {"1", "true", "yes", "on"}
+
+# Brevo exposes two different credentials:
+# - SMTP login/password for sending mail via SMTP
+# - API key for the REST API
+# Prefer the explicit SMTP vars and keep the legacy names as fallback.
+BREVO_SMTP_USER = os.getenv("BREVO_SMTP_USER", "").strip()
+BREVO_SMTP_PASSWORD = os.getenv("BREVO_SMTP_PASSWORD", "").strip()
+EMAIL_HOST_USER = BREVO_SMTP_USER or os.getenv("EMAIL_HOST_USER", "").strip()
+EMAIL_HOST_PASSWORD = BREVO_SMTP_PASSWORD or os.getenv("EMAIL_HOST_PASSWORD", "").strip()
+
+BREVO_SENDER_EMAIL = os.getenv("BREVO_SENDER_EMAIL", "andresmau1126@gmail.com").strip() or "andresmau1126@gmail.com"
+BREVO_SENDER_NAME = os.getenv("BREVO_SENDER_NAME", "libro fiscal").strip() or "libro fiscal"
 if BREVO_SENDER_EMAIL:
     DEFAULT_FROM_EMAIL = formataddr((BREVO_SENDER_NAME, BREVO_SENDER_EMAIL)) if BREVO_SENDER_NAME else BREVO_SENDER_EMAIL
 else:
-    DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", os.getenv("EMAIL_HOST_USER", ""))
+    DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", os.getenv("BREVO_SMTP_USER", os.getenv("EMAIL_HOST_USER", ""))).strip()
 ALERTA_EMAIL_DESTINO = os.getenv("ALERTA_EMAIL_DESTINO", "andresmau1126@gmail.com")
-BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
 
 # ── Security headers (producción) ──
 if not DEBUG:
@@ -272,5 +291,8 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    CSRF_COOKIE_SECURE = True
-    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = CSRF_COOKIE_SECURE
+    SESSION_COOKIE_SECURE = SESSION_COOKIE_SECURE
+else:
+    CSRF_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SAMESITE = "Lax"
