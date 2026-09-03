@@ -61,7 +61,6 @@ services:
       - key: ASGI_APPLICATION
         value: config.asgi.application
 
-jobs:
   - type: cron
     name: respaldo-postgres-diario
     env: docker

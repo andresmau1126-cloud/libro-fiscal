@@ -69,13 +69,7 @@ services:
       - key: WHATSAPP_APIKEY
         value: ""  # API key de CallMeBot - opcional
 
-databases:
-  - name: libro-fiscal-db
-    databaseName: libro_fiscal
-    plan: starter
-
 # Respaldo diario de PostgreSQL en almacenamiento S3 compatible.
-jobs:
   - type: cron
     name: respaldo-postgres-diario
     env: docker
@@ -172,3 +166,8 @@ jobs:
         value: ""  # API key de CallMeBot - opcional
       - key: ENABLE_WHATSAPP_ALERTAS
         value: "true"
+
+databases:
+  - name: libro-fiscal-db
+    databaseName: libro_fiscal
+    plan: starter
