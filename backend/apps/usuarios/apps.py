@@ -33,7 +33,7 @@ def _seed_default_users():
             },
             {
                 "email": "yo1126top76f@gmail.com",
-                "nombre": "Yoel",
+                "nombre": "Jose",
                 "password": "admin123",
                 "is_staff": True,
                 "rol": "vendedor_2",
