@@ -8,6 +8,7 @@ from rest_framework.test import APITestCase
 from apps.inventario.models import Producto, Venta
 from apps.libros.models import Libro
 from apps.movimientos.models import Movimiento
+from services.ventas_libro import compilar_ventas_diarias
 from apps.inventario.views import _productos_qs_for_user
 from apps.usuarios.models import Usuario
 
@@ -124,9 +125,15 @@ class InventarioBlackBoxAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         venta = Venta.objects.get(pk=response.data["id"])
-        movimiento = Movimiento.objects.get(venta=venta)
+        compilados = compilar_ventas_diarias(date.today())
+        movimiento = Movimiento.objects.get(
+            libro=libro,
+            fecha=date.today(),
+            es_compilacion_ventas=True,
+        )
+        self.assertEqual(compilados, 1)
         self.assertEqual(venta.libro_id, libro.id)
-        self.assertEqual(movimiento.libro_id, libro.id)
+        self.assertEqual(Movimiento.objects.filter(libro=libro, es_compilacion_ventas=True).count(), 1)
         self.assertEqual(movimiento.ingresos, Decimal("25.00"))
         self.assertEqual(movimiento.saldo, Decimal("25.00"))
 

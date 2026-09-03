@@ -98,6 +98,30 @@ services:
       - key: BACKUP_S3_PREFIX
         value: libro-fiscal
 
+  - type: cron
+    name: compilar-ventas-diarias
+    env: docker
+    branch: main
+    plan: starter
+    schedule: "10 6 * * *" # 00:10 en Guatemala (UTC-6).
+    dockerfilePath: Dockerfile
+    startCommand: python manage.py compilar_ventas_diarias
+    envVars:
+      - key: DEBUG
+        value: "false"
+      - key: SECRET_KEY
+        value: "RENDER_SECRET_KEY"
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings
+      - key: DATABASE_URL
+        fromDatabase:
+          name: libro-fiscal-db
+          property: connectionString
+      - key: RENDER_DATABASE_URL
+        fromDatabase:
+          name: libro-fiscal-db
+          property: connectionString
+
   # Job programado para enviar alertas diarias de inventario (vencimientos / bajo stock)
   - type: cron
     name: enviar-alertas-diarias

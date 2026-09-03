@@ -20,6 +20,7 @@ class Movimiento(models.Model):
         blank=True,
         related_name="movimiento_libro",
     )
+    es_compilacion_ventas = models.BooleanField(default=False)
 
     class Meta:
         db_table = "movimientos"

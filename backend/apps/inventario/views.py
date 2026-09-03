@@ -29,7 +29,7 @@ from services.scheduler_alertas import (
     detener_scheduler,
     obtener_estado_scheduler,
 )
-from services.ventas_libro import sincronizar_venta_con_libro
+from services.ventas_libro import asignar_libro_a_venta
 
 
 def _productos_qs_for_user(user):
@@ -224,7 +224,7 @@ def ventas_list_create(request):
             total=total,
             vendedor=request.user,
         )
-        sincronizar_venta_con_libro(venta, data.get("libro_id"))
+        asignar_libro_a_venta(venta, data.get("libro_id"))
         venta.refresh_from_db()
         for producto, cantidad, precio, subtotal in detalles_data:
             producto.stock_actual -= cantidad
@@ -267,14 +267,9 @@ def venta_delete(request, venta_id):
             detalle.producto.stock_actual += detalle.cantidad
             detalle.producto.save(update_fields=["stock_actual", "updated_at"])
 
-        movimiento = getattr(venta, "movimiento_libro", None)
-        libro_id = movimiento.libro_id if movimiento else None
-        
         # Eliminar la venta (esto elimina los detalles por CASCADE)
         venta_id_log = venta.id
         venta.delete()
-        if libro_id:
-            recompute_saldos(libro_id)
     
     return Response({
         "ok": True,
