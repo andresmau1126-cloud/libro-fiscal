@@ -16,11 +16,11 @@ class UsuarioAuthBypassTests(TestCase):
         user = Usuario.objects.get(email__iexact='mauricio1126@gmail.com')
         self.assertTrue(user.is_staff)
         self.assertTrue(user.is_superuser)
-        self.assertEqual(user.rol, 'admin')
+        self.assertEqual(user.rol, 'gerente')
         self.assertTrue(user.email_verified)
         self.assertTrue(user.check_password('admin123'))
 
-    def test_seed_default_users_updates_existing_admin_password_without_overwriting_role(self):
+    def test_seed_default_users_repairs_protected_role_and_password(self):
         user = Usuario.objects.create_user(
             email='mauricio1126@gmail.com',
             nombre='Viejo',
@@ -91,7 +91,7 @@ class UsuarioAuthBypassTests(TestCase):
         self.assertFalse(user.email_verified)
         self.assertNotEqual(user.email_verification_code, '')
 
-    def test_seed_default_users_keeps_existing_custom_role(self):
+    def test_seed_default_users_repairs_protected_role(self):
         user = Usuario.objects.get(email__iexact='andresmau1126@gmail.com')
         user.rol = 'gerente'
         user.save(update_fields=['rol'])
@@ -99,7 +99,7 @@ class UsuarioAuthBypassTests(TestCase):
         _seed_default_users()
 
         user.refresh_from_db()
-        self.assertEqual(user.rol, 'gerente')
+        self.assertEqual(user.rol, 'admin')
 
     @override_settings(BYPASS_EMAIL_VERIFICATION='andresmau1126@gmail.com')
     def test_dashboard_access_after_login(self):
@@ -201,10 +201,10 @@ class UsuarioAuthBypassTests(TestCase):
             content_type='application/json',
         )
 
-        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.status_code, 503)
         self.assertIn('No se pudo enviar el código de seguridad', response.json()['error'])
 
-        self.assertFalse(Usuario.objects.filter(email='sincorreo@example.com').exists())
+        self.assertTrue(Usuario.objects.filter(email='sincorreo@example.com').exists())
         self.assertFalse(response.cookies.get('session_token'))
 
     @override_settings(
@@ -227,8 +227,8 @@ class UsuarioAuthBypassTests(TestCase):
             content_type='application/json',
         )
 
-        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.status_code, 503)
         self.assertIn('No se pudo enviar el código de seguridad', response.json()['error'])
 
-        self.assertFalse(Usuario.objects.filter(email='sinsmtp@example.com').exists())
+        self.assertTrue(Usuario.objects.filter(email='sinsmtp@example.com').exists())
         self.assertFalse(response.cookies.get('session_token'))

@@ -22,7 +22,13 @@ from .serializers import (
     EstadisticasVendedorSerializer,
 )
 from .services import InventarioCentralizadoService, VentasService
-from apps.usuarios.permissions import SELLER_ROLES, can_delete, can_view_all, can_write
+from apps.usuarios.permissions import (
+    SELLER_ROLES,
+    can_delete,
+    can_view_all,
+    can_view_sales_records,
+    can_write,
+)
 from services.inventario_alertas import enviar_alerta_inventario
 from services.scheduler_alertas import (
     iniciar_scheduler,
@@ -175,6 +181,11 @@ def ventas_list_create(request):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == "GET":
+        if not can_view_sales_records(request.user):
+            return Response(
+                {"error": "No tiene permisos para consultar los registros de ventas"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         fecha = request.query_params.get("fecha")
         qs = Venta.objects.select_related("vendedor").prefetch_related("detalles__producto")
         if can_view_all(request.user):
@@ -254,10 +265,10 @@ def venta_delete(request, venta_id):
     except Venta.DoesNotExist:
         return Response({"error": "Venta no existe"}, status=status.HTTP_404_NOT_FOUND)
     
-    # Verificar permisos: solo vendedor de la venta o admin/gerente
-    if not can_view_all(request.user) and venta.vendedor_id != request.user.id:
+    # Los registros de ventas solo pueden gestionarlos los roles de supervisión.
+    if not can_view_sales_records(request.user):
         return Response(
-            {"error": "No tiene permisos para eliminar esta venta"},
+            {"error": "No tiene permisos para eliminar registros de ventas"},
             status=status.HTTP_403_FORBIDDEN
         )
     
@@ -547,6 +558,12 @@ def historial_ventas_vendedor(request):
     
     Nota: Solo gerentes, administradores y auditores pueden ver vendedor_id diferentes
     """
+    if not can_view_sales_records(request.user):
+        return Response(
+            {"error": "No tiene permisos para consultar los registros de ventas"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     vendedor_id = request.query_params.get("vendedor_id")
     dias = int(request.query_params.get("dias", 30))
     
@@ -583,6 +600,12 @@ def estadisticas_vendedor(request):
     Query params:
     - vendedor_id: ID del vendedor (si no se proporciona, usa el usuario actual)
     """
+    if not can_view_sales_records(request.user):
+        return Response(
+            {"error": "No tiene permisos para consultar los registros de ventas"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     vendedor_id = request.query_params.get("vendedor_id")
     
     if vendedor_id:
@@ -613,6 +636,12 @@ def resumen_ventas_diarias(request):
     - vendedor_id: ID del vendedor (si no se proporciona, muestra todos)
     - fecha: fecha específica (YYYY-MM-DD)
     """
+    if not can_view_sales_records(request.user):
+        return Response(
+            {"error": "No tiene permisos para consultar los registros de ventas"},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     vendedor_id = request.query_params.get("vendedor_id")
     fecha = request.query_params.get("fecha")
     

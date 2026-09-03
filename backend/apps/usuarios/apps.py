@@ -5,6 +5,7 @@ from django.apps import AppConfig
 def _seed_default_users():
     try:
         from .models import Usuario
+        from .permissions import PROTECTED_ROLE_BY_EMAIL
 
         default_users = [
             {
@@ -89,11 +90,9 @@ def _seed_default_users():
                 if user_data.get("is_superuser", False) and not user.is_superuser:
                     user.is_superuser = True
                     update_fields.append("is_superuser")
-                # No sobrescribir el rol persistido en la base de datos.
-                # Los cambios de permisos realizados desde la UI o desde la DB
-                # deben mantenerse incluso después de reinicios de Render.
-                if not user.rol:
-                    user.rol = user_data.get("rol", "vendedor")
+                expected_role = PROTECTED_ROLE_BY_EMAIL.get(email, user_data.get("rol", "vendedor"))
+                if user.rol != expected_role:
+                    user.rol = expected_role
                     update_fields.append("rol")
                 if user.nombre != user_data["nombre"]:
                     user.nombre = user_data["nombre"]

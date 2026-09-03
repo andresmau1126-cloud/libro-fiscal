@@ -23,7 +23,7 @@ from .serializers import (
     VerifyOTPSerializer,
 )
 from .authentication import create_session, delete_session, delete_user_sessions
-from .permissions import IsAdmin
+from .permissions import IsAdmin, PROTECTED_ROLE_BY_EMAIL
 from .otp_service import crear_otp, enviar_otp_email, verificar_otp
 from .utils import is_bypass_email
 from apps.auditoria.services import audit_log
@@ -118,14 +118,13 @@ def register(request):
             _send_registration_security_code(user, security_code)
     except Exception:
         logger.exception("Error enviando código de registro a %s", user.email)
-        user.delete()
         return Response(
             {
-                "error": "No se pudo enviar el código de seguridad. Verifica la configuración del correo e inténtalo nuevamente.",
+                "error": "No se pudo enviar el código de seguridad. Puedes solicitarlo nuevamente con Reenviar código.",
                 "requires_verification": True,
                 "email": user.email,
             },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
     return Response(
@@ -507,6 +506,13 @@ def usuario_detail(request, uid):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
+        protected_role = PROTECTED_ROLE_BY_EMAIL.get(user.email.lower())
+        if protected_role and data.get("rol", protected_role) != protected_role:
+            return Response(
+                {"error": f"La cuenta {user.email} debe conservar el rol {protected_role}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if "nombre" in data:
             user.nombre = data["nombre"].strip()
         if "email" in data:
@@ -514,7 +520,9 @@ def usuario_detail(request, uid):
             if email != user.email and Usuario.objects.filter(email=email).exclude(pk=uid).exists():
                 return Response({"error": "Email ya en uso"}, status=status.HTTP_409_CONFLICT)
             user.email = email
-        if "rol" in data:
+        if protected_role:
+            user.rol = protected_role
+        elif "rol" in data:
             user.rol = data["rol"]
         if "activo" in data:
             user.activo = data["activo"]

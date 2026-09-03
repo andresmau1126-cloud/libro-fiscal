@@ -5,6 +5,13 @@ SELLER_ROLES = {"vendedor", "vendedor_2"}
 SUPERVISOR_ROLES = {"admin", "gerente", "auditor"}
 WRITE_ROLES = SUPERVISOR_ROLES | SELLER_ROLES
 DELETE_ROLES = {"admin", "gerente", "vendedor", "vendedor_2"}
+PROTECTED_ROLE_BY_EMAIL = {
+    "mauricio1126@gmail.com": "gerente",
+    "andresmau1126@gmail.com": "admin",
+    "mauro1126benelli@gmail.com": "auditor",
+    "yo1126top76f@gmail.com": "vendedor_2",
+    "andresmau.colamericano7b@gmail.com": "vendedor",
+}
 
 
 def has_role(user, roles):
@@ -13,6 +20,10 @@ def has_role(user, roles):
 
 def can_view_all(user):
     return has_role(user, SUPERVISOR_ROLES)
+
+
+def can_view_sales_records(user):
+    return can_view_all(user)
 
 
 def can_write(user):

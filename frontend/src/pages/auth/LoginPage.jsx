@@ -56,6 +56,10 @@ export default function LoginPage() {
       await login(form.email, form.password);
       navigate('/');
     } catch (err) {
+      if (isRegister && err.response?.data?.requires_verification && err.response?.data?.email) {
+        setPendingVerificationEmail(err.response.data.email);
+        setVerificationCode('');
+      }
       setError(err.response?.data?.error || err.response?.data?.message || err.message || 'Error de conexión');
     } finally {
       setLoading(false);

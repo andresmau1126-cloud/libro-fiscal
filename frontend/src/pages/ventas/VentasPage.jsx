@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createVenta, deleteVenta, fetchProductos, fetchVentas } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const money = (value) => '$ ' + Number(value || 0).toLocaleString('es-CO', {
   minimumFractionDigits: 2,
@@ -14,6 +15,8 @@ const localDate = () => {
 const STORAGE_KEY = 'libro-fiscal-tender-state-v1';
 
 export default function VentasPage() {
+  const { user } = useAuth();
+  const canViewSalesRecords = !['vendedor', 'vendedor_2'].includes(user?.rol);
   const today = localDate();
   const getInitialState = () => {
     if (typeof window === 'undefined') return null;
@@ -56,9 +59,14 @@ export default function VentasPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const [productData, saleData] = await Promise.all([fetchProductos(), fetchVentas(fecha)]);
+      const productData = await fetchProductos();
       setProductos(productData || []);
-      setVentas(saleData?.ventas || []);
+      if (canViewSalesRecords) {
+        const saleData = await fetchVentas(fecha);
+        setVentas(saleData?.ventas || []);
+      } else {
+        setVentas([]);
+      }
     } catch (error) {
       setMessage({ ok: false, text: error.response?.data?.error || 'No se pudo cargar la caja.' });
     } finally {
@@ -66,7 +74,7 @@ export default function VentasPage() {
     }
   };
 
-  useEffect(() => { load(); }, [fecha]);
+  useEffect(() => { load(); }, [fecha, canViewSalesRecords]);
 
   const total = useMemo(() => cart.reduce((sum, item) => sum + item.cantidad * item.precio_venta, 0), [cart]);
 
@@ -190,13 +198,13 @@ export default function VentasPage() {
           </div>
         </div>
 
-        <div className="col-lg-5">
+        {canViewSalesRecords && <div className="col-lg-5">
           <div className="data-table p-3">
             <div className="d-flex justify-content-between align-items-center mb-3"><h5 className="mb-0">Ventas del día</h5><div className="d-flex gap-2"><input type="date" className="form-control form-control-sm w-auto" value={fecha} onChange={(event) => setFecha(event.target.value)} /><button type="button" className="btn btn-sm btn-outline-secondary" onClick={load} disabled={loading} title="Actualizar ventas y stock" aria-label="Actualizar ventas y stock"><i className="bi bi-arrow-clockwise" /></button></div></div>
             <div className="display-6 fw-semibold text-success mb-3">{money(ventas.reduce((sum, sale) => sum + sale.total, 0))}</div>
             {loading ? <div className="text-muted">Cargando...</div> : !ventas.length ? <div className="text-muted">No hay ventas para esta fecha.</div> : ventas.map((sale) => <div className="border-top py-2" key={sale.id}><div className="d-flex justify-content-between align-items-start"><div><strong>Venta #{sale.id}</strong><div className="small text-muted">{new Date(sale.fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} · {sale.medio_pago} · {sale.cliente || 'Consumidor final'}</div>{sale.vendedor && <div className="small text-muted">Vendedor: {sale.vendedor} ({sale.vendedor_rol === 'vendedor_2' ? 'Vendedor 2' : 'Vendedor'})</div>}</div><div className="text-end"><div>{money(sale.total)}</div><button type="button" className="btn btn-sm btn-outline-danger mt-1" onClick={() => handleDeleteVenta(sale.id, sale.total)} disabled={saving} title="Eliminar venta"><i className="bi bi-trash" /></button></div></div></div>)}
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );

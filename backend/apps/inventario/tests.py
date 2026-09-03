@@ -266,6 +266,38 @@ class InventarioBlackBoxAPITests(APITestCase):
         roles = {venta["vendedor_rol"] for venta in response.data["ventas"]}
         self.assertSetEqual(roles, {"vendedor", "vendedor_2"})
 
+    def test_seller_roles_cannot_view_or_delete_sales_records(self):
+        seller_1 = Usuario.objects.create_user(
+            email="vendedor1-restringido@test.com",
+            nombre="Vendedor 1",
+            password="123456",
+            rol="vendedor",
+        )
+        seller_2 = Usuario.objects.create_user(
+            email="vendedor2-restringido@test.com",
+            nombre="Vendedor 2",
+            password="123456",
+            rol="vendedor_2",
+        )
+        sale = Venta.objects.create(
+            cliente="Cliente",
+            medio_pago="efectivo",
+            total="10.00",
+            vendedor=seller_1,
+        )
+
+        for seller in (seller_1, seller_2):
+            self.client.force_authenticate(user=seller)
+            self.assertEqual(self.client.get("/api/ventas").status_code, status.HTTP_403_FORBIDDEN)
+            self.assertEqual(
+                self.client.get("/api/historial/ventas").status_code,
+                status.HTTP_403_FORBIDDEN,
+            )
+            self.assertEqual(
+                self.client.delete(f"/api/ventas/{sale.id}").status_code,
+                status.HTTP_403_FORBIDDEN,
+            )
+
     def test_sellers_are_isolated_but_admin_and_manager_see_everything(self):
         seller_1 = Usuario.objects.create_user(
             email="vendedor-scope-1@test.com",
