@@ -13,6 +13,13 @@ class Movimiento(models.Model):
         Libro, on_delete=models.CASCADE,
         related_name="movimientos", null=True, blank=True,
     )
+    venta = models.OneToOneField(
+        "inventario.Venta",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="movimiento_libro",
+    )
 
     class Meta:
         db_table = "movimientos"

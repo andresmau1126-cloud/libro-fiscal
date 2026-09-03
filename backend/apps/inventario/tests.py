@@ -1,10 +1,13 @@
 from datetime import date, timedelta
+from decimal import Decimal
 
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.inventario.models import Producto, Venta
+from apps.libros.models import Libro
+from apps.movimientos.models import Movimiento
 from apps.inventario.views import _productos_qs_for_user
 from apps.usuarios.models import Usuario
 
@@ -95,6 +98,37 @@ class InventarioBlackBoxAPITests(APITestCase):
         product.refresh_from_db()
         self.assertEqual(product.stock_actual, 3)
         self.assertEqual(Venta.objects.filter(vendedor=self.user).count(), 1)
+
+    def test_create_sale_updates_fiscal_book_daily_income(self):
+        libro = Libro.objects.create(
+            nombre="Libro de ventas",
+            nit="123456789",
+            anio=date.today().year,
+            propietario=self.user,
+        )
+        product = Producto.objects.create(
+            nombre="Compresor",
+            stock_actual=5,
+            precio_venta="12.50",
+            propietario=self.user,
+        )
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            "/api/ventas",
+            {
+                "detalles": [{"producto_id": product.id, "cantidad": "2"}],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        venta = Venta.objects.get(pk=response.data["id"])
+        movimiento = Movimiento.objects.get(venta=venta)
+        self.assertEqual(venta.libro_id, libro.id)
+        self.assertEqual(movimiento.libro_id, libro.id)
+        self.assertEqual(movimiento.ingresos, Decimal("25.00"))
+        self.assertEqual(movimiento.saldo, Decimal("25.00"))
 
     def test_create_sale_rejects_insufficient_stock(self):
         product = Producto.objects.create(

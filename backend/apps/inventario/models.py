@@ -65,6 +65,13 @@ class Venta(models.Model):
         on_delete=models.PROTECT,
         related_name="ventas",
     )
+    libro = models.ForeignKey(
+        "libros.Libro",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="ventas",
+    )
 
     class Meta:
         db_table = "inventario_venta"
