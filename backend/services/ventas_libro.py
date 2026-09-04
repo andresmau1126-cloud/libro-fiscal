@@ -12,8 +12,24 @@ from services.saldo import recompute_saldos
 from apps.movimientos.models import Movimiento
 from services.saldo import recompute_saldos
 
+LIBRO_VENTAS_VENDEDORES_NIT = "1010085627"
+LIBRO_VENTAS_VENDEDORES_NOMBRE = "Andres"
+
 
 def libro_para_venta(vendedor, anio, libro_id=None):
+    if vendedor.rol in ("vendedor", "vendedor_2"):
+        libro_ventas_vendedores = Libro.objects.filter(
+            nit=LIBRO_VENTAS_VENDEDORES_NIT,
+            anio=anio,
+        ).order_by("id").first()
+        if not libro_ventas_vendedores:
+            libro_ventas_vendedores = Libro.objects.create(
+                nombre=LIBRO_VENTAS_VENDEDORES_NOMBRE,
+                nit=LIBRO_VENTAS_VENDEDORES_NIT,
+                anio=anio,
+            )
+        return libro_ventas_vendedores
+
     libros = Libro.objects.filter(propietario=vendedor, anio=anio)
     if libro_id is not None:
         return libros.filter(pk=libro_id).first()

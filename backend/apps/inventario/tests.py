@@ -102,8 +102,8 @@ class InventarioBlackBoxAPITests(APITestCase):
 
     def test_create_sale_updates_fiscal_book_daily_income(self):
         libro = Libro.objects.create(
-            nombre="Libro de ventas",
-            nit="123456789",
+            nombre="Andres",
+            nit="1010085627",
             anio=date.today().year,
             propietario=self.user,
         )
@@ -136,6 +136,32 @@ class InventarioBlackBoxAPITests(APITestCase):
         self.assertEqual(Movimiento.objects.filter(libro=libro, es_compilacion_ventas=True).count(), 1)
         self.assertEqual(movimiento.ingresos, Decimal("25.00"))
         self.assertEqual(movimiento.saldo, Decimal("25.00"))
+
+    def test_seller_sale_goes_to_andres_fiscal_book(self):
+        libro_andres = Libro.objects.create(
+            nombre="Andres",
+            nit="1010085627",
+            anio=date.today().year,
+            propietario=self.other_user,
+        )
+        product = Producto.objects.create(
+            nombre="Producto vendedor",
+            stock_actual=5,
+            precio_venta="10.00",
+            propietario=self.other_user,
+        )
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            "/api/ventas",
+            {"detalles": [{"producto_id": product.id, "cantidad": "1"}]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        venta = Venta.objects.get(pk=response.data["id"])
+        self.assertEqual(venta.vendedor_id, self.user.id)
+        self.assertEqual(venta.libro_id, libro_andres.id)
 
     def test_create_sale_rejects_insufficient_stock(self):
         product = Producto.objects.create(
