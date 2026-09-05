@@ -85,6 +85,12 @@ export default function Layout() {
                   <span>Ventas</span>
                 </NavLink>
               </li>
+              <li>
+                <NavLink to="/apoyos" onClick={closeSidebar}>
+                  <i className="bi bi-person-hearts" />
+                  <span>Apoyos</span>
+                </NavLink>
+              </li>
             </ul>
           </div>
 
