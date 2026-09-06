@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import datetime
 
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
@@ -12,7 +12,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             "--fecha",
-            help="Fecha a compilar en formato YYYY-MM-DD. Por defecto, el día anterior.",
+            help="Fecha a compilar en formato YYYY-MM-DD. Por defecto, hoy.",
         )
         parser.add_argument(
             "--nit",
@@ -21,7 +21,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        fecha = timezone.localdate() - timedelta(days=1)
+        fecha = timezone.localdate()
         if options["fecha"]:
             try:
                 fecha = datetime.strptime(options["fecha"], "%Y-%m-%d").date()

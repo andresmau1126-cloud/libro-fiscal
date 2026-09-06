@@ -35,7 +35,7 @@ from services.scheduler_alertas import (
     detener_scheduler,
     obtener_estado_scheduler,
 )
-from services.ventas_libro import asignar_libro_a_venta
+from services.ventas_libro import asignar_libro_a_venta, compilar_ventas_diarias
 
 
 def _productos_qs_for_user(user):
@@ -247,6 +247,7 @@ def ventas_list_create(request):
                 precio_unitario=precio,
                 subtotal=subtotal,
             )
+        compilar_ventas_diarias(timezone.localtime(venta.fecha).date())
 
     return Response(_venta_data(venta), status=status.HTTP_201_CREATED)
 
@@ -274,6 +275,7 @@ def venta_delete(request, venta_id):
     
     # Restaurar stock de cada producto
     with transaction.atomic():
+        fecha_venta = timezone.localtime(venta.fecha).date()
         for detalle in venta.detalles.all():
             detalle.producto.stock_actual += detalle.cantidad
             detalle.producto.save(update_fields=["stock_actual", "updated_at"])
@@ -281,6 +283,7 @@ def venta_delete(request, venta_id):
         # Eliminar la venta (esto elimina los detalles por CASCADE)
         venta_id_log = venta.id
         venta.delete()
+        compilar_ventas_diarias(fecha_venta)
     
     return Response({
         "ok": True,

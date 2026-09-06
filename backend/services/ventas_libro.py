@@ -1,4 +1,3 @@
-from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db import transaction
@@ -8,6 +7,7 @@ from django.utils import timezone
 from apps.libros.models import Libro
 from apps.inventario.models import Venta
 from apps.movimientos.models import Movimiento
+from apps.usuarios.permissions import SELLER_ROLES
 from services.saldo import recompute_saldos
 
 LIBRO_VENTAS_VENDEDORES_NIT = "1010085627"
@@ -49,34 +49,39 @@ def asignar_libro_a_venta(venta, libro_id=None):
 
 
 def compilar_ventas_diarias(fecha=None, nit=None):
-    """Sincroniza Venta.total con los ingresos del libro fiscal indicado."""
-    fecha = fecha or timezone.localdate() - timedelta(days=1)
-    ventas = Venta.objects.filter(fecha__date=fecha, libro__isnull=False)
-    if nit:
-        ventas = ventas.filter(libro__nit=nit)
-    totales = ventas.values("libro_id").annotate(total=Sum("total"))
-    libros_actualizados = []
+    """Consolida las ventas de vendedores en el libro fiscal compartido."""
+    fecha = fecha or timezone.localdate()
+    nit = nit or LIBRO_VENTAS_VENDEDORES_NIT
 
     with transaction.atomic():
-        compilados = Movimiento.objects.filter(
+        libro = Libro.objects.filter(nit=nit, anio=fecha.year).order_by("id").first()
+        if not libro:
+            libro = Libro.objects.create(
+                nombre=LIBRO_VENTAS_VENDEDORES_NOMBRE,
+                nit=nit,
+                anio=fecha.year,
+            )
+
+        ventas = Venta.objects.filter(
+            fecha__date=fecha,
+            vendedor__rol__in=SELLER_ROLES,
+        )
+        ventas.update(libro=libro)
+        total = ventas.aggregate(total=Sum("total"))["total"] or Decimal("0")
+
+        Movimiento.objects.filter(
             fecha=fecha,
+            libro=libro,
+            es_compilacion_ventas=True,
+        ).delete()
+        Movimiento.objects.create(
+            fecha=fecha,
+            descripcion=f"Ventas diarias {fecha.isoformat()}",
+            ingresos=total,
+            egresos=Decimal("0"),
+            libro=libro,
             es_compilacion_ventas=True,
         )
-        if nit:
-            compilados = compilados.filter(libro__nit=nit)
-        compilados.delete()
-        for total in totales:
-            movimiento = Movimiento.objects.create(
-                fecha=fecha,
-                descripcion=f"Ventas diarias {fecha.isoformat()}",
-                ingresos=total["total"] or Decimal("0"),
-                egresos=Decimal("0"),
-                libro_id=total["libro_id"],
-                es_compilacion_ventas=True,
-            )
-            libros_actualizados.append(movimiento.libro_id)
+        recompute_saldos(libro.id)
 
-        for libro_id in libros_actualizados:
-            recompute_saldos(libro_id)
-
-    return len(libros_actualizados)
+    return 1

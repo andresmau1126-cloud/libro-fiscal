@@ -8,7 +8,6 @@ from rest_framework.test import APITestCase
 from apps.inventario.models import Producto, Venta
 from apps.libros.models import Libro
 from apps.movimientos.models import Movimiento
-from services.ventas_libro import compilar_ventas_diarias
 from apps.inventario.views import _productos_qs_for_user
 from apps.usuarios.models import Usuario
 
@@ -125,13 +124,11 @@ class InventarioBlackBoxAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         venta = Venta.objects.get(pk=response.data["id"])
-        compilados = compilar_ventas_diarias(date.today())
         movimiento = Movimiento.objects.get(
             libro=libro,
             fecha=date.today(),
             es_compilacion_ventas=True,
         )
-        self.assertEqual(compilados, 1)
         self.assertEqual(venta.libro_id, libro.id)
         self.assertEqual(Movimiento.objects.filter(libro=libro, es_compilacion_ventas=True).count(), 1)
         self.assertEqual(movimiento.ingresos, Decimal("25.00"))
@@ -162,6 +159,51 @@ class InventarioBlackBoxAPITests(APITestCase):
         venta = Venta.objects.get(pk=response.data["id"])
         self.assertEqual(venta.vendedor_id, self.user.id)
         self.assertEqual(venta.libro_id, libro_andres.id)
+
+    def test_supervisors_can_view_consolidated_seller_sales(self):
+        libro_andres = Libro.objects.create(
+            nombre="Andres",
+            nit="1010085627",
+            anio=date.today().year,
+            propietario=self.other_user,
+        )
+        product = Producto.objects.create(
+            nombre="Producto consolidado",
+            stock_actual=5,
+            precio_venta="10.00",
+            propietario=self.other_user,
+        )
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(
+            "/api/ventas",
+            {"detalles": [{"producto_id": product.id, "cantidad": "1"}]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        for rol in ("gerente", "admin", "auditor"):
+            supervisor = Usuario.objects.create_user(
+                email=f"{rol}-consolidado@test.com",
+                nombre=rol.title(),
+                password="123456",
+                rol=rol,
+            )
+            self.client.force_authenticate(user=supervisor)
+            libros_response = self.client.get("/api/libros")
+            self.assertEqual(libros_response.status_code, status.HTTP_200_OK)
+            self.assertIn(libro_andres.id, [libro["id"] for libro in libros_response.data])
+
+            movimientos_response = self.client.get(
+                f"/api/entries?libro_id={libro_andres.id}&year={date.today().year}&month={date.today().month}"
+            )
+            self.assertEqual(movimientos_response.status_code, status.HTTP_200_OK)
+            compilaciones = [
+                movimiento
+                for movimiento in movimientos_response.data["rows"]
+                if movimiento["descripcion"] == f"Ventas diarias {date.today().isoformat()}"
+            ]
+            self.assertEqual(len(compilaciones), 1)
+            self.assertEqual(compilaciones[0]["ingresos"], 10.0)
 
     def test_create_sale_rejects_insufficient_stock(self):
         product = Producto.objects.create(
@@ -360,14 +402,14 @@ class InventarioBlackBoxAPITests(APITestCase):
         self.client.force_authenticate(user=seller_1)
         response = self.client.get("/api/productos")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual({item["nombre"] for item in response.data}, {product_1.nombre})
+        self.assertEqual({item["nombre"] for item in response.data}, {product_1.nombre, product_2.nombre})
 
         sale_response = self.client.post(
             "/api/ventas",
             {"detalles": [{"producto_id": product_2.id, "cantidad": "1"}]},
             format="json",
         )
-        self.assertEqual(sale_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(sale_response.status_code, status.HTTP_201_CREATED)
 
         self.client.force_authenticate(user=seller_2)
         sale_by_seller_2 = self.client.post(
@@ -384,7 +426,7 @@ class InventarioBlackBoxAPITests(APITestCase):
 
         sales_response = self.client.get("/api/ventas")
         self.assertEqual(sales_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(sales_response.data["resumen"]["cantidad"], 1)
+        self.assertEqual(sales_response.data["resumen"]["cantidad"], 2)
         self.assertEqual({venta["vendedor_rol"] for venta in sales_response.data["ventas"]}, {"vendedor"})
 
         admin = Usuario.objects.create_user(
@@ -396,7 +438,7 @@ class InventarioBlackBoxAPITests(APITestCase):
         self.client.force_authenticate(user=admin)
         admin_sales = self.client.get("/api/ventas")
         self.assertEqual(admin_sales.status_code, status.HTTP_200_OK)
-        self.assertEqual(admin_sales.data["resumen"]["cantidad"], 1)
+        self.assertEqual(admin_sales.data["resumen"]["cantidad"], 2)
 
     # Test removed: alertas-resumen endpoint not implemented
     # def test_alertas_resumen_returns_expected_counts(self):

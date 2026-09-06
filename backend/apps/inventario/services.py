@@ -140,14 +140,15 @@ class InventarioCentralizadoService:
         cantidad_productos = detalles.count()
         cantidad_total_unidades = Decimal(0)
         monto_costo = Decimal(0)
+        total_venta = Decimal(str(venta.total or 0))
 
         for detalle in detalles:
-            cantidad_total_unidades += detalle.cantidad
-            monto_costo += detalle.cantidad * detalle.producto.costo_unitario
+            cantidad_total_unidades += Decimal(str(detalle.cantidad or 0))
+            monto_costo += Decimal(str(detalle.cantidad or 0)) * Decimal(str(detalle.producto.costo_unitario or 0))
 
-        ganancia = venta.total - monto_costo
+        ganancia = total_venta - monto_costo
         margen_ganancia = (
-            ((ganancia / venta.total) * 100) if venta.total > 0 else Decimal(0)
+            ((ganancia / total_venta) * 100) if total_venta > 0 else Decimal(0)
         )
 
         # Usar get_or_create para evitar duplicados si el signal ya lo creó
@@ -157,7 +158,7 @@ class InventarioCentralizadoService:
                 "vendedor": vendedor,
                 "cantidad_productos": cantidad_productos,
                 "cantidad_total_unidades": cantidad_total_unidades,
-                "monto_total": venta.total,
+                "monto_total": total_venta,
                 "monto_costo": monto_costo,
                 "ganancia": ganancia,
                 "margen_ganancia": margen_ganancia,
@@ -172,12 +173,14 @@ class InventarioCentralizadoService:
         if not created:
             historial.cantidad_productos = cantidad_productos
             historial.cantidad_total_unidades = cantidad_total_unidades
+            historial.monto_total = total_venta
             historial.monto_costo = monto_costo
             historial.ganancia = ganancia
             historial.margen_ganancia = margen_ganancia
             historial.save(update_fields=[
                 "cantidad_productos",
                 "cantidad_total_unidades",
+                "monto_total",
                 "monto_costo",
                 "ganancia",
                 "margen_ganancia"
