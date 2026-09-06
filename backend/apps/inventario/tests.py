@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.inventario.models import Producto, Venta
+from apps.auditoria.models import Auditoria
 from apps.libros.models import Libro
 from apps.movimientos.models import Movimiento
 from apps.inventario.views import _productos_qs_for_user
@@ -133,6 +134,40 @@ class InventarioBlackBoxAPITests(APITestCase):
         self.assertEqual(Movimiento.objects.filter(libro=libro, es_compilacion_ventas=True).count(), 1)
         self.assertEqual(movimiento.ingresos, Decimal("25.00"))
         self.assertEqual(movimiento.saldo, Decimal("25.00"))
+
+    def test_create_sale_is_registered_in_audit_log_for_supervisors(self):
+        product = Producto.objects.create(
+            nombre="Producto auditable",
+            stock_actual=5,
+            precio_venta="15.00",
+            propietario=self.user,
+        )
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            "/api/ventas",
+            {"detalles": [{"producto_id": product.id, "cantidad": "1"}]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        venta = Venta.objects.get(pk=response.data["id"])
+        registro = Auditoria.objects.get(entidad="venta", entidad_id=venta.id)
+        self.assertEqual(registro.accion, "crear")
+        self.assertEqual(registro.usuario_id, self.user.id)
+        self.assertEqual(registro.detalle["libro_id"], venta.libro_id)
+
+        for rol in ("admin", "gerente", "auditor"):
+            supervisor = Usuario.objects.create_user(
+                email=f"{rol}-auditoria@test.com",
+                nombre=rol.title(),
+                password="123456",
+                rol=rol,
+            )
+            self.client.force_authenticate(user=supervisor)
+            auditoria_response = self.client.get("/api/auditoria")
+            self.assertEqual(auditoria_response.status_code, status.HTTP_200_OK)
+            self.assertIn(venta.id, [item["entidad_id"] for item in auditoria_response.data])
 
     def test_seller_sale_goes_to_andres_fiscal_book(self):
         libro_andres = Libro.objects.create(

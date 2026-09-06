@@ -22,6 +22,7 @@ from .serializers import (
     EstadisticasVendedorSerializer,
 )
 from .services import InventarioCentralizadoService, VentasService
+from apps.auditoria.services import audit_log
 from apps.usuarios.permissions import (
     SELLER_ROLES,
     can_delete,
@@ -248,6 +249,18 @@ def ventas_list_create(request):
                 subtotal=subtotal,
             )
         compilar_ventas_diarias(timezone.localtime(venta.fecha).date())
+        audit_log(
+            request,
+            "crear",
+            "venta",
+            venta.id,
+            {
+                "total": float(venta.total),
+                "medio_pago": venta.medio_pago,
+                "libro_id": venta.libro_id,
+                "cantidad_detalles": len(detalles_data),
+            },
+        )
 
     return Response(_venta_data(venta), status=status.HTTP_201_CREATED)
 
