@@ -75,11 +75,16 @@ def entries_list_create(request):
             {"error": f"La fecha debe pertenecer al año {libro.anio} del libro"},
             status=status.HTTP_400_BAD_REQUEST,
         )
+    if data.get("ingresos", 0) > 0:
+        return Response(
+            {"error": "Los ingresos se sincronizan automáticamente desde las ventas."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     mov = Movimiento(
         fecha=data["fecha"],
         descripcion=data["descripcion"].strip(),
-        ingresos=data.get("ingresos", 0) or 0,
+        ingresos=0,
         egresos=data.get("egresos", 0) or 0,
         saldo=0,
         libro=libro,
@@ -121,10 +126,14 @@ def entry_detail(request, entry_id):
                     {"error": f"La fecha debe pertenecer al año {libro.anio} del libro"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+        if data.get("ingresos", 0) > 0:
+            return Response(
+                {"error": "Los ingresos se sincronizan automáticamente desde las ventas."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         mov.fecha = data["fecha"]
         mov.descripcion = data["descripcion"].strip()
-        mov.ingresos = data.get("ingresos", 0) or 0
         mov.egresos = data.get("egresos", 0) or 0
         mov.save()
 

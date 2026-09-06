@@ -9,8 +9,6 @@ from apps.libros.models import Libro
 from apps.inventario.models import Venta
 from apps.movimientos.models import Movimiento
 from services.saldo import recompute_saldos
-from apps.movimientos.models import Movimiento
-from services.saldo import recompute_saldos
 
 LIBRO_VENTAS_VENDEDORES_NIT = "1010085627"
 LIBRO_VENTAS_VENDEDORES_NOMBRE = "Andres"
@@ -50,17 +48,23 @@ def asignar_libro_a_venta(venta, libro_id=None):
     return libro
 
 
-def compilar_ventas_diarias(fecha=None):
+def compilar_ventas_diarias(fecha=None, nit=None):
+    """Sincroniza Venta.total con los ingresos del libro fiscal indicado."""
     fecha = fecha or timezone.localdate() - timedelta(days=1)
     ventas = Venta.objects.filter(fecha__date=fecha, libro__isnull=False)
+    if nit:
+        ventas = ventas.filter(libro__nit=nit)
     totales = ventas.values("libro_id").annotate(total=Sum("total"))
     libros_actualizados = []
 
     with transaction.atomic():
-        Movimiento.objects.filter(
+        compilados = Movimiento.objects.filter(
             fecha=fecha,
             es_compilacion_ventas=True,
-        ).delete()
+        )
+        if nit:
+            compilados = compilados.filter(libro__nit=nit)
+        compilados.delete()
         for total in totales:
             movimiento = Movimiento.objects.create(
                 fecha=fecha,

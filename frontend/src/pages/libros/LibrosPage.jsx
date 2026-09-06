@@ -209,11 +209,10 @@ export default function LibrosPage() {
 
   const openEditModal = (entry) => {
     setEditingId(entry.id);
-    const isIngreso = Number(entry.ingresos) > 0;
     setModalForm({
       descripcion: entry.descripcion,
-      tipo: isIngreso ? 'ingreso' : 'egreso',
-      monto: String(isIngreso ? entry.ingresos : entry.egresos),
+      tipo: 'egreso',
+      monto: String(Number(entry.egresos) || ''),
       dia: String(entry.dia || new Date(entry.fecha).getDate()),
     });
     setModalError('');
@@ -232,8 +231,7 @@ export default function LibrosPage() {
       const payload = {
         fecha,
         descripcion: modalForm.descripcion.trim(),
-        ingresos: modalForm.tipo === 'ingreso' ? monto : 0,
-        egresos: modalForm.tipo === 'egreso' ? monto : 0,
+        egresos: monto,
       };
 
       if (editingId) {
@@ -284,7 +282,6 @@ export default function LibrosPage() {
   const startInlineEdit = (entry, field) => {
     let value;
     if (field === 'descripcion') value = entry.descripcion;
-    else if (field === 'ingresos') value = String(Number(entry.ingresos) || '');
     else if (field === 'egresos') value = String(Number(entry.egresos) || '');
     else if (field === 'dia') value = String(entry.dia);
     setInlineEdit({ id: entry.id, field, value });
@@ -308,9 +305,6 @@ export default function LibrosPage() {
     } else if (inlineEdit.field === 'dia') {
       const dia = Math.max(1, Math.min(daysInMonth, Number(inlineEdit.value) || 1));
       payload.fecha = `${year}-${String(month).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-    } else if (inlineEdit.field === 'ingresos') {
-      payload.ingresos = Math.max(0, Number(inlineEdit.value) || 0);
-      if (payload.ingresos > 0) payload.egresos = 0;
     } else if (inlineEdit.field === 'egresos') {
       payload.egresos = Math.max(0, Number(inlineEdit.value) || 0);
       if (payload.egresos > 0) payload.ingresos = 0;
@@ -338,7 +332,7 @@ export default function LibrosPage() {
   };
 
   /* ═══════ Quick Add: inline row at bottom ═══════ */
-  const [quickAdd, setQuickAdd] = useState({ descripcion: '', tipo: 'ingreso', monto: '', dia: String(new Date().getDate()) });
+  const [quickAdd, setQuickAdd] = useState({ descripcion: '', monto: '', dia: String(new Date().getDate()) });
   const [savingQuick, setSavingQuick] = useState(false);
 
   const handleQuickAdd = async (e) => {
@@ -353,10 +347,9 @@ export default function LibrosPage() {
         libro_id: selectedLibro.id,
         fecha,
         descripcion: quickAdd.descripcion.trim(),
-        ingresos: quickAdd.tipo === 'ingreso' ? monto : 0,
-        egresos: quickAdd.tipo === 'egreso' ? monto : 0,
+        egresos: monto,
       });
-      setQuickAdd({ descripcion: '', tipo: 'ingreso', monto: '', dia: String(new Date().getDate()) });
+      setQuickAdd({ descripcion: '', monto: '', dia: String(new Date().getDate()) });
       showFlash('Movimiento creado');
       const data = await fetchEntries(selectedLibro.id, year, month);
       const rows = data.rows || [];
@@ -621,12 +614,8 @@ export default function LibrosPage() {
                                     onBlur={commitInlineEdit} onKeyDown={handleInlineKeyDown} />
                                 ) : e.descripcion}
                               </td>
-                              <td className="text-end editable-cell" onDoubleClick={() => startInlineEdit(e, 'ingresos')}>
-                                {inlineEdit?.id === e.id && inlineEdit.field === 'ingresos' ? (
-                                  <input ref={inlineInputRef} type="number" step="0.01" min="0" className="inline-edit-input text-end" style={{ width: 110 }}
-                                    value={inlineEdit.value} onChange={ev => setInlineEdit({ ...inlineEdit, value: ev.target.value })}
-                                    onBlur={commitInlineEdit} onKeyDown={handleInlineKeyDown} />
-                                ) : Number(e.ingresos) > 0 ? <span className="text-success">{fmt(e.ingresos)}</span> : ''}
+                              <td className="text-end">
+                                {Number(e.ingresos) > 0 ? <span className="text-success">{fmt(e.ingresos)}</span> : ''}
                               </td>
                               <td className="text-end editable-cell" onDoubleClick={() => startInlineEdit(e, 'egresos')}>
                                 {inlineEdit?.id === e.id && inlineEdit.field === 'egresos' ? (
@@ -638,9 +627,11 @@ export default function LibrosPage() {
                               <td className="text-end fw-semibold">{fmt(e.saldo)}</td>
                               <td className="text-center">
                                 <div className="row-actions row-actions-visible">
-                                  <button className="row-action-btn row-action-edit" title="Editar" onClick={() => openEditModal(e)}>
-                                    <i className="bi bi-pencil-fill" />
-                                  </button>
+                                  {Number(e.ingresos) <= 0 && (
+                                    <button className="row-action-btn row-action-edit" title="Editar" onClick={() => openEditModal(e)}>
+                                      <i className="bi bi-pencil-fill" />
+                                    </button>
+                                  )}
                                   <button className="row-action-btn row-action-del" title="Eliminar" onClick={() => handleDeleteEntry(e.id)}>
                                     <i className="bi bi-trash-fill" />
                                   </button>
@@ -664,10 +655,6 @@ export default function LibrosPage() {
                             </td>
                             <td className="text-end" colSpan={2}>
                               <div className="d-flex align-items-center gap-2 justify-content-end">
-                                <select className="quick-add-input" style={{ width: 110 }} value={quickAdd.tipo} onChange={ev => setQuickAdd({ ...quickAdd, tipo: ev.target.value })}>
-                                  <option value="ingreso">💰 Ingreso</option>
-                                  <option value="egreso">💸 Egreso</option>
-                                </select>
                                 <input type="number" step="0.01" min="0.01" className="quick-add-input text-end" style={{ width: 110 }}
                                   placeholder="Monto" value={quickAdd.monto} onChange={ev => setQuickAdd({ ...quickAdd, monto: ev.target.value })}
                                   onKeyDown={ev => { if (ev.key === 'Enter') handleQuickAdd(ev); }} />
@@ -804,14 +791,7 @@ export default function LibrosPage() {
                   </div>
                   <div className="col-6 col-md-3">
                     <label className="form-label fw-semibold"><i className="bi bi-arrow-left-right me-1 text-primary" />Tipo</label>
-                    <select
-                      className="form-select form-select-lg"
-                      value={modalForm.tipo}
-                      onChange={e => setModalForm({ ...modalForm, tipo: e.target.value })}
-                    >
-                      <option value="ingreso">💰 Ingreso</option>
-                      <option value="egreso">💸 Egreso</option>
-                    </select>
+                      <div className="form-control form-control-lg bg-light">💸 Egreso</div>
                   </div>
                   <div className="col-6 col-md-3">
                     <label className="form-label fw-semibold"><i className="bi bi-currency-dollar me-1 text-primary" />Monto</label>
