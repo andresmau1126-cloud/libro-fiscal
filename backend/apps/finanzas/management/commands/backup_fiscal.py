@@ -1,4 +1,5 @@
 import os
+import logging
 import shutil
 import subprocess
 from datetime import datetime, timedelta, timezone
@@ -7,6 +8,8 @@ from urllib import error, request
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -31,6 +34,7 @@ class Command(BaseCommand):
             if datetime.fromtimestamp(old_file.stat().st_mtime, timezone.utc) < cutoff:
                 old_file.unlink()
         self._upload_github(output)
+        logger.info("Backup fiscal completado: archivo=%s retencion_dias=7", output)
         self.stdout.write(self.style.SUCCESS(f"Backup fiscal completado: {output}"))
 
     def _upload_github(self, file_path):

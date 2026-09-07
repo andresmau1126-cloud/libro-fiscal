@@ -1,4 +1,5 @@
 from decimal import Decimal
+import logging
 
 from django.db import transaction
 from django.db.models import Sum
@@ -12,6 +13,7 @@ from services.saldo import recompute_saldos
 
 LIBRO_VENTAS_VENDEDORES_NIT = "1010085627"
 LIBRO_VENTAS_VENDEDORES_NOMBRE = "Andres"
+logger = logging.getLogger(__name__)
 
 
 def libro_para_venta(vendedor, anio, libro_id=None):
@@ -44,6 +46,13 @@ def asignar_libro_a_venta(venta, libro_id=None):
     if venta.libro_id != libro.id:
         venta.libro = libro
         venta.save(update_fields=["libro"])
+        logger.info(
+            "Venta fiscal vinculada: venta_id=%s vendedor_id=%s libro_id=%s nit=%s",
+            venta.id,
+            venta.vendedor_id,
+            libro.id,
+            libro.nit,
+        )
 
     return libro
 
@@ -83,5 +92,13 @@ def compilar_ventas_diarias(fecha=None, nit=None):
             es_compilacion_ventas=True,
         )
         recompute_saldos(libro.id)
+        logger.info(
+            "Ventas fiscales consolidadas: fecha=%s libro_id=%s nit=%s ventas=%s total=%s",
+            fecha,
+            libro.id,
+            libro.nit,
+            ventas.count(),
+            total,
+        )
 
     return 1
