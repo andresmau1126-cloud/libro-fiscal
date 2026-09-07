@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchDashboard } from '../../services/api';
+import { fetchDashboard, fetchSellerStats } from '../../services/api';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -16,6 +16,8 @@ const fmt = (n) => Number(n || 0).toLocaleString('es-GT', { minimumFractionDigit
 export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ period: 'daily', results: [] });
+  const [statsPeriod, setStatsPeriod] = useState('daily');
 
   useEffect(() => {
     fetchDashboard()
@@ -23,6 +25,10 @@ export default function DashboardPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchSellerStats(statsPeriod).then(setStats).catch(() => {});
+  }, [statsPeriod]);
 
   if (loading) return <div className="d-flex justify-content-center p-5"><div className="spinner-border text-primary" /></div>;
   if (!data) return <div className="alert alert-danger">Error al cargar dashboard</div>;
@@ -92,6 +98,19 @@ export default function DashboardPage() {
             <div className="stat-label">Saldo</div>
           </div>
         </div>
+      </div>
+
+      <div className="data-table mb-4">
+        <div className="table-header d-flex justify-content-between align-items-center">
+          <h5 className="mb-0">Récord por vendedor</h5>
+          <select className="form-select form-select-sm w-auto" value={statsPeriod} onChange={(event) => setStatsPeriod(event.target.value)}>
+            <option value="daily">Diario</option><option value="monthly">Mensual</option>
+          </select>
+        </div>
+        <div className="table-responsive"><table><thead><tr><th>Vendedor</th><th>Total vendido</th><th>Ventas</th><th>Ticket promedio</th></tr></thead><tbody>
+          {stats.results.map((row) => <tr key={`${row.vendedor_id}-${row.period_start}`}><td>{row.vendedor_nombre}</td><td>{fmt(row.total_vendido)}</td><td>{row.cantidad_ventas}</td><td>{fmt(row.ticket_promedio)}</td></tr>)}
+          {!stats.results.length && <tr><td colSpan="4" className="text-center text-muted py-3">Sin ventas en el período.</td></tr>}
+        </tbody></table></div>
       </div>
 
       {/* Chart */}

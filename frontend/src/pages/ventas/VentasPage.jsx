@@ -17,6 +17,7 @@ const STORAGE_KEY = 'libro-fiscal-tender-state-v1';
 export default function VentasPage() {
   const { user } = useAuth();
   const canViewSalesRecords = !['vendedor', 'vendedor_2'].includes(user?.rol);
+  const readOnly = user?.rol === 'auditor';
   const today = localDate();
   const getInitialState = () => {
     if (typeof window === 'undefined') return null;
@@ -48,6 +49,7 @@ export default function VentasPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
+  const [paymentSimulation, setPaymentSimulation] = useState(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -146,7 +148,7 @@ export default function VentasPage() {
       {message && <div className={`alert ${message.ok ? 'alert-success' : 'alert-danger'} py-2`}>{message.text}</div>}
 
       <div className="row g-3 align-items-start">
-        <div className="col-lg-7">
+        {!readOnly && <div className="col-lg-7">
           <div className="data-table p-3">
             <div className="d-flex justify-content-between align-items-center mb-3">
               <div><h5 className="mb-0">Nueva venta</h5><small className="text-muted">El stock se actualiza al confirmar el cobro.</small></div>
@@ -191,21 +193,22 @@ export default function VentasPage() {
 
               <div className="row g-2">
                 <div className="col-md-5"><label className="form-label small">Cliente (opcional)</label><input className="form-control" value={cliente} onChange={(event) => setCliente(event.target.value)} placeholder="Consumidor final" /></div>
-                <div className="col-md-4"><label className="form-label small">Medio de pago</label><select className="form-select" value={medioPago} onChange={(event) => setMedioPago(event.target.value)}><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option></select></div>
+                <div className="col-md-4"><label className="form-label small">Medio de pago</label><select className="form-select" value={medioPago} onChange={(event) => { const value = event.target.value; setMedioPago(value); if (value !== 'efectivo') setPaymentSimulation({ medio: value, referencia: String(Math.floor(1000 + Math.random() * 9000)), fecha: new Date().toLocaleString('es-CO'), valor: total }); }}><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option></select></div>
                 <div className="col-md-3 d-flex align-items-end"><button className="btn btn-primary w-100" disabled={saving || !cart.length}>{saving ? 'Registrando...' : `Cobrar ${money(total)}`}</button></div>
               </div>
             </form>
           </div>
-        </div>
+        </div>}
 
-        {canViewSalesRecords && <div className="col-lg-5">
+        {canViewSalesRecords && <div className={readOnly ? 'col-12' : 'col-lg-5'}>
           <div className="data-table p-3">
             <div className="d-flex justify-content-between align-items-center mb-3"><h5 className="mb-0">Ventas del día</h5><div className="d-flex gap-2"><input type="date" className="form-control form-control-sm w-auto" value={fecha} onChange={(event) => setFecha(event.target.value)} /><button type="button" className="btn btn-sm btn-outline-secondary" onClick={load} disabled={loading} title="Actualizar ventas y stock" aria-label="Actualizar ventas y stock"><i className="bi bi-arrow-clockwise" /></button></div></div>
             <div className="display-6 fw-semibold text-success mb-3">{money(ventas.reduce((sum, sale) => sum + sale.total, 0))}</div>
-            {loading ? <div className="text-muted">Cargando...</div> : !ventas.length ? <div className="text-muted">No hay ventas para esta fecha.</div> : ventas.map((sale) => <div className="border-top py-2" key={sale.id}><div className="d-flex justify-content-between align-items-start"><div><strong>Venta #{sale.id}</strong><div className="small text-muted">{new Date(sale.fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} · {sale.medio_pago} · {sale.cliente || 'Consumidor final'}</div>{sale.vendedor && <div className="small text-muted">Vendedor: {sale.vendedor} ({sale.vendedor_rol === 'vendedor_2' ? 'Vendedor 2' : 'Vendedor'})</div>}</div><div className="text-end"><div>{money(sale.total)}</div><button type="button" className="btn btn-sm btn-outline-danger mt-1" onClick={() => handleDeleteVenta(sale.id, sale.total)} disabled={saving} title="Eliminar venta"><i className="bi bi-trash" /></button></div></div></div>)}
+            {loading ? <div className="text-muted">Cargando...</div> : !ventas.length ? <div className="text-muted">No hay ventas para esta fecha.</div> : ventas.map((sale) => <div className="border-top py-2" key={sale.id}><div className="d-flex justify-content-between align-items-start"><div><strong>Venta #{sale.id}</strong><div className="small text-muted">{new Date(sale.fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} · {sale.medio_pago} · {sale.cliente || 'Consumidor final'}</div>{sale.vendedor && <div className="small text-muted">Vendedor: {sale.vendedor} ({sale.vendedor_rol === 'vendedor_2' ? 'Vendedor 2' : 'Vendedor'})</div>}</div><div className="text-end"><div>{money(sale.total)}</div>{!readOnly && <button type="button" className="btn btn-sm btn-outline-danger mt-1" onClick={() => handleDeleteVenta(sale.id, sale.total)} disabled={saving} title="Eliminar venta"><i className="bi bi-trash" /></button>}</div></div></div>)}
           </div>
         </div>}
       </div>
+      {paymentSimulation && <div className="modal d-block" role="dialog" aria-modal="true"><div className="modal-dialog"><div className="modal-content"><div className="modal-header"><h5 className="modal-title">Simulación de transacción</h5><button type="button" className="btn-close" onClick={() => setPaymentSimulation(null)} /></div><div className="modal-body"><p className="mb-1">Comprobante: SIM-{paymentSimulation.referencia}</p><p className="mb-1">Medio: {paymentSimulation.medio}</p><p className="mb-1">Valor: {money(paymentSimulation.valor)}</p><p className="mb-0">Fecha: {paymentSimulation.fecha} · Terminación: {paymentSimulation.referencia}</p></div><div className="modal-footer"><button type="button" className="btn btn-primary" onClick={() => setPaymentSimulation(null)}>Continuar</button></div></div></div></div>}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import AuditoriaPage from './pages/admin/AuditoriaPage';
 import VentasControlPage from './pages/admin/VentasControlPage';
 import ProfilePage from './pages/perfil/ProfilePage';
 import Respaldos from './pages/Respaldos';
+import ExpensesPage from './pages/gastos/ExpensesPage';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -46,6 +47,7 @@ function AppRoutes() {
         <Route path="libros" element={<LibrosPage />} />
         <Route path="inventario" element={<InventarioPage />} />
         <Route path="ventas" element={<VentasPage />} />
+        <Route path="egresos" element={<ExpensesPage />} />
         <Route path="movimientos" element={<Navigate to="/libros" replace />} />
         <Route path="usuarios" element={<AdminRoute><UsuariosPage /></AdminRoute>} />
         <Route path="auditoria" element={<AuditRoute><AuditoriaPage /></AuditRoute>} />

@@ -280,7 +280,7 @@ def venta_delete(request, venta_id):
         return Response({"error": "Venta no existe"}, status=status.HTTP_404_NOT_FOUND)
     
     # Los registros de ventas solo pueden gestionarlos los roles de supervisión.
-    if not can_view_sales_records(request.user):
+    if not can_delete(request.user):
         return Response(
             {"error": "No tiene permisos para eliminar registros de ventas"},
             status=status.HTTP_403_FORBIDDEN

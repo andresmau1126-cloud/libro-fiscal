@@ -27,11 +27,11 @@ def can_view_sales_records(user):
 
 
 def can_write(user):
-    return has_role(user, WRITE_ROLES)
+    return has_role(user, WRITE_ROLES - {"auditor"})
 
 
 def can_delete(user):
-    return has_role(user, DELETE_ROLES)
+    return has_role(user, DELETE_ROLES - {"auditor"})
 
 
 class IsAdmin(BasePermission):
