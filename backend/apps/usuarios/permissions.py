@@ -3,8 +3,9 @@ from rest_framework.permissions import BasePermission
 
 SELLER_ROLES = {"vendedor", "vendedor_2"}
 SUPERVISOR_ROLES = {"admin", "gerente", "auditor"}
-WRITE_ROLES = SUPERVISOR_ROLES | SELLER_ROLES
-DELETE_ROLES = {"admin", "gerente", "vendedor", "vendedor_2"}
+READ_ONLY_ROLES = {"auditor"}
+WRITE_ROLES = {"admin", "vendedor", "vendedor_2"}
+DELETE_ROLES = {"admin", "vendedor", "vendedor_2"}
 PROTECTED_ROLE_BY_EMAIL = {
     "mauricio1126@gmail.com": "gerente",
     "andresmau1126@gmail.com": "admin",
@@ -23,15 +24,20 @@ def can_view_all(user):
 
 
 def can_view_sales_records(user):
-    return can_view_all(user)
+    return has_role(user, SUPERVISOR_ROLES | SELLER_ROLES)
 
 
 def can_write(user):
-    return has_role(user, WRITE_ROLES - {"auditor"})
+    return has_role(user, WRITE_ROLES)
 
 
 def can_delete(user):
-    return has_role(user, DELETE_ROLES - {"auditor"})
+    return has_role(user, DELETE_ROLES)
+
+
+def can_manage_configuration(user):
+    """Solo administración puede cambiar catálogo, proveedores y usuarios."""
+    return has_role(user, {"admin"})
 
 
 class IsAdmin(BasePermission):

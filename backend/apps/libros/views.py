@@ -16,7 +16,7 @@ def _libros_qs_for_user(user):
 
 @api_view(["GET", "POST"])
 def libros_list_create(request):
-    if request.method == "POST" and not can_write(request.user):
+    if request.method == "POST" and request.user.rol not in {"admin", "vendedor", "vendedor_2"}:
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     if request.method == "GET":
         anio = request.query_params.get("anio")
@@ -63,9 +63,9 @@ def libros_list_create(request):
 
 @api_view(["GET", "PUT", "DELETE"])
 def libro_detail(request, libro_id):
-    if request.method == "PUT" and not can_write(request.user):
+    if request.method == "PUT" and request.user.rol not in {"admin", "vendedor", "vendedor_2"}:
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
-    if request.method == "DELETE" and not can_delete(request.user):
+    if request.method == "DELETE" and request.user.rol not in {"admin", "vendedor", "vendedor_2"}:
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     try:
         libro = _libros_qs_for_user(request.user).get(pk=libro_id)

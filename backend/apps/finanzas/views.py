@@ -12,7 +12,7 @@ from rest_framework.response import Response
 
 from apps.inventario.models import Venta
 from apps.movimientos.models import Movimiento
-from apps.usuarios.permissions import SUPERVISOR_ROLES, can_write
+from apps.usuarios.permissions import SUPERVISOR_ROLES, can_manage_configuration
 from services.saldo import recompute_saldos
 from .models import Expense, Provider, SellerStats
 from .serializers import ExpenseSerializer, ProviderSerializer, SellerStatsSerializer
@@ -56,7 +56,7 @@ def stats(request):
 def expenses(request):
     if request.method == "GET":
         return Response(ExpenseSerializer(Expense.objects.select_related("provider").all()[:200], many=True).data)
-    if not can_write(request.user) or request.user.rol == "auditor":
+    if not can_manage_configuration(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     serializer = ExpenseSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -76,7 +76,7 @@ def expenses(request):
 def providers(request):
     if request.method == "GET":
         return Response(ProviderSerializer(Provider.objects.filter(activo=True), many=True).data)
-    if not can_write(request.user) or request.user.rol == "auditor":
+    if not can_manage_configuration(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     serializer = ProviderSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)

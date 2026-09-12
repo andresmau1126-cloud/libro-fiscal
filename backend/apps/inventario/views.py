@@ -29,6 +29,7 @@ from apps.usuarios.permissions import (
     can_view_all,
     can_view_sales_records,
     can_write,
+    can_manage_configuration,
 )
 from services.inventario_alertas import enviar_alerta_inventario
 from services.scheduler_alertas import (
@@ -54,7 +55,7 @@ def _productos_qs_visible_to_user(user):
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def productos_list_create(request):
-    if request.method == "POST" and not can_write(request.user):
+    if request.method == "POST" and not can_manage_configuration(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == "GET":
@@ -102,9 +103,9 @@ def productos_list_create(request):
 @api_view(["GET", "PUT", "DELETE"])
 @permission_classes([IsAuthenticated])
 def producto_detail(request, producto_id):
-    if request.method == "PUT" and not can_write(request.user):
+    if request.method == "PUT" and not can_manage_configuration(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
-    if request.method == "DELETE" and not can_delete(request.user):
+    if request.method == "DELETE" and not can_manage_configuration(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     
     # GET: cualquiera puede ver cualquier producto (inventario compartido)
@@ -178,7 +179,7 @@ def _venta_data(venta):
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def ventas_list_create(request):
-    if request.method == "POST" and not can_write(request.user):
+    if request.method == "POST" and request.user.rol not in SELLER_ROLES:
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == "GET":
@@ -280,7 +281,7 @@ def venta_delete(request, venta_id):
         return Response({"error": "Venta no existe"}, status=status.HTTP_404_NOT_FOUND)
     
     # Los registros de ventas solo pueden gestionarlos los roles de supervisión.
-    if not can_delete(request.user):
+    if request.user.rol not in {"admin"} and venta.vendedor_id != request.user.id:
         return Response(
             {"error": "No tiene permisos para eliminar registros de ventas"},
             status=status.HTTP_403_FORBIDDEN

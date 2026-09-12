@@ -118,19 +118,14 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 # ── Channels Configuration ──
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": os.getenv(
-            "CHANNEL_LAYER_BACKEND",
-            "channels.layers.InMemoryChannelLayer"
-        ),
-        # Para producción, usar Redis:
-        # "BACKEND": "channels_redis.core.RedisChannelLayer",
-        # "CONFIG": {
-        #     "hosts": [os.getenv("REDIS_URL", "redis://localhost:6379")],
-        # },
+_channel_backend = os.getenv(
+    "CHANNEL_LAYER_BACKEND", "channels.layers.InMemoryChannelLayer"
+)
+CHANNEL_LAYERS = {"default": {"BACKEND": _channel_backend}}
+if _channel_backend == "channels_redis.core.RedisChannelLayer":
+    CHANNEL_LAYERS["default"]["CONFIG"] = {
+        "hosts": [os.getenv("REDIS_URL", "redis://localhost:6379")],
     }
-}
 
 # ── Base de datos ──
 DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("RENDER_DATABASE_URL")

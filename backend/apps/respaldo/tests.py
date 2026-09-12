@@ -1,6 +1,8 @@
 from django.test import TestCase
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from .models import PuntoControl, RegistroRestauracion
+
+User = get_user_model()
 
 
 class PuntoControlTestCase(TestCase):
@@ -9,8 +11,8 @@ class PuntoControlTestCase(TestCase):
     def setUp(self):
         """Configuración inicial para las pruebas"""
         self.usuario = User.objects.create_user(
-            username='testuser',
             email='test@example.com',
+            nombre='Test User',
             password='testpass123'
         )
     

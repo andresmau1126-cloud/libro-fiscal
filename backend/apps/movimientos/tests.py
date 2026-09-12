@@ -18,6 +18,7 @@ class MovimientosBlackBoxAPITests(APITestCase):
             email="usuario@test.com",
             nombre="Usuario",
             password="123456",
+            rol="admin",
         )
         self.other_user = Usuario.objects.create_user(
             email="otro@test.com",
@@ -86,7 +87,13 @@ class MovimientosBlackBoxAPITests(APITestCase):
         self.assertIn("año 2026", response.data["error"])
 
     def test_create_entry_returns_404_for_libro_from_other_user(self):
-        self.client.force_authenticate(user=self.user)
+        seller = Usuario.objects.create_user(
+            email="seller-isolation@test.com",
+            nombre="Seller isolation",
+            password="123456",
+            rol="vendedor",
+        )
+        self.client.force_authenticate(user=seller)
         payload = {
             "fecha": "2026-01-10",
             "descripcion": "Intento ajeno",
@@ -96,7 +103,7 @@ class MovimientosBlackBoxAPITests(APITestCase):
         }
 
         response = self.client.post("/api/entries", payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class MovimientosWhiteBoxTests(TestCase):

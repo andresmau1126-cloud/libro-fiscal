@@ -38,7 +38,13 @@ class InventarioBlackBoxAPITests(APITestCase):
             propietario=self.user,
         )
 
-        self.client.force_authenticate(user=self.user)
+        admin = Usuario.objects.create_user(
+            email="catalogo-admin@test.com",
+            nombre="Admin catalogo",
+            password="123456",
+            rol="admin",
+        )
+        self.client.force_authenticate(user=admin)
         payload = {
             "nombre": "Arroz",
             "categoria": "Granos",
@@ -260,7 +266,7 @@ class InventarioBlackBoxAPITests(APITestCase):
         self.assertEqual(product.stock_actual, 1)
         self.assertFalse(Venta.objects.exists())
 
-    def test_admin_can_sell_visible_product_from_inventory(self):
+    def test_admin_cannot_sell_and_only_sellers_can_register_sales(self):
         product = Producto.objects.create(
             nombre="Agua gas",
             stock_actual=3,
@@ -281,9 +287,9 @@ class InventarioBlackBoxAPITests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         product.refresh_from_db()
-        self.assertEqual(product.stock_actual, 2)
+        self.assertEqual(product.stock_actual, 3)
 
     def test_delete_product_with_sales_soft_deletes_instead_of_blocking(self):
         product = Producto.objects.create(
@@ -292,6 +298,12 @@ class InventarioBlackBoxAPITests(APITestCase):
             precio_venta="50.00",
             propietario=self.user,
         )
+        admin = Usuario.objects.create_user(
+            email="delete-admin@test.com",
+            nombre="Admin delete",
+            password="123456",
+            rol="admin",
+        )
         self.client.force_authenticate(user=self.user)
         self.client.post(
             "/api/ventas",
@@ -299,6 +311,7 @@ class InventarioBlackBoxAPITests(APITestCase):
             format="json",
         )
 
+        self.client.force_authenticate(user=admin)
         response = self.client.delete(f"/api/productos/{product.id}")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -369,7 +382,7 @@ class InventarioBlackBoxAPITests(APITestCase):
         roles = {venta["vendedor_rol"] for venta in response.data["ventas"]}
         self.assertSetEqual(roles, {"vendedor", "vendedor_2"})
 
-    def test_seller_roles_cannot_view_or_delete_sales_records(self):
+    def test_seller_roles_only_view_own_sales_and_cannot_delete_others(self):
         seller_1 = Usuario.objects.create_user(
             email="vendedor1-restringido@test.com",
             nombre="Vendedor 1",
@@ -389,17 +402,15 @@ class InventarioBlackBoxAPITests(APITestCase):
             vendedor=seller_1,
         )
 
-        for seller in (seller_1, seller_2):
-            self.client.force_authenticate(user=seller)
-            self.assertEqual(self.client.get("/api/ventas").status_code, status.HTTP_403_FORBIDDEN)
-            self.assertEqual(
-                self.client.get("/api/historial/ventas").status_code,
-                status.HTTP_403_FORBIDDEN,
-            )
-            self.assertEqual(
-                self.client.delete(f"/api/ventas/{sale.id}").status_code,
-                status.HTTP_403_FORBIDDEN,
-            )
+        self.client.force_authenticate(user=seller_1)
+        own_sales = self.client.get("/api/ventas")
+        self.assertEqual(own_sales.status_code, status.HTTP_200_OK)
+        self.assertEqual([item["id"] for item in own_sales.data["ventas"]], [sale.id])
+        self.assertEqual(self.client.get("/api/historial/ventas").status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.delete(f"/api/ventas/{sale.id}").status_code, status.HTTP_200_OK)
+
+        self.client.force_authenticate(user=seller_2)
+        self.assertEqual(self.client.get("/api/ventas").status_code, status.HTTP_200_OK)
 
     def test_sellers_are_isolated_but_admin_and_manager_see_everything(self):
         seller_1 = Usuario.objects.create_user(

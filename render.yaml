@@ -27,6 +27,13 @@ services:
         fromDatabase:
           name: libro-fiscal-db
           property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: libro-fiscal-redis
+          property: connectionString
+      - key: CHANNEL_LAYER_BACKEND
+        value: channels_redis.core.RedisChannelLayer
       - key: CORS_ALLOWED_ORIGINS
         value: "https://libro-fiscal.onrender.com,https://www.libro-fiscal.onrender.com,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173"
       - key: CSRF_TRUSTED_ORIGINS
@@ -68,6 +75,11 @@ services:
         value: ""  # Número para WhatsApp (ej: 573XXXXXXXXX) - opcional
       - key: WHATSAPP_APIKEY
         value: ""  # API key de CallMeBot - opcional
+
+  - type: redis
+    name: libro-fiscal-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
 
   - type: cron
     name: compilar-ventas-diarias
