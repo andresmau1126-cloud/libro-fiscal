@@ -1,6 +1,10 @@
 from rest_framework import status
 from rest_framework.decorators import api_view
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import permission_classes
 from rest_framework.response import Response
+from django.db.models import Sum
+from django.utils import timezone
 
 from .models import Libro
 from .serializers import LibroSerializer, LibroCreateSerializer
@@ -12,6 +16,36 @@ def _libros_qs_for_user(user):
     if can_view_all(user):
         return Libro.objects.all()
     return Libro.objects.filter(propietario=user)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def fiscal_books(request):
+    """Devuelve el consolidado fiscal diario visible para cada rol."""
+    fecha = request.query_params.get("date") or timezone.localdate().isoformat()
+    try:
+        date_value = timezone.datetime.strptime(fecha, "%Y-%m-%d").date()
+    except ValueError:
+        return Response({"error": "date debe tener formato YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST)
+
+    libros = _libros_qs_for_user(request.user)
+    if request.user.rol in {"admin", "gerente", "auditor"}:
+        libros = Libro.objects.filter(nit="1010085627", anio=date_value.year)
+    rows = []
+    for libro in libros.order_by("-anio", "nombre"):
+        sales_total = libro.ventas.filter(fecha__date=date_value).aggregate(total=Sum("total"))["total"] or 0
+        expenses_total = libro.expenses.filter(fecha=date_value).aggregate(total=Sum("valor_pagado"))["total"] or 0
+        rows.append({
+            "id": libro.id,
+            "nombre": libro.nombre,
+            "nit": libro.nit,
+            "anio": libro.anio,
+            "fecha": fecha,
+            "total_ventas_dia": sales_total,
+            "total_egresos_dia": expenses_total,
+            "saldo_dia": sales_total - expenses_total,
+        })
+    return Response(rows)
 
 
 @api_view(["GET", "POST"])

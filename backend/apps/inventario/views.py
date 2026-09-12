@@ -95,6 +95,7 @@ def productos_list_create(request):
         precio_venta=data.get("precio_venta", 0) or 0,
         fecha_vencimiento=data.get("fecha_vencimiento"),
         dias_alerta=data.get("dias_alerta", 30) or 30,
+        proveedor_id=data.get("proveedor_id"),
         propietario=request.user,
     )
     return Response(ProductoSerializer(producto).data, status=status.HTTP_201_CREATED)
@@ -143,6 +144,7 @@ def producto_detail(request, producto_id):
         producto.precio_venta = data.get("precio_venta", 0) or 0
         producto.fecha_vencimiento = data.get("fecha_vencimiento")
         producto.dias_alerta = data.get("dias_alerta", 30) or 30
+        producto.proveedor_id = data.get("proveedor_id")
         producto.save()
 
         return Response(ProductoSerializer(producto).data)

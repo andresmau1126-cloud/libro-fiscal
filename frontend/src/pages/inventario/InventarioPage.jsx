@@ -5,6 +5,7 @@ import {
   updateProducto,
   deleteProducto,
 } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const fmtMoney = (n) => '$ ' + Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -31,6 +32,8 @@ function EstadoBadge({ p }) {
 }
 
 export default function InventarioPage() {
+  const { user } = useAuth();
+  const readOnly = user?.rol === 'auditor';
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -207,7 +210,7 @@ export default function InventarioPage() {
       </div>
 
       {/* ── Formulario ── */}
-      <div className="card shadow-sm border-0 mb-3">
+      {!readOnly && <div className="card shadow-sm border-0 mb-3">
         <div className="card-body">
           <h5 className="mb-3">{editingId ? 'Editar Producto' : 'Nuevo Producto'}</h5>
           <form className="row g-2" onSubmit={handleSubmit}>
@@ -260,7 +263,7 @@ export default function InventarioPage() {
             </div>
           </form>
         </div>
-      </div>
+      </div>}
 
       {/* ── Tabla ── */}
       <div className="card shadow-sm border-0">
@@ -303,12 +306,10 @@ export default function InventarioPage() {
                     <td className="text-end">{fmtMoney(p.precio_venta)}</td>
                     <td>{p.fecha_vencimiento || <span className="text-muted">—</span>}</td>
                     <td className="text-center"><EstadoBadge p={p} /></td>
-                    <td className="text-end">
-                      <div className="btn-group btn-group-sm">
-                        <button className="btn btn-outline-primary" onClick={() => openEdit(p)}>Editar</button>
-                        <button className="btn btn-outline-danger" onClick={() => handleDelete(p.id, p.nombre)}>Eliminar</button>
-                      </div>
-                    </td>
+                    <td className="text-end">{!readOnly && <div className="btn-group btn-group-sm">
+                      <button className="btn btn-outline-primary" onClick={() => openEdit(p)}>Editar</button>
+                      <button className="btn btn-outline-danger" onClick={() => handleDelete(p.id, p.nombre)}>Eliminar</button>
+                    </div>}</td>
                   </tr>
                 ))}
               </tbody>

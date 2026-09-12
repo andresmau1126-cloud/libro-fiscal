@@ -66,6 +66,7 @@ export const deleteUsuario = (id) => api.delete(`/auth/usuarios/${id}/`).then(r 
 
 /* ── Libros ── */
 export const fetchLibros = () => api.get('/libros').then(r => r.data);
+export const fetchFiscalBooks = (date = '') => api.get(`/fiscal-books${date ? `?date=${date}` : ''}`).then(r => r.data);
 export const fetchLibro = (id) => api.get(`/libros/${id}`).then(r => r.data);
 export const createLibro = (data) => api.post('/libros', data).then(r => r.data);
 export const updateLibro = (id, data) => api.put(`/libros/${id}`, data).then(r => r.data);

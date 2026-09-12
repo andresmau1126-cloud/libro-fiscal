@@ -2,6 +2,7 @@ from decimal import Decimal
 import logging
 
 from django.db import transaction
+from django.db import models
 from django.db.models import Sum
 from django.utils import timezone
 
@@ -78,10 +79,13 @@ def compilar_ventas_diarias(fecha=None, nit=None):
         ventas.update(libro=libro)
         total = ventas.aggregate(total=Sum("total"))["total"] or Decimal("0")
 
+        # Reemplaza únicamente el movimiento de ventas del día. Los egresos
+        # del mismo libro deben permanecer para conservar el saldo fiscal.
         Movimiento.objects.filter(
             fecha=fecha,
-            libro=libro,
-            es_compilacion_ventas=True,
+            libro__nit=nit,
+        ).filter(
+            models.Q(es_compilacion_ventas=True) | models.Q(venta__isnull=False)
         ).delete()
         Movimiento.objects.create(
             fecha=fecha,

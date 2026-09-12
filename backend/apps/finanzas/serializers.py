@@ -5,7 +5,7 @@ from .models import Expense, Provider, SellerStats
 class ProviderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Provider
-        fields = ["id", "nombre", "activo"]
+        fields = ["id", "nombre", "nit", "telefono", "direccion", "activo"]
 
 
 class ExpenseSerializer(serializers.ModelSerializer):

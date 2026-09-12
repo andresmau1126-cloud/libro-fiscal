@@ -20,6 +20,13 @@ class Producto(models.Model):
         null=True,
         blank=True,
     )
+    proveedor = models.ForeignKey(
+        "finanzas.Provider",
+        on_delete=models.PROTECT,
+        related_name="productos",
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

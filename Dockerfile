@@ -21,6 +21,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend
 COPY backend/ ./
+COPY docs/ ./docs/
 
 # Copy deployment scripts
 COPY scripts/ ./scripts

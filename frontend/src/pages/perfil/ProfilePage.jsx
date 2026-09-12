@@ -4,6 +4,7 @@ import { authUpdateMe } from '../../services/api';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
+  const readOnly = user?.rol === 'auditor';
   const [activeTab, setActiveTab] = useState('info');
 
   const initials = (user?.nombre || 'U')
@@ -101,8 +102,8 @@ export default function ProfilePage() {
 
       <div className="profile-tab-content">
         {activeTab === 'info' && <InfoTab user={user} />}
-        {activeTab === 'security' && <SecurityTab />}
-        {activeTab === 'preferences' && <PreferencesTab user={user} updateUser={updateUser} />}
+        {activeTab === 'security' && <SecurityTab readOnly={readOnly} />}
+        {activeTab === 'preferences' && <PreferencesTab user={user} updateUser={updateUser} readOnly={readOnly} />}
       </div>
     </div>
   );
@@ -153,7 +154,7 @@ function InfoTab({ user }) {
 }
 
 /* ── Security Tab ── */
-function SecurityTab() {
+function SecurityTab({ readOnly }) {
   const [form, setForm] = useState({ current: '', newPass: '', confirm: '' });
   const [msg, setMsg] = useState(null);
 
@@ -177,12 +178,13 @@ function SecurityTab() {
         <p>Actualiza tu contraseña para mantener tu cuenta segura</p>
       </div>
       <div className="profile-card-body">
+        {readOnly && <div className="alert alert-info">El perfil auditor es de solo lectura.</div>}
         {msg && (
           <div className={`alert ${msg.ok ? 'alert-info' : 'alert-danger'}`} style={{ borderRadius: 12 }}>
             {msg.text}
           </div>
         )}
-        <form onSubmit={handleSubmit} style={{ maxWidth: 480 }}>
+        {!readOnly && <form onSubmit={handleSubmit} style={{ maxWidth: 480 }}>
           <div className="mb-3">
             <label className="form-label fw-semibold">Contraseña actual</label>
             <input type="password" className="form-control" value={form.current} onChange={e => setForm({ ...form, current: e.target.value })} required />
@@ -198,14 +200,14 @@ function SecurityTab() {
           <button type="submit" className="btn btn-primary px-4">
             <i className="bi bi-check-lg me-1" /> Actualizar Contraseña
           </button>
-        </form>
+        </form>}
       </div>
     </div>
   );
 }
 
 /* ── Preferences Tab ── */
-function PreferencesTab({ user, updateUser }) {
+function PreferencesTab({ user, updateUser, readOnly }) {
   const [prefs, setPrefs] = useState({
     emailNotifications: true,
     currency: 'GTQ',
@@ -255,9 +257,9 @@ function PreferencesTab({ user, updateUser }) {
       </div>
       <div className="profile-card-body">
         <div className="d-flex justify-content-end mb-3">
-          <button type="button" className="btn btn-primary px-4" onClick={handleSave} disabled={saving}>
+          {!readOnly && <button type="button" className="btn btn-primary px-4" onClick={handleSave} disabled={saving}>
             <i className="bi bi-check-lg me-1" /> {saving ? 'Guardando...' : 'Guardar preferencias'}
-          </button>
+          </button>}
         </div>
         {msg && (
           <div className={`alert ${msg.ok ? 'alert-success' : 'alert-danger'}`} style={{ borderRadius: 12 }}>
@@ -277,6 +279,7 @@ function PreferencesTab({ user, updateUser }) {
                 role="switch"
                 checked={prefs.emailNotifications}
                 onChange={(e) => setPrefs(prev => ({ ...prev, emailNotifications: e.target.checked }))}
+                disabled={readOnly}
                 style={{ width: 48, height: 24 }}
               />
             </div>
@@ -291,6 +294,7 @@ function PreferencesTab({ user, updateUser }) {
               style={{ width: 200 }}
               value={prefs.currency}
               onChange={(e) => setPrefs(prev => ({ ...prev, currency: e.target.value }))}
+              disabled={readOnly}
             >
               <option value="GTQ">GTQ (Quetzal)</option>
               <option value="USD">USD (Dólar)</option>
@@ -307,6 +311,7 @@ function PreferencesTab({ user, updateUser }) {
               style={{ width: 200 }}
               value={prefs.timezone}
               onChange={(e) => setPrefs(prev => ({ ...prev, timezone: e.target.value }))}
+              disabled={readOnly}
             >
               <option value="GMT-6">GMT-6 (Guatemala)</option>
               <option value="GMT-5">GMT-5 (Colombia)</option>
@@ -315,11 +320,11 @@ function PreferencesTab({ user, updateUser }) {
           </div>
         </div>
         <div className="mt-4">
-          <button type="button" className="btn btn-primary px-4" onClick={handleSave} disabled={saving}>
+          {!readOnly && <button type="button" className="btn btn-primary px-4" onClick={handleSave} disabled={saving}>
             <i className="bi bi-check-lg me-1" /> {saving ? 'Guardando...' : 'Guardar preferencias'}
-          </button>
+          </button>}
         </div>
-        <button
+        {!readOnly && <button
           type="button"
           className="btn btn-primary"
           onClick={handleSave}
@@ -335,7 +340,7 @@ function PreferencesTab({ user, updateUser }) {
           }}
         >
           <i className="bi bi-save2 me-1" /> {saving ? 'Guardando...' : 'Guardar'}
-        </button>
+        </button>}
       </div>
     </div>
   );

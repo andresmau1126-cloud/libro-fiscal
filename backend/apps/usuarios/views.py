@@ -292,6 +292,8 @@ def login(request):
     data = serializer.validated_data
 
     email = data["email"].strip().lower()
+    if "@" not in email:
+        email = f"{email}@sustentacion.local"
     password = data["password"]
 
     try:

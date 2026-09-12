@@ -113,8 +113,9 @@ export default function LoginPage() {
                 <div className="mb-3">
                   <label className="form-label">Email</label>
                   <input
-                    type="email"
+                    type="text"
                     className="form-control"
+                    placeholder="admin o correo electrónico"
                     value={pendingVerificationEmail || verificationEmail}
                     onChange={(e) => setVerificationEmail(e.target.value)}
                     disabled={Boolean(pendingVerificationEmail)}

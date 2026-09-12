@@ -14,6 +14,7 @@ class ProductoSerializer(serializers.Serializer):
     precio_venta = serializers.FloatField()
     fecha_vencimiento = serializers.DateField(allow_null=True)
     dias_alerta = serializers.IntegerField()
+    proveedor_id = serializers.IntegerField(allow_null=True)
     stock_bajo = serializers.SerializerMethodField()
     vencido = serializers.SerializerMethodField()
     por_vencer = serializers.SerializerMethodField()
@@ -52,6 +53,7 @@ class ProductoCreateUpdateSerializer(serializers.Serializer):
     precio_venta = serializers.DecimalField(max_digits=12, decimal_places=2, default=0)
     fecha_vencimiento = serializers.DateField(required=False, allow_null=True, default=None)
     dias_alerta = serializers.IntegerField(required=False, default=30, min_value=1)
+    proveedor_id = serializers.IntegerField(required=False, allow_null=True, default=None)
 
     def validate(self, data):
         for field in ("stock_actual", "stock_minimo", "costo_unitario", "precio_venta"):

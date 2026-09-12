@@ -2,12 +2,12 @@
 
 ## Datos de prueba
 
-El seed crea cuatro perfiles en el dominio `sustentacion.local`:
+El seed crea cuatro perfiles. Se puede iniciar sesión usando el alias corto o el correo equivalente:
 
-- `admin@sustentacion.local` / `Admin12345!`
-- `gerente@sustentacion.local` / `Gerente12345!`
-- `auditor@sustentacion.local` / `Auditor12345!`
-- `vendedor@sustentacion.local` / `Vendedor12345!`
+- `admin` / `admin123`
+- `gerente` / `gerente123`
+- `vendedor` / `vendedor123`
+- `auditor` / `auditor123`
 
 El libro fiscal principal usa el NIT `1010085627` y los productos ya aparecen cargados por categoria.
 
@@ -16,7 +16,7 @@ El libro fiscal principal usa el NIT `1010085627` y los productos ya aparecen ca
 ### 1. Login
 
 1. Abrir la URL de Render.
-2. Escribir correo y contraseña.
+2. Escribir usuario y contraseña.
 3. Confirmar que el menu corresponde al rol.
 4. Verificar el dashboard y el nombre del usuario.
 

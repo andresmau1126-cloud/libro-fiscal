@@ -4,6 +4,9 @@ from django.db import models
 
 class Provider(models.Model):
     nombre = models.CharField(max_length=180, unique=True)
+    nit = models.CharField(max_length=50, blank=True, default="")
+    telefono = models.CharField(max_length=50, blank=True, default="")
+    direccion = models.CharField(max_length=255, blank=True, default="")
     activo = models.BooleanField(default=True)
 
     class Meta:

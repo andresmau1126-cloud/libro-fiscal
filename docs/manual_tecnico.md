@@ -30,7 +30,9 @@ Los egresos son creados por admin con su proveedor y libro fiscal; cada egreso q
 - `movimientos`: ingresos, egresos y saldo acumulado.
 - `inventario_producto`: catalogo, categoria, stock, costos, precios y vencimiento.
 - `inventario_venta`, `inventario_detalle_venta`: ventas y detalle.
-- `providers`, `expenses`: proveedores y egresos vinculados a libro/movimiento.
+- `providers`: nombre, NIT, telefono y direccion de proveedores.
+- `expenses`: proveedores y egresos vinculados a libro/movimiento.
+- `inventario_producto.proveedor_id`: proveedor de cada producto.
 - `inventario_historial_inventario`, `inventario_historial_ventas`, `inventario_estado_centralizado`, `inventario_resumen_ventas_vendedor`: trazabilidad y consolidado.
 - `auditoria`: registro de acciones.
 
@@ -58,6 +60,7 @@ Base: `/api/`. Autenticacion: cookie `session_token` o `Authorization: Bearer <s
 | GET | `/stats` | Estadisticas de ventas, gerente/admin/auditor |
 | GET | `/auditoria` | Auditoria para roles de supervision |
 | GET | `/healthz/` | Health check de Render |
+| GET | `/fiscal-books` | Consolidado diario de ventas y egresos del NIT `1010085627` |
 
 ## 5. Seeds y datos de sustentacion
 
@@ -68,7 +71,7 @@ python backend/manage.py seed_demo
 node scripts/seed.js
 ```
 
-Crea usuarios demo, tres proveedores, ocho productos de categorias refrigeracion, desechables, aseo y abarrotes, y el libro fiscal del NIT `1010085627`. En Render se ejecuta automaticamente desde `scripts/start_render.sh` despues de migraciones.
+Crea 4 usuarios, 10 proveedores con NIT/telefono/direccion, 42 productos de refrigeracion, desechables, aseo, abarrotes y bebidas, 20 ventas, 10 egresos y el libro fiscal del NIT `1010085627`. En Render se ejecuta automaticamente desde `scripts/start_render.sh` despues de migraciones. Los wrappers equivalentes son `seeds/products_seed.js` y `seeds/full_seed.js`.
 
 ## 6. Crons y respaldos
 

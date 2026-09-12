@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { fetchDashboard, fetchSellerStats } from '../../services/api';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -14,6 +16,7 @@ const MES_ES = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep
 const fmt = (n) => Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ period: 'daily', results: [] });
@@ -56,6 +59,7 @@ export default function DashboardPage() {
       <div className="page-header">
         <h2>Dashboard</h2>
         <p>Resumen general del sistema</p>
+        {user?.rol === 'admin' && <Link className="btn btn-outline-primary" to="/manuales"><i className="bi bi-book me-2" />Ver Manuales</Link>}
       </div>
 
       {/* KPI Cards */}
