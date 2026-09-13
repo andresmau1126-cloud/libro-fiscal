@@ -145,7 +145,7 @@ export default function InventarioPage() {
   return (
     <div className="container-fluid py-3">
       <div className="mb-3">
-        <h3 className="mb-1">Inventario de Productos de Refrigeracion</h3>
+        <h3 className="mb-1">Inventario de Productos</h3>
         <p className="text-muted mb-0">Control de existencias y fechas de vencimiento.</p>
       </div>
 
@@ -218,11 +218,11 @@ export default function InventarioPage() {
             {/* Fila 1: datos básicos */}
             <div className="col-12 col-md-5">
               <label className="form-label mb-1 small">Nombre *</label>
-              <input className="form-control" placeholder="Ej. Gas refrigerante R-22" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
+              <input className="form-control" placeholder="Ej. Producto terminado" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
             </div>
             <div className="col-12 col-md-3">
               <label className="form-label mb-1 small">Categoría</label>
-              <input className="form-control" placeholder="Ej. Refrigerantes" value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} />
+              <input className="form-control" placeholder="Ej. Categoría" value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} />
             </div>
             <div className="col-12 col-md-4">
               <label className="form-label mb-1 small">Descripción</label>
