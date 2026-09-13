@@ -1,6 +1,24 @@
 # CONFIGURACIÓN DE PERSISTENCIA Y CACHÉ
 # Para asegurar que los cambios se mantienen en BD y Render
 
+## Estado actual de producción
+
+Render mantiene los datos de la aplicación en PostgreSQL, no en los archivos del
+contenedor. Los manifiestos `render.yaml` y `render-prod.yaml` enlazan
+`DATABASE_URL` con una base PostgreSQL administrada y el backend ejecuta las
+migraciones al arrancar.
+
+La aplicación ahora rechaza iniciar en producción si `DATABASE_URL` apunta a
+SQLite o si no existe una base externa. Por tanto, los datos sobreviven a
+reinicios y nuevos despliegues siempre que la base PostgreSQL de Render siga
+activa. Redis solo se usa para caché/WebSocket y no es la fuente de datos.
+
+En Render verifica una sola vez:
+
+1. La base PostgreSQL está en estado `Available`.
+2. El servicio web tiene `DATABASE_URL` con `property: connectionString`.
+3. Los logs de arranque muestran que `migrate` termina correctamente.
+
 ## 1. DJANGO SETTINGS - Adicionar a backend/config/settings.py
 
 ```python

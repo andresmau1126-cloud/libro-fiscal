@@ -132,9 +132,18 @@ DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("RENDER_DATABASE_URL")
 DB_ENGINE = os.getenv("DB_ENGINE", "").strip().lower()
 
 if DATABASE_URL:
-    DATABASES = {
-        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True),
-    }
+    _database_config = dj_database_url.parse(
+        DATABASE_URL,
+        conn_max_age=600,
+        conn_health_checks=True,
+        ssl_require=True,
+    )
+    if not DEBUG and _database_config["ENGINE"] == "django.db.backends.sqlite3":
+        raise ImproperlyConfigured(
+            "Production requires a persistent PostgreSQL database. "
+            "Configure DATABASE_URL with the Render PostgreSQL connection string."
+        )
+    DATABASES = {"default": _database_config}
 elif DB_ENGINE in ("postgres", "postgresql"):
     DATABASES = {
         "default": {
@@ -178,6 +187,9 @@ else:
 
 # ── Auth ──
 AUTH_USER_MODEL = "usuarios.Usuario"
+
+# Keep login sessions in the same persistent database as application data.
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",

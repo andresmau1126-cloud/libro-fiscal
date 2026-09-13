@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
+from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase
 
 
@@ -20,6 +21,19 @@ class RenderDeploymentConfigTests(SimpleTestCase):
             reloaded_settings = importlib.reload(settings_module)
 
         self.assertEqual(reloaded_settings.DATABASES["default"]["ENGINE"], "django.db.backends.postgresql")
+
+    def test_production_rejects_sqlite_database_url(self) -> None:
+        from config import settings as settings_module
+
+        with patch.dict(
+            os.environ,
+            {"DEBUG": "false", "DATABASE_URL": "sqlite:////tmp/render.sqlite3"},
+            clear=False,
+        ):
+            with self.assertRaises(ImproperlyConfigured) as context:
+                importlib.reload(settings_module)
+
+        self.assertIn("persistent PostgreSQL database", str(context.exception))
 
     def test_render_production_allows_onrender_cookies_and_cors(self) -> None:
         from config import settings as settings_module
