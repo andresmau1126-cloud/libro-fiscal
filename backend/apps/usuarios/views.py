@@ -435,8 +435,13 @@ def logout(request):
 
 
 @api_view(["GET", "PATCH"])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def me(request):
+    if not request.user.is_authenticated:
+        if request.method == "PATCH":
+            return Response({"error": "Debe iniciar sesión"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"user": None})
+
     if request.method == "PATCH":
         serializer = UsuarioPreferencesUpdateSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
