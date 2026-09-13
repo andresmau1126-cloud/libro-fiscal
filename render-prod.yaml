@@ -3,13 +3,6 @@
 # Este archivo configura todos los servicios necesarios para el sistema de inventario centralizado
 
 services:
-  # Base de Datos PostgreSQL
-  - type: pserv
-    name: postgres-libro-fiscal
-    env: docker
-    plan: standard
-    ipAllowList: [] # Permitir acceso desde cualquier IP
-    
   # Cache/Session Storage con Redis
   - type: redis
     name: redis-libro-fiscal
@@ -61,18 +54,9 @@ services:
       - key: ASGI_APPLICATION
         value: config.asgi.application
 
-  - type: cron
-    name: compilar-ventas-diarias
-    env: docker
-    branch: main
-    plan: starter
-    schedule: "10 6 * * *"  # 00:10 en Guatemala (UTC-6).
-    dockerfilePath: Dockerfile
-    dockerCommand: python manage.py compilar_ventas_diarias
-    envVars:
-      - key: DJANGO_SETTINGS_MODULE
-        value: config.settings
-      - key: DATABASE_URL
-        fromDatabase:
-          name: postgres-libro-fiscal
-          property: connectionString
+databases:
+  # Base de datos PostgreSQL persistente para productos, usuarios y movimientos.
+  - name: postgres-libro-fiscal
+    databaseName: libro_fiscal
+    plan: standard
+    ipAllowList: []
