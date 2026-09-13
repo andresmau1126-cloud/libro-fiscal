@@ -214,8 +214,8 @@ export default function LibrosPage() {
     setEditingId(entry.id);
     setModalForm({
       descripcion: entry.descripcion,
-      tipo: 'egreso',
-      monto: String(Number(entry.egresos) || ''),
+      tipo: Number(entry.ingresos) > 0 ? 'ingreso' : 'egreso',
+      monto: String(Number(entry.ingresos || entry.egresos) || ''),
       dia: String(entry.dia || new Date(entry.fecha).getDate()),
     });
     setModalError('');
@@ -234,7 +234,8 @@ export default function LibrosPage() {
       const payload = {
         fecha,
         descripcion: modalForm.descripcion.trim(),
-        egresos: monto,
+        ingresos: modalForm.tipo === 'ingreso' ? monto : 0,
+        egresos: modalForm.tipo === 'egreso' ? monto : 0,
       };
 
       if (editingId) {
@@ -794,7 +795,14 @@ export default function LibrosPage() {
                   </div>
                   <div className="col-6 col-md-3">
                     <label className="form-label fw-semibold"><i className="bi bi-arrow-left-right me-1 text-primary" />Tipo</label>
-                      <div className="form-control form-control-lg bg-light">💸 Egreso</div>
+                    <select
+                      className="form-select form-select-lg"
+                      value={modalForm.tipo}
+                      onChange={e => setModalForm({ ...modalForm, tipo: e.target.value })}
+                    >
+                      <option value="ingreso">Ingreso</option>
+                      <option value="egreso">Egreso</option>
+                    </select>
                   </div>
                   <div className="col-6 col-md-3">
                     <label className="form-label fw-semibold"><i className="bi bi-currency-dollar me-1 text-primary" />Monto</label>

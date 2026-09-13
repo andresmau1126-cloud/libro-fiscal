@@ -24,12 +24,17 @@ class MovimientoCreateSerializer(serializers.Serializer):
     libro_id = serializers.IntegerField(required=True)
 
     def validate(self, data):
+        ingresos = data.get("ingresos", 0) or 0
         egresos = data.get("egresos", 0) or 0
 
+        if ingresos < 0:
+            raise serializers.ValidationError("ingresos no pueden ser negativos")
         if egresos < 0:
             raise serializers.ValidationError("egresos no pueden ser negativos")
-        if (data.get("ingresos", 0) or 0) == 0 and egresos == 0:
+        if ingresos == 0 and egresos == 0:
             raise serializers.ValidationError("Debe registrar un monto mayor a 0")
+        if ingresos > 0 and egresos > 0:
+            raise serializers.ValidationError("Registre ingresos o egresos, no ambos")
         return data
 
 
@@ -40,10 +45,15 @@ class MovimientoUpdateSerializer(serializers.Serializer):
     egresos = serializers.DecimalField(max_digits=14, decimal_places=2, default=0)
 
     def validate(self, data):
+        ingresos = data.get("ingresos", 0) or 0
         egresos = data.get("egresos", 0) or 0
 
+        if ingresos < 0:
+            raise serializers.ValidationError("ingresos no pueden ser negativos")
         if egresos < 0:
             raise serializers.ValidationError("egresos no pueden ser negativos")
-        if (data.get("ingresos", 0) or 0) == 0 and egresos == 0:
+        if ingresos == 0 and egresos == 0:
             raise serializers.ValidationError("Debe registrar un monto mayor a 0")
+        if ingresos > 0 and egresos > 0:
+            raise serializers.ValidationError("Registre ingresos o egresos, no ambos")
         return data
