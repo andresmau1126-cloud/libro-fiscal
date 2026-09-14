@@ -56,3 +56,48 @@ class FinanzasPermissionsAndFiscalTests(APITestCase):
         self.client.force_authenticate(user=self.auditor)
         response = self.client.post("/api/expenses", {}, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_can_update_expense_and_its_movement(self):
+        expense = Expense.objects.create(
+            provider=self.provider,
+            descripcion="Compra original",
+            fecha=date.today(),
+            descripcion_producto="Material original",
+            valor_unitario=Decimal("25.00"),
+            valor_pagado=Decimal("50.00"),
+            cantidad=Decimal("2.00"),
+            libro=self.libro,
+            creado_por=self.admin,
+        )
+        movement = Movimiento.objects.create(
+            fecha=expense.fecha,
+            descripcion=expense.descripcion,
+            ingresos=0,
+            egresos=expense.valor_pagado,
+            libro=self.libro,
+        )
+        expense.movimiento = movement
+        expense.save(update_fields=["movimiento"])
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.put(
+            f"/api/expenses/{expense.id}",
+            {
+                "provider": self.provider.id,
+                "descripcion": "Compra actualizada",
+                "fecha": date.today().isoformat(),
+                "descripcion_producto": "Material actualizado",
+                "valor_unitario": "40.00",
+                "valor_pagado": "80.00",
+                "cantidad": "2.00",
+                "libro": self.libro.id,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        expense.refresh_from_db()
+        movement.refresh_from_db()
+        self.assertEqual(expense.valor_pagado, Decimal("80.00"))
+        self.assertEqual(movement.egresos, Decimal("80.00"))
+        self.assertEqual(movement.descripcion, "Compra actualizada")

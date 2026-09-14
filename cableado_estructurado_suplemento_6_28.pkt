@@ -1,0 +1,188 @@
+# Packet Tracer project specification for structured cabling supplement
+# Generated as a topology template for Cisco Packet Tracer.
+# NOTE: This is a project specification file, not a native Packet Tracer binary project (.pkt).
+# Use it as a blueprint to recreate the scenario in Packet Tracer.
+
+TOPOLOGY_NAME: Cableado_Estructurado_Suplemento_Cisco
+
+DEVICES:
+  1. ISP_Router
+     - Device: Router 2911
+     - Role: Internet access / gateway
+     - Interface: Gig0/0 -> Core_Switch Gig0/1
+
+  2. Firewall
+     - Device: ASA 5506 or generic firewall
+     - Role: Security boundary
+     - Connection: ISP_Router -> Firewall -> Core_Switch
+
+  3. Core_Switch
+     - Device: Catalyst 2960 / 3560
+     - Role: Main distribution switch in telecom room
+     - Ports:
+       - Gig0/1 -> Firewall
+       - Gig0/2 -> Patch_Panel_1
+       - Gig0/3 -> Patch_Panel_2
+       - Gig0/4 -> AP_Office
+       - Gig0/5 -> Network_Printer
+       - Gig0/6 -> Server
+
+  4. Server
+     - Device: Generic Server
+     - Role: File/print/data services
+     - IP: 192.168.10.10/24
+
+  5. Network_Printer
+     - Device: Printer
+     - Role: Shared printer in office area
+
+  6. Access_Point_Office
+     - Device: Wireless Access Point
+     - Role: Wireless users / BYOD
+
+  7. Patch_Panel_1
+     - Device: Patch Panel
+     - Role: Horizontal cabling to Office 1 and Office 2
+     - Ports:
+       - 1 -> Office_1_Desktop_1
+       - 2 -> Office_1_Desktop_2
+       - 3 -> Office_2_Desktop_1
+       - 4 -> Office_2_Desktop_2
+
+  8. Patch_Panel_2
+     - Device: Patch Panel
+     - Role: Horizontal cabling to Office 3 and Conference Room
+     - Ports:
+       - 1 -> Office_3_Desktop_1
+       - 2 -> Office_3_Desktop_2
+       - 3 -> Conference_PC_1
+       - 4 -> Conference_PC_2
+
+  9. Office_1_Desktop_1
+     - Device: PC
+     - IP: 192.168.10.21/24
+
+  10. Office_1_Desktop_2
+      - Device: PC
+      - IP: 192.168.10.22/24
+
+  11. Office_2_Desktop_1
+      - Device: PC
+      - IP: 192.168.10.23/24
+
+  12. Office_2_Desktop_2
+      - Device: PC
+      - IP: 192.168.10.24/24
+
+  13. Office_3_Desktop_1
+      - Device: PC
+      - IP: 192.168.10.25/24
+
+  14. Office_3_Desktop_2
+      - Device: PC
+      - IP: 192.168.10.26/24
+
+  15. Conference_PC_1
+      - Device: PC
+      - IP: 192.168.10.27/24
+
+  16. Conference_PC_2
+      - Device: PC
+      - IP: 192.168.10.28/24
+
+  17. Wireless_Client_1
+      - Device: Laptop or phone
+      - Role: Wireless connectivity via AP_Office
+
+  18. Wireless_Client_2
+      - Device: Laptop or phone
+      - Role: Wireless connectivity via AP_Office
+
+CABLING:
+  - Use straight-through Cat6 UTP cables between:
+    - Core_Switch to Patch_Panel_1
+    - Core_Switch to Patch_Panel_2
+    - Core_Switch to AP_Office
+    - Core_Switch to Network_Printer
+    - Core_Switch to Server
+    - ISP_Router to Firewall
+    - Firewall to Core_Switch
+
+  - Use horizontal runs from each patch panel port to wall outlets:
+    - Patch_Panel_1 port 1 -> Office_1_Desktop_1
+    - Patch_Panel_1 port 2 -> Office_1_Desktop_2
+    - Patch_Panel_1 port 3 -> Office_2_Desktop_1
+    - Patch_Panel_1 port 4 -> Office_2_Desktop_2
+    - Patch_Panel_2 port 1 -> Office_3_Desktop_1
+    - Patch_Panel_2 port 2 -> Office_3_Desktop_2
+    - Patch_Panel_2 port 3 -> Conference_PC_1
+    - Patch_Panel_2 port 4 -> Conference_PC_2
+
+  - Use wireless link from AP_Office to Wireless_Client_1 and Wireless_Client_2
+
+CONFIGURATION:
+  - VLAN 10: Office users
+  - VLAN 20: Guests / wireless users
+  - VLAN 99: Management
+  - Assign access ports on Core_Switch:
+    - ports 1-8 for workstations and patch panel links
+    - port 9 for AP_Office
+    - port 10 for Network_Printer
+    - port 11 for Server
+
+  - Switch configuration example:
+    vlan 10
+    name Office
+    vlan 20
+    name Guest
+    vlan 99
+    name Management
+
+    interface range fa0/1-8
+    switchport mode access
+    switchport access vlan 10
+
+    interface gig0/4
+    switchport mode access
+    switchport access vlan 20
+
+    interface vlan 99
+    ip address 192.168.99.2 255.255.255.0
+
+  - Router / firewall default gateway for LAN:
+    192.168.10.1 /24
+
+  - Example PC static configuration:
+    IP: 192.168.10.21
+    Mask: 255.255.255.0
+    Gateway: 192.168.10.1
+    DNS: 8.8.8.8
+
+LEARNING OBJECTIVES:
+  1. Recognize structured cabling components: patch panel, horizontal cabling, work area, telecom room.
+  2. Identify cable path and termination points.
+  3. Understand the relationship between physical layer and switch connectivity.
+  4. Practice logical and physical topology organization.
+
+DESIGN NOTES:
+  - Cabling topology should represent a real office environment with horizontal runs and a central distribution point.
+  - The telecom room hosts switches, patch panels, and servers.
+  - Workstations connect to the patch panel via horizontal cabling and patch cords.
+  - This scenario follows the principles from the Cisco structured cabling supplement.
+
+RECREATE IN PACKET TRACER:
+  1. Add a switch in the telecom room.
+  2. Add a patch panel and 8 PCs or workstations in office spaces.
+  3. Connect switch ports to the panel and to server, printer, and AP.
+  4. Add an AP and two wireless clients.
+  5. Set IPs and test connectivity by pinging the server and printer.
+
+VALIDATION:
+  - Ping PC1 to PC2
+  - Ping PC1 to Server
+  - Ping Wireless_Client_1 to AP_Office
+  - Verify printer connectivity via network
+
+  Expected result: All devices in the same VLAN/subnet can communicate, and the physical/structured cabling concept is represented correctly.
+
+END

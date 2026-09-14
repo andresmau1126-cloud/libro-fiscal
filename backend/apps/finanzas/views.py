@@ -71,6 +71,39 @@ def expenses(request):
     return Response(ExpenseSerializer(expense).data, status=status.HTTP_201_CREATED)
 
 
+@api_view(["PUT", "PATCH"])
+@permission_classes([IsAuthenticated])
+def expense_detail(request, expense_id):
+    if not can_manage_configuration(request.user):
+        return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        expense = Expense.objects.select_related("movimiento").get(pk=expense_id)
+    except Expense.DoesNotExist:
+        return Response({"error": "El egreso no existe."}, status=status.HTTP_404_NOT_FOUND)
+    serializer = ExpenseSerializer(expense, data=request.data, partial=request.method == "PATCH")
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+    target_book = data.get("libro", expense.libro)
+    target_date = data.get("fecha", expense.fecha)
+    if target_date.year != target_book.anio:
+        return Response({"error": "La fecha debe pertenecer al año del libro."}, status=status.HTTP_400_BAD_REQUEST)
+    old_book_id = expense.libro_id
+    with transaction.atomic():
+        for field, value in data.items():
+            setattr(expense, field, value)
+        expense.save()
+        movement = expense.movimiento
+        movement.fecha = expense.fecha
+        movement.descripcion = expense.descripcion
+        movement.egresos = expense.valor_pagado
+        movement.libro = expense.libro
+        movement.save(update_fields=["fecha", "descripcion", "egresos", "libro"])
+        recompute_saldos(old_book_id)
+        if expense.libro_id != old_book_id:
+            recompute_saldos(expense.libro_id)
+    return Response(ExpenseSerializer(expense).data)
+
+
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def providers(request):
