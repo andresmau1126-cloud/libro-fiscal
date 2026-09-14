@@ -114,3 +114,25 @@ def providers(request):
     serializer = ProviderSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     return Response(ProviderSerializer(Provider.objects.create(**serializer.validated_data)).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def provider_detail(request, provider_id):
+    if not can_manage_configuration(request.user):
+        return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        provider = Provider.objects.get(pk=provider_id)
+    except Provider.DoesNotExist:
+        return Response({"error": "El proveedor no existe."}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Verificar si hay egresos asociados
+    if provider.expenses.exists():
+        count = provider.expenses.count()
+        return Response(
+            {"error": f"No se puede eliminar el proveedor porque tiene {count} registro(s) de egreso(s) asociado(s)."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    provider.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)

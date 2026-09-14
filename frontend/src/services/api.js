@@ -106,6 +106,7 @@ export const deleteVenta = (id) => api.delete(`/ventas/${id}`).then(r => r.data)
 export const fetchSellerStats = (period = 'daily') => api.get(`/stats?period=${period}`).then(r => r.data);
 export const fetchProviders = () => api.get('/providers').then(r => r.data);
 export const createProvider = (data) => api.post('/providers', data).then(r => r.data);
+export const deleteProvider = (id) => api.delete(`/providers/${id}`).then(r => r.data);
 export const fetchExpenses = () => api.get('/expenses').then(r => r.data);
 export const createExpense = (data) => api.post('/expenses', data).then(r => r.data);
 export const updateExpense = (id, data) => api.put(`/expenses/${id}`, data).then(r => r.data);

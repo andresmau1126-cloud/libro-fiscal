@@ -91,6 +91,12 @@ export default function Layout() {
                   <span>Egresos</span>
                 </NavLink>
               </li>
+              <li>
+                <NavLink to="/proveedores" onClick={closeSidebar}>
+                  <i className="bi bi-building" />
+                  <span>Proveedores</span>
+                </NavLink>
+              </li>
             </ul>
           </div>
 

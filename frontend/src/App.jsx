@@ -12,6 +12,7 @@ import VentasControlPage from './pages/admin/VentasControlPage';
 import ProfilePage from './pages/perfil/ProfilePage';
 import Respaldos from './pages/Respaldos';
 import ExpensesPage from './pages/gastos/ExpensesPage';
+import ProvidersPage from './pages/gastos/ProvidersPage';
 import ManualesPage from './pages/ManualesPage';
 
 function ProtectedRoute({ children }) {
@@ -49,6 +50,7 @@ function AppRoutes() {
         <Route path="inventario" element={<InventarioPage />} />
         <Route path="ventas" element={<VentasPage />} />
         <Route path="egresos" element={<ExpensesPage />} />
+        <Route path="proveedores" element={<ProvidersPage />} />
         <Route path="manuales" element={<ManualesPage />} />
         <Route path="movimientos" element={<Navigate to="/libros" replace />} />
         <Route path="usuarios" element={<AdminRoute><UsuariosPage /></AdminRoute>} />
