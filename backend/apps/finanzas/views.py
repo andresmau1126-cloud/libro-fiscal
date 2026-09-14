@@ -71,7 +71,7 @@ def expenses(request):
     return Response(ExpenseSerializer(expense).data, status=status.HTTP_201_CREATED)
 
 
-@api_view(["PUT", "PATCH"])
+@api_view(["PUT", "PATCH", "DELETE"])
 @permission_classes([IsAuthenticated])
 def expense_detail(request, expense_id):
     if not can_manage_configuration(request.user):
@@ -80,6 +80,17 @@ def expense_detail(request, expense_id):
         expense = Expense.objects.select_related("movimiento").get(pk=expense_id)
     except Expense.DoesNotExist:
         return Response({"error": "El egreso no existe."}, status=status.HTTP_404_NOT_FOUND)
+    
+    if request.method == "DELETE":
+        libro_id = expense.libro_id
+        movimiento = expense.movimiento
+        with transaction.atomic():
+            expense.delete()
+            if movimiento:
+                movimiento.delete()
+            recompute_saldos(libro_id)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
     serializer = ExpenseSerializer(expense, data=request.data, partial=request.method == "PATCH")
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
