@@ -6,10 +6,10 @@ class Producto(models.Model):
     nombre = models.CharField(max_length=180)
     categoria = models.CharField(max_length=120, blank=True, default="")
     descripcion = models.CharField(max_length=255, blank=True, default="")
-    stock_actual = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    stock_minimo = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    costo_unitario = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    precio_venta = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    stock_actual = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    stock_minimo = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    costo_unitario = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    precio_venta = models.DecimalField(max_digits=18, decimal_places=2, default=0)
     fecha_vencimiento = models.DateField(null=True, blank=True)
     dias_alerta = models.IntegerField(default=30)
     activo = models.BooleanField(default=True)
@@ -66,7 +66,7 @@ class Venta(models.Model):
     cliente = models.CharField(max_length=180, blank=True, default="")
     medio_pago = models.CharField(max_length=20, choices=MEDIOS_PAGO, default="efectivo")
     turno = models.CharField(max_length=10, choices=TURNOS, default="mañana")
-    total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=18, decimal_places=2, default=0)
     vendedor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -91,9 +91,9 @@ class Venta(models.Model):
 class DetalleVenta(models.Model):
     venta = models.ForeignKey(Venta, on_delete=models.CASCADE, related_name="detalles")
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name="detalles_venta")
-    cantidad = models.DecimalField(max_digits=12, decimal_places=2)
-    precio_unitario = models.DecimalField(max_digits=12, decimal_places=2)
-    subtotal = models.DecimalField(max_digits=14, decimal_places=2)
+    cantidad = models.DecimalField(max_digits=18, decimal_places=2)
+    precio_unitario = models.DecimalField(max_digits=18, decimal_places=2)
+    subtotal = models.DecimalField(max_digits=18, decimal_places=2)
 
     class Meta:
         db_table = "inventario_detalle_venta"
@@ -124,9 +124,9 @@ class HistorialInventario(models.Model):
         Producto, on_delete=models.PROTECT, related_name="historial_inventario"
     )
     tipo_movimiento = models.CharField(max_length=20, choices=TIPO_MOVIMIENTO)
-    cantidad_anterior = models.DecimalField(max_digits=12, decimal_places=2)
-    cantidad_movida = models.DecimalField(max_digits=12, decimal_places=2)
-    cantidad_posterior = models.DecimalField(max_digits=12, decimal_places=2)
+    cantidad_anterior = models.DecimalField(max_digits=18, decimal_places=2)
+    cantidad_movida = models.DecimalField(max_digits=18, decimal_places=2)
+    cantidad_posterior = models.DecimalField(max_digits=18, decimal_places=2)
     usuario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -177,13 +177,13 @@ class HistorialVentas(models.Model):
     )
     fecha_venta = models.DateTimeField(auto_now_add=True, db_index=True)
     cantidad_productos = models.IntegerField(default=0)
-    cantidad_total_unidades = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    monto_total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    cantidad_total_unidades = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    monto_total = models.DecimalField(max_digits=18, decimal_places=2, default=0)
     monto_costo = models.DecimalField(
-        max_digits=14, decimal_places=2, default=0, help_text="Costo total de productos vendidos"
+        max_digits=18, decimal_places=2, default=0, help_text="Costo total de productos vendidos"
     )
     ganancia = models.DecimalField(
-        max_digits=14, decimal_places=2, default=0, help_text="Monto de ganancia (total - costo)"
+        max_digits=18, decimal_places=2, default=0, help_text="Monto de ganancia (total - costo)"
     )
     margen_ganancia = models.DecimalField(
         max_digits=5, decimal_places=2, default=0, help_text="Porcentaje de ganancia"
@@ -213,7 +213,7 @@ class EstadoInventarioCentralizado(models.Model):
     producto = models.OneToOneField(
         Producto, on_delete=models.CASCADE, related_name="estado_centralizado"
     )
-    stock_disponible = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    stock_disponible = models.DecimalField(max_digits=18, decimal_places=2, default=0)
     ultima_actualizacion = models.DateTimeField(auto_now=True, db_index=True)
     usuario_actualizo = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -253,10 +253,10 @@ class ResumenVentasPorVendedor(models.Model):
     )
     fecha = models.DateField(auto_now_add=True, db_index=True)
     cantidad_ventas = models.IntegerField(default=0)
-    cantidad_unidades = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    monto_total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    monto_costo = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    ganancia_total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    cantidad_unidades = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    monto_total = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    monto_costo = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    ganancia_total = models.DecimalField(max_digits=18, decimal_places=2, default=0)
     margen_promedio = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     
     class Meta:

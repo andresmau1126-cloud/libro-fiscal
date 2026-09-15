@@ -52,6 +52,26 @@ class FinanzasPermissionsAndFiscalTests(APITestCase):
         self.assertEqual(movement.egresos, Decimal("50.00"))
         self.assertEqual(movement.saldo, Decimal("-50.00"))
 
+    def test_admin_can_create_expense_with_large_value_without_validation_error(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            "/api/expenses",
+            {
+                "provider": self.provider.id,
+                "descripcion": "Compra de gran monto",
+                "fecha": date.today().isoformat(),
+                "descripcion_producto": "Producto grande",
+                "valor_unitario": "1234567890123.45",
+                "valor_pagado": "1234567890123.45",
+                "cantidad": "1.00",
+                "libro": self.libro.id,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Expense.objects.count(), 1)
+
     def test_auditor_cannot_create_expense(self):
         self.client.force_authenticate(user=self.auditor)
         response = self.client.post("/api/expenses", {}, format="json")

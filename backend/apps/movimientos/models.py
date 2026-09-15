@@ -6,9 +6,9 @@ class Movimiento(models.Model):
     fecha = models.DateField()
     descripcion = models.CharField(max_length=255)
     nombre = models.CharField(max_length=200, null=True, blank=True)
-    ingresos = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    egresos = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    saldo = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    ingresos = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    egresos = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    saldo = models.DecimalField(max_digits=18, decimal_places=2, default=0)
     libro = models.ForeignKey(
         Libro, on_delete=models.CASCADE,
         related_name="movimientos", null=True, blank=True,
