@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createExpense, createProvider, deleteExpense, fetchExpenses, fetchLibros, fetchProviders, updateExpense } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -6,6 +7,7 @@ const initial = { provider: '', descripcion: 'Compra a proveedor', fecha: new Da
 const providerInitial = { nombre: '', nit: '' };
 
 export default function ExpensesPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const readOnly = user?.rol === 'auditor';
   const [form, setForm] = useState(initial);
@@ -17,6 +19,7 @@ export default function ExpensesPage() {
   const [showProviderForm, setShowProviderForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [editingDate, setEditingDate] = useState('');
 
   const load = async () => {
     try {
@@ -49,16 +52,20 @@ export default function ExpensesPage() {
         valor_pagado: valorPagado,
         valor_unitario: valorPagado / cantidad,
       };
+      let createdExpense;
       if (editingId) {
-        await updateExpense(editingId, payload);
+        createdExpense = await updateExpense(editingId, payload);
         setMessage({ ok: true, text: 'Compra actualizada correctamente.' });
       } else {
-        await createExpense(payload);
+        createdExpense = await createExpense(payload);
         setMessage({ ok: true, text: 'Compra registrada al proveedor.' });
       }
       setEditingId(null);
       setForm({ ...initial, fecha: form.fecha, provider: form.provider, libro: form.libro });
       await load();
+      if (createdExpense?.id) {
+        navigate(`/egresos/${createdExpense.id}/recibo`);
+      }
     } catch (error) {
       setMessage({ ok: false, text: error.response?.data?.error || 'No se pudo registrar el egreso.' });
     }
@@ -66,6 +73,7 @@ export default function ExpensesPage() {
 
   const editExpense = (expense) => {
     setEditingId(expense.id);
+    setEditingDate(expense.fecha || new Date().toISOString().slice(0, 10));
     setForm({
       provider: expense.provider,
       descripcion: expense.descripcion,
@@ -246,7 +254,7 @@ export default function ExpensesPage() {
                   required
                   type="date"
                   className="form-control"
-                  value={form.fecha}
+                  value={form.fecha || editingDate}
                   onChange={update('fecha')}
                 />
               </div>

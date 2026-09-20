@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from apps.inventario.models import Venta
 from apps.movimientos.models import Movimiento
 from apps.usuarios.permissions import SUPERVISOR_ROLES, can_manage_configuration
+from apps.usuarios.utils import get_shift_error_for_user
 from services.saldo import recompute_saldos
 from .models import Expense, Provider, SellerStats
 from .serializers import ExpenseSerializer, ProviderSerializer, SellerStatsSerializer
@@ -56,7 +57,10 @@ def stats(request):
 def expenses(request):
     if request.method == "GET":
         return Response(ExpenseSerializer(Expense.objects.select_related("provider").all()[:200], many=True).data)
-    if not can_manage_configuration(request.user):
+    shift_error = get_shift_error_for_user(request.user)
+    if shift_error:
+        return Response({"msg": shift_error}, status=status.HTTP_403_FORBIDDEN)
+    if request.user.rol not in {"admin", "gerente"}:
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     serializer = ExpenseSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -71,10 +75,57 @@ def expenses(request):
     return Response(ExpenseSerializer(expense).data, status=status.HTTP_201_CREATED)
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def expense_receipt(request, expense_id):
+    try:
+        expense = Expense.objects.select_related("provider", "creado_por", "libro").get(pk=expense_id)
+    except Expense.DoesNotExist:
+        return Response({"error": "El egreso no existe."}, status=status.HTTP_404_NOT_FOUND)
+
+    detalle = [{
+        "cantidad": float(expense.cantidad),
+        "descripcion": expense.descripcion_producto,
+        "valor_unitario": float(expense.valor_unitario),
+        "total": float(expense.cantidad * expense.valor_unitario),
+    }]
+
+    receipt = {
+        "id": expense.id,
+        "numero_comprobante": f"EXP-{expense.id:04d}",
+        "fecha": expense.fecha.isoformat(),
+        "proveedor": {
+            "nombre": expense.provider.nombre,
+            "nit": expense.provider.nit or "Sin NIT",
+        },
+        "concepto": expense.descripcion,
+        "detalle": detalle,
+        "total_pagado": float(expense.valor_pagado),
+        "usuario_registro": {
+            "nombre": expense.creado_por.nombre,
+            "email": expense.creado_por.email,
+            "rol": expense.creado_por.rol,
+        },
+        "firma": {
+            "entrega": "AGENTS WEST",
+            "recibe": expense.creado_por.nombre,
+            "nit_empresa": "1010085627",
+        },
+        "forma_pago": "No especificada",
+        "observaciones": expense.descripcion,
+        "empresa": {
+            "nombre": "AGENTS WEST",
+            "nit": "1010085627",
+            "logo": "AGENTS WEST",
+        },
+    }
+    return Response(receipt)
+
+
 @api_view(["PUT", "PATCH", "DELETE"])
 @permission_classes([IsAuthenticated])
 def expense_detail(request, expense_id):
-    if not can_manage_configuration(request.user):
+    if request.user.rol not in {"admin", "gerente"}:
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     try:
         expense = Expense.objects.select_related("movimiento").get(pk=expense_id)
@@ -82,6 +133,11 @@ def expense_detail(request, expense_id):
         return Response({"error": "El egreso no existe."}, status=status.HTTP_404_NOT_FOUND)
     
     if request.method == "DELETE":
+        if request.user.rol != "gerente":
+            return Response(
+                {"error": "Solo el gerente puede eliminar egresos."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         libro_id = expense.libro_id
         movimiento = expense.movimiento
         with transaction.atomic():
