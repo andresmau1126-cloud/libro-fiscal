@@ -1,3 +1,4 @@
+import re
 from calendar import monthrange
 from datetime import date
 from decimal import Decimal
@@ -192,12 +193,15 @@ def provider_detail(request, provider_id):
     if request.method == "PUT":
         phone = request.data.get("phone", "")
         address = request.data.get("address", "")
-        if not isinstance(phone, str) or not phone.isdigit() or len(phone) != 10:
+        if not isinstance(phone, str) or re.fullmatch(r"\d{10}", phone) is None:
             return Response({"error": "El teléfono debe tener exactamente 10 dígitos."}, status=status.HTTP_400_BAD_REQUEST)
-        updated = Provider.objects.filter(nit="1020085627-1").update(telefono=phone, direccion=address)
-        if not updated:
+        try:
+            provider = Provider.objects.get(pk=provider_id)
+        except Provider.DoesNotExist:
             return Response({"error": "El proveedor no existe."}, status=status.HTTP_404_NOT_FOUND)
-        provider = Provider.objects.get(nit="1020085627-1")
+        provider.telefono = phone
+        provider.direccion = address
+        provider.save(update_fields=["telefono", "direccion"])
         return Response(ProviderSerializer(provider).data)
 
     try:
