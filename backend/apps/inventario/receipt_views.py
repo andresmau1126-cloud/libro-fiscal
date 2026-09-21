@@ -34,7 +34,11 @@ def venta_receipt(request, venta_id):
         "nit": "1020085627-1",
         "company": "Multivariedades Ricaurte",
         "fecha": venta.fecha.isoformat(),
-        "cliente": venta.cliente,
+        "cliente": {
+            "nombre": venta.cliente,
+            "cedula": "",
+            "telefono": "",
+        },
         "medio_pago": venta.medio_pago,
         "vendedor": venta.vendedor.nombre,
         "vendedor_email": venta.vendedor.email,
