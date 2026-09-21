@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Usuario, OTP
+from .models import Usuario, OTP, SellerSchedule
 
 
 class UsuarioSerializer(serializers.ModelSerializer):
@@ -77,3 +77,34 @@ class UsuarioPreferencesUpdateSerializer(serializers.Serializer):
     email_notifications = serializers.BooleanField(required=False)
     currency = serializers.CharField(max_length=3, required=False)
     timezone = serializers.CharField(max_length=10, required=False)
+
+
+class SellerScheduleSerializer(serializers.ModelSerializer):
+    usuario_email = serializers.EmailField(source="usuario.email", read_only=True)
+    usuario_nombre = serializers.CharField(source="usuario.nombre", read_only=True)
+
+    class Meta:
+        model = SellerSchedule
+        fields = [
+            "id",
+            "usuario",
+            "usuario_email",
+            "usuario_nombre",
+            "name",
+            "start_time",
+            "end_time",
+            "is_active",
+            "nit",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at", "usuario_email", "usuario_nombre"]
+
+    def validate(self, attrs):
+        start = attrs.get("start_time")
+        end = attrs.get("end_time")
+        if start and end and start == end:
+            return attrs
+        if start and end and start > end:
+            return attrs
+        return attrs

@@ -1,3 +1,5 @@
+from datetime import time as dt_time
+
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
 
@@ -65,6 +67,41 @@ class Usuario(AbstractBaseUser):
 
     def has_module_perms(self, app_label):
         return self.is_superuser
+
+
+class SellerSchedule(models.Model):
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name="seller_schedules")
+    name = models.CharField(max_length=150)
+    start_time = models.TimeField(default="08:00:00")
+    end_time = models.TimeField(default="19:00:00")
+    is_active = models.BooleanField(default=True)
+    nit = models.CharField(max_length=20, default="1010085627")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "seller_schedules"
+        verbose_name = "Horario vendedor"
+        verbose_name_plural = "Horarios vendedores"
+
+    def __str__(self):
+        return f"{self.name} ({self.start_time.strftime('%H:%M')} - {self.end_time.strftime('%H:%M')})"
+
+    def contains(self, current_time):
+        start_time = self.start_time
+        end_time = self.end_time
+        if isinstance(start_time, str):
+            start_time = dt_time.fromisoformat(start_time)
+        if isinstance(end_time, str):
+            end_time = dt_time.fromisoformat(end_time)
+        if isinstance(current_time, str):
+            current_time = dt_time.fromisoformat(current_time)
+
+        if start_time == end_time:
+            return True
+        if start_time < end_time:
+            return start_time <= current_time <= end_time
+        return current_time >= start_time or current_time <= end_time
 
 
 class Sesion(models.Model):

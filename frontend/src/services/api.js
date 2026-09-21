@@ -63,6 +63,8 @@ export const fetchUsuarios = () => api.get('/auth/usuarios/').then(r => r.data);
 export const createUsuario = (data) => api.post('/auth/usuarios/', data).then(r => r.data);
 export const updateUsuario = (id, data) => api.put(`/auth/usuarios/${id}/`, data).then(r => r.data);
 export const deleteUsuario = (id) => api.delete(`/auth/usuarios/${id}/`).then(r => r.data);
+export const fetchSchedules = () => api.get('/schedules').then(r => r.data);
+export const updateSchedule = (id, data) => api.put(`/schedules/${id}`, data).then(r => r.data);
 
 /* ── Libros ── */
 export const fetchLibros = () => api.get('/libros').then(r => r.data);

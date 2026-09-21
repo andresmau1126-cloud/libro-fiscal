@@ -7,6 +7,7 @@ import LibrosPage from './pages/libros/LibrosPage';
 import InventarioPage from './pages/inventario/InventarioPage';
 import VentasPage from './pages/ventas/VentasPage';
 import UsuariosPage from './pages/admin/UsuariosPage';
+import ScheduleAdmin from './pages/admin/ScheduleAdmin';
 import AuditoriaPage from './pages/admin/AuditoriaPage';
 import VentasControlPage from './pages/admin/VentasControlPage';
 import ProfilePage from './pages/perfil/ProfilePage';
@@ -56,6 +57,7 @@ function AppRoutes() {
         <Route path="manuales" element={<ManualesPage />} />
         <Route path="movimientos" element={<Navigate to="/libros" replace />} />
         <Route path="usuarios" element={<AdminRoute><UsuariosPage /></AdminRoute>} />
+        <Route path="admin/horarios" element={<AdminRoute><ScheduleAdmin /></AdminRoute>} />
         <Route path="auditoria" element={<AuditRoute><AuditoriaPage /></AuditRoute>} />
         <Route path="ventas-control" element={<AuditRoute><VentasControlPage /></AuditRoute>} />
         <Route path="respaldos" element={<AdminRoute><Respaldos /></AdminRoute>} />

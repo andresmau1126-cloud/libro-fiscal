@@ -9,7 +9,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Usuario, OTP
+from .models import Usuario, OTP, SellerSchedule
 from .serializers import (
     RegisterSerializer,
     LoginSerializer,
@@ -21,11 +21,12 @@ from .serializers import (
     UsuarioPreferencesUpdateSerializer,
     RequestOTPSerializer,
     VerifyOTPSerializer,
+    SellerScheduleSerializer,
 )
 from .authentication import create_session, delete_session, delete_user_sessions
 from .permissions import IsAdmin, PROTECTED_ROLE_BY_EMAIL
 from .otp_service import crear_otp, enviar_otp_email, verificar_otp
-from .utils import is_bypass_email
+from .utils import is_bypass_email, get_shift_error_for_user, time_ranges_overlap
 from apps.auditoria.services import audit_log
 
 logger = logging.getLogger(__name__)
@@ -495,6 +496,48 @@ def usuarios_list_create(request):
         {"nombre": user.nombre, "email": user.email, "rol": user.rol},
     )
     return Response(UsuarioSerializer(user).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET"])
+@permission_classes([IsAdmin])
+def seller_schedules(request):
+    schedules = SellerSchedule.objects.select_related("usuario").all().order_by("usuario__nombre", "start_time")
+    return Response(SellerScheduleSerializer(schedules, many=True).data)
+
+
+@api_view(["PUT", "PATCH"])
+@permission_classes([IsAdmin])
+def seller_schedule_detail(request, schedule_id):
+    try:
+        schedule = SellerSchedule.objects.get(pk=schedule_id)
+    except SellerSchedule.DoesNotExist:
+        return Response({"error": "Horario no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = SellerScheduleSerializer(schedule, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    new_start = data.get("start_time", schedule.start_time)
+    new_end = data.get("end_time", schedule.end_time)
+    for other in SellerSchedule.objects.filter(is_active=True).exclude(pk=schedule.pk):
+        if other.usuario_id == schedule.usuario_id and other.is_active and time_ranges_overlap(new_start, new_end, other.start_time, other.end_time):
+            return Response({"error": "No se pueden cruzar horarios de vendedores."}, status=status.HTTP_400_BAD_REQUEST)
+        if time_ranges_overlap(new_start, new_end, other.start_time, other.end_time):
+            return Response({"error": "No se pueden cruzar turnos activos."}, status=status.HTTP_400_BAD_REQUEST)
+
+    for field, value in data.items():
+        setattr(schedule, field, value)
+    schedule.save()
+    return Response(SellerScheduleSerializer(schedule).data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def shift_open(request):
+    error = get_shift_error_for_user(request.user)
+    if error:
+        return Response({"msg": error}, status=status.HTTP_403_FORBIDDEN)
+    return Response({"ok": True, "message": "Turno abierto", "rol": request.user.rol})
 
 
 @api_view(["GET", "PUT", "DELETE"])

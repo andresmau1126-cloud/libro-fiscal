@@ -31,6 +31,7 @@ from apps.usuarios.permissions import (
     can_write,
     can_manage_configuration,
 )
+from apps.usuarios.utils import get_shift_error_for_user
 from services.inventario_alertas import enviar_alerta_inventario
 from services.scheduler_alertas import (
     iniciar_scheduler,
@@ -181,8 +182,12 @@ def _venta_data(venta):
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def ventas_list_create(request):
-    if request.method == "POST" and request.user.rol not in SELLER_ROLES:
-        return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
+    if request.method == "POST":
+        shift_error = get_shift_error_for_user(request.user)
+        if shift_error:
+            return Response({"msg": shift_error}, status=status.HTTP_403_FORBIDDEN)
+        if request.user.rol not in SELLER_ROLES:
+            return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == "GET":
         if not can_view_sales_records(request.user):

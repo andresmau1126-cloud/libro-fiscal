@@ -7,6 +7,7 @@ from django.views.generic import TemplateView
 from django.http import FileResponse, JsonResponse, Http404
 from pathlib import Path
 from apps.inventario.views import test_mail_page
+from apps.usuarios import views as usuarios_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -16,6 +17,9 @@ urlpatterns = [
     path("healthz/", lambda request: JsonResponse({"status": "ok"})),
     path("docs/<str:filename>", lambda request, filename: serve_manual(filename)),
     path("api/auth/", include("apps.usuarios.urls")),
+    path("api/schedules", usuarios_views.seller_schedules, name="seller-schedules"),
+    path("api/schedules/<int:schedule_id>", usuarios_views.seller_schedule_detail, name="seller-schedule-detail"),
+    path("api/shifts/open", usuarios_views.shift_open, name="shift-open"),
     path("api/", include("apps.libros.urls")),
     path("api/", include("apps.movimientos.urls")),
     path("api/", include("apps.dashboard.urls")),
