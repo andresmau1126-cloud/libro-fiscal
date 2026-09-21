@@ -10,12 +10,16 @@ class Migration(migrations.Migration):
         migrations.RunSQL(
             sql="""
                 DELETE FROM seller_schedules;
-                INSERT INTO seller_schedules (usuario_id, name, start_time, end_time, is_active, nit)
-                SELECT id, 'Mauricio', '08:00', '12:00', TRUE, '1020085627-1'
+                INSERT INTO seller_schedules (
+                    usuario_id, name, start_time, end_time, is_active, nit, created_at, updated_at
+                )
+                SELECT id, 'Mauricio', '08:00', '12:00', TRUE, '1020085627-1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                 FROM usuarios
                 WHERE email = 'andresmau.colamericano7b@gmail.com';
-                INSERT INTO seller_schedules (usuario_id, name, start_time, end_time, is_active, nit)
-                SELECT id, 'José', '12:00', '19:00', TRUE, '1020085627-1'
+                INSERT INTO seller_schedules (
+                    usuario_id, name, start_time, end_time, is_active, nit, created_at, updated_at
+                )
+                SELECT id, 'José', '12:00', '19:00', TRUE, '1020085627-1', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                 FROM usuarios
                 WHERE email = 'yo1126top76f@gmail.com';
             """,
