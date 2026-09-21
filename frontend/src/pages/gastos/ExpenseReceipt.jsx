@@ -47,7 +47,7 @@ export default function ExpenseReceipt() {
     doc.setFont('helvetica', 'bold');
     doc.text('Multivariedades Ricaurte', 42, 26);
     doc.setFontSize(10);
-    doc.text('NIT: 1020085627-1', 42, 42);
+    doc.text('NIT: 1010085627-1', 42, 42);
     doc.text('COMPROBANTE DE EGRESO', pageWidth - 170, 26);
     doc.text(`N° ${receipt.numero_comprobante}`, pageWidth - 170, 42);
 
@@ -138,7 +138,7 @@ export default function ExpenseReceipt() {
             </div>
             <div>
               <p className="text-xl font-black uppercase tracking-wide">Multivariedades Ricaurte</p>
-              <p className="text-sm text-slate-500">NIT: 1020085627-1</p>
+              <p className="text-sm text-slate-500">NIT: 1010085627-1</p>
             </div>
           </div>
 
@@ -219,7 +219,7 @@ export default function ExpenseReceipt() {
             </div>
             <div className="mt-4 text-sm text-slate-300">
               <p>Empresa: Multivariedades Ricaurte</p>
-              <p className="mt-1">NIT: 1020085627-1</p>
+              <p className="mt-1">NIT: 1010085627-1</p>
             </div>
           </div>
         </div>

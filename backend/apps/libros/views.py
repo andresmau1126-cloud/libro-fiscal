@@ -30,7 +30,7 @@ def fiscal_books(request):
 
     libros = _libros_qs_for_user(request.user)
     if request.user.rol in {"admin", "gerente", "auditor"}:
-        libros = Libro.objects.filter(nit="1020085627-1", anio=date_value.year)
+        libros = Libro.objects.filter(nit="1010085627-1", anio=date_value.year)
     rows = []
     for libro in libros.order_by("-anio", "nombre"):
         sales_total = libro.ventas.filter(fecha__date=date_value).aggregate(total=Sum("total"))["total"] or 0

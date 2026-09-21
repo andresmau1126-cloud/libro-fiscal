@@ -110,13 +110,13 @@ def expense_receipt(request, expense_id):
         "firma": {
             "entrega": "Multivariedades Ricaurte",
             "recibe": expense.creado_por.nombre,
-            "nit_empresa": "1020085627-1",
+            "nit_empresa": "1010085627-1",
         },
         "forma_pago": "No especificada",
         "observaciones": expense.descripcion,
         "empresa": {
             "nombre": "Multivariedades Ricaurte",
-            "nit": "1020085627-1",
+            "nit": "1010085627-1",
             "logo": "Multivariedades Ricaurte",
         },
     }

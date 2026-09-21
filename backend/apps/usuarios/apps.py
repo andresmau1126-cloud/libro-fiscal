@@ -8,18 +8,18 @@ def _seed_default_seller_schedules():
 
         default_schedules = [
             {
-                "email": "mauricio1126@gmail.com",
+                "email": "andresmau.colamericano7b@gmail.com",
                 "name": "Mauricio",
                 "start_time": "08:00:00",
                 "end_time": "12:00:00",
-                "nit": "1020085627-1",
+                "nit": "1010085627-1",
             },
             {
                 "email": "yo1126top76f@gmail.com",
                 "name": "Jose",
                 "start_time": "12:00:00",
                 "end_time": "19:00:00",
-                "nit": "1020085627-1",
+                "nit": "1010085627-1",
             },
         ]
 

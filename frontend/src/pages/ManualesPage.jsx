@@ -13,7 +13,7 @@ export default function ManualesPage() {
               <li>Login con el perfil asignado.</li>
               <li>Registrar una venta y confirmar el stock.</li>
               <li>Registrar el egreso por proveedor.</li>
-              <li>Consultar el libro fiscal del NIT 1020085627-1.</li>
+              <li>Consultar el libro fiscal del NIT 1010085627-1.</li>
               <li>Revisar estadisticas diarias y mensuales por vendedor.</li>
             </ol>
             <a className="btn btn-outline-primary" href="/docs/manual_usuario.md" target="_blank" rel="noreferrer">Abrir archivo del manual</a>

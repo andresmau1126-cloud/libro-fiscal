@@ -111,7 +111,7 @@ class Command(BaseCommand):
             providers.append(provider)
 
         libro, _ = Libro.objects.get_or_create(
-            nit="1020085627-1", anio=timezone.localdate().year,
+            nit="1010085627-1", anio=timezone.localdate().year,
             defaults={"nombre": "Andres", "propietario": users["admin"]},
         )
         products = []
