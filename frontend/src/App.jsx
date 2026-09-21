@@ -6,6 +6,7 @@ import DashboardPage from './pages/dashboard/DashboardPage';
 import LibrosPage from './pages/libros/LibrosPage';
 import InventarioPage from './pages/inventario/InventarioPage';
 import VentasPage from './pages/ventas/VentasPage';
+import SaleReceipt from './pages/ventas/SaleReceipt';
 import UsuariosPage from './pages/admin/UsuariosPage';
 import ScheduleAdmin from './pages/admin/ScheduleAdmin';
 import AuditoriaPage from './pages/admin/AuditoriaPage';
@@ -51,6 +52,7 @@ function AppRoutes() {
         <Route path="libros" element={<LibrosPage />} />
         <Route path="inventario" element={<InventarioPage />} />
         <Route path="ventas" element={<VentasPage />} />
+        <Route path="sales/:id/receipt" element={<SaleReceipt />} />
         <Route path="egresos" element={<ExpensesPage />} />
         <Route path="egresos/:id/recibo" element={<ExpenseReceipt />} />
         <Route path="proveedores" element={<ProvidersPage />} />

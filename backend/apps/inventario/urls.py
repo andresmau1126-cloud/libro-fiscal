@@ -6,6 +6,10 @@ urlpatterns = [
     path("productos/<int:producto_id>", views.producto_detail, name="producto-detail"),
     path("ventas", views.ventas_list_create, name="ventas-list-create"),
     path("ventas/", views.ventas_list_create, name="ventas-list-create-slash"),
+    path("sales", views.ventas_list_create, name="sales-list-create"),
+    path("sales/", views.ventas_list_create, name="sales-list-create-slash"),
+    path("sales/<int:venta_id>/receipt", views.venta_receipt, name="sale-receipt"),
+    path("sales/<int:venta_id>/receipt/", views.venta_receipt, name="sale-receipt-slash"),
     path("ventas/<int:venta_id>", views.venta_delete, name="venta-delete"),
     path("test-mail", views.test_mail, name="test-mail"),
     path("alertas-inventario", views.enviar_alertas_inventario_manual, name="alertas-inventario"),
@@ -23,6 +27,7 @@ urlpatterns = [
     path("productos/criticos", views.productos_criticos, name="productos-criticos"),
     
     # Endpoints para monitoreo de turnos
+    path("turnos/cierre", views.cierre_turno, name="turnos-cierre"),
     path("monitoreo/turnos-hoy", views.monitoreo_turnos_hoy, name="monitoreo-turnos-hoy"),
     path("reportes/turnos", views.reportes_turnos, name="reportes-turnos"),
 ]

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { createVenta, deleteVenta, fetchProductos, fetchVentas } from '../../services/api';
+import { useNavigate } from 'react-router-dom';
+import { createVenta, deleteVenta, fetchProductos, fetchVentas, updateVenta } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 const money = (value) => '$ ' + Number(value || 0).toLocaleString('es-CO', {
@@ -16,6 +17,7 @@ const STORAGE_KEY = 'libro-fiscal-tender-state-v1';
 
 export default function VentasPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const canViewSalesRecords = !['vendedor', 'vendedor_2'].includes(user?.rol);
   const readOnly = user?.rol === 'auditor';
   const today = localDate();
@@ -50,6 +52,8 @@ export default function VentasPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const [paymentSimulation, setPaymentSimulation] = useState(null);
+  const [editingSaleId, setEditingSaleId] = useState(null);
+  const [editingSaleDate, setEditingSaleDate] = useState('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -99,7 +103,7 @@ export default function VentasPage() {
     setSaving(true);
     setMessage(null);
     try {
-      await createVenta({
+      const newSale = await createVenta({
         cliente,
         medio_pago: medioPago,
         detalles: cart.map((item) => ({ producto_id: item.id, cantidad: item.cantidad })),
@@ -113,6 +117,7 @@ export default function VentasPage() {
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(STORAGE_KEY);
       }
+      navigate(`/sales/${newSale.id}/receipt`);
       setMessage({ ok: true, text: 'Venta registrada y stock actualizado.' });
       await load();
       setProductos((current) => current.filter((product) => !soldIds.has(product.id) || Number(product.stock_actual) > 0));
@@ -133,6 +138,23 @@ export default function VentasPage() {
       await load();
     } catch (error) {
       setMessage({ ok: false, text: error.response?.data?.error || 'No se pudo eliminar la venta.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditSaleDate = async () => {
+    if (!editingSaleId || !editingSaleDate) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      await updateVenta(editingSaleId, { fecha: editingSaleDate });
+      setMessage({ ok: true, text: 'Fecha de venta actualizada.' });
+      setEditingSaleId(null);
+      setEditingSaleDate('');
+      await load();
+    } catch (error) {
+      setMessage({ ok: false, text: error.response?.data?.error || 'No se pudo actualizar la fecha.' });
     } finally {
       setSaving(false);
     }
@@ -204,7 +226,60 @@ export default function VentasPage() {
           <div className="data-table p-3">
             <div className="d-flex justify-content-between align-items-center mb-3"><h5 className="mb-0">Ventas del día</h5><div className="d-flex gap-2"><input type="date" className="form-control form-control-sm w-auto" value={fecha} onChange={(event) => setFecha(event.target.value)} /><button type="button" className="btn btn-sm btn-outline-secondary" onClick={load} disabled={loading} title="Actualizar ventas y stock" aria-label="Actualizar ventas y stock"><i className="bi bi-arrow-clockwise" /></button></div></div>
             <div className="display-6 fw-semibold text-success mb-3">{money(ventas.reduce((sum, sale) => sum + sale.total, 0))}</div>
-            {loading ? <div className="text-muted">Cargando...</div> : !ventas.length ? <div className="text-muted">No hay ventas para esta fecha.</div> : ventas.map((sale) => <div className="border-top py-2" key={sale.id}><div className="d-flex justify-content-between align-items-start"><div><strong>Venta #{sale.id}</strong><div className="small text-muted">{new Date(sale.fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} · {sale.medio_pago} · {sale.cliente || 'Consumidor final'}</div>{sale.vendedor && <div className="small text-muted">Vendedor: {sale.vendedor} ({sale.vendedor_rol === 'vendedor_2' ? 'Vendedor 2' : 'Vendedor'})</div>}</div><div className="text-end"><div>{money(sale.total)}</div>{!readOnly && <button type="button" className="btn btn-sm btn-outline-danger mt-1" onClick={() => handleDeleteVenta(sale.id, sale.total)} disabled={saving} title="Eliminar venta"><i className="bi bi-trash" /></button>}</div></div></div>)}
+            {loading ? <div className="text-muted">Cargando...</div> : !ventas.length ? <div className="text-muted">No hay ventas para esta fecha.</div> : ventas.map((sale) => (
+              <div className="border-top py-2" key={sale.id}>
+                <div className="d-flex justify-content-between align-items-start">
+                  <div>
+                    <strong>Venta #{sale.id}</strong>
+                    <div className="small text-muted">{new Date(sale.fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} · {sale.medio_pago} · {sale.cliente || 'Consumidor final'}</div>
+                    {sale.vendedor && <div className="small text-muted">Vendedor: {sale.vendedor} ({sale.vendedor_rol === 'vendedor_2' ? 'Vendedor 2' : 'Vendedor'})</div>}
+                  </div>
+                  <div className="text-end">
+                    <div>{money(sale.total)}</div>
+                    {!readOnly && (
+                      <div className="d-flex flex-column align-items-end gap-1 mt-1">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={() => {
+                            setEditingSaleId(sale.id);
+                            setEditingSaleDate(sale.fecha ? sale.fecha.slice(0, 10) : localDate());
+                          }}
+                          title="Editar fecha de venta"
+                        >
+                          <i className="bi bi-calendar3" />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => handleDeleteVenta(sale.id, sale.total)}
+                          disabled={saving}
+                          title="Eliminar venta"
+                        >
+                          <i className="bi bi-trash" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {editingSaleId === sale.id && (
+                  <div className="mt-2 d-flex gap-2 align-items-center">
+                    <input
+                      type="date"
+                      className="form-control form-control-sm w-auto"
+                      value={editingSaleDate}
+                      onChange={(event) => setEditingSaleDate(event.target.value)}
+                    />
+                    <button type="button" className="btn btn-sm btn-primary" onClick={handleEditSaleDate}>
+                      Guardar
+                    </button>
+                    <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => { setEditingSaleId(null); setEditingSaleDate(''); }}>
+                      Cancelar
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>}
       </div>
