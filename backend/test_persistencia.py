@@ -69,6 +69,10 @@ def crear_datos_prueba():
     if created:
         print(f"  ✓ Producto creado: {producto.nombre}")
     else:
+        if not producto.activo:
+            producto.activo = True
+            producto.save(update_fields=["activo", "updated_at"])
+            print(f"  ✓ Producto reactivado: {producto.nombre}")
         print(f"  ✓ Producto ya existe: {producto.nombre}")
     
     return vendedor, producto

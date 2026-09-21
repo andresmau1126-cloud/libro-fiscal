@@ -2,6 +2,51 @@ import os
 from django.apps import AppConfig
 
 
+def _seed_default_seller_schedules():
+    try:
+        from .models import Usuario, SellerSchedule
+
+        default_schedules = [
+            {
+                "email": "mauricio1126@gmail.com",
+                "name": "Mauricio",
+                "start_time": "08:00:00",
+                "end_time": "12:00:00",
+                "nit": "1020085627-1",
+            },
+            {
+                "email": "yo1126top76f@gmail.com",
+                "name": "Jose",
+                "start_time": "12:00:00",
+                "end_time": "19:00:00",
+                "nit": "1020085627-1",
+            },
+        ]
+
+        for schedule_data in default_schedules:
+            user = Usuario.objects.filter(email__iexact=schedule_data["email"]).first()
+            if not user:
+                continue
+            schedule, _ = SellerSchedule.objects.get_or_create(
+                usuario=user,
+                name=schedule_data["name"],
+                defaults={
+                    "start_time": schedule_data["start_time"],
+                    "end_time": schedule_data["end_time"],
+                    "is_active": True,
+                    "nit": schedule_data["nit"],
+                },
+            )
+            if schedule.start_time != schedule_data["start_time"] or schedule.end_time != schedule_data["end_time"]:
+                schedule.start_time = schedule_data["start_time"]
+                schedule.end_time = schedule_data["end_time"]
+                schedule.is_active = True
+                schedule.nit = schedule_data["nit"]
+                schedule.save(update_fields=["start_time", "end_time", "is_active", "nit", "updated_at"])
+    except Exception:
+        return
+
+
 def _seed_default_users():
     try:
         from .models import Usuario
@@ -116,3 +161,4 @@ class UsuariosConfig(AppConfig):
         if os.getenv("DISABLE_DEFAULT_USER_SEEDING", "").lower() in ("1", "true", "yes"):
             return
         _seed_default_users()
+        _seed_default_seller_schedules()

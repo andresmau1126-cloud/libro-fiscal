@@ -40,7 +40,7 @@ def _libros_qs_for_user(user):
 
 @api_view(["GET", "POST"])
 def entries_list_create(request):
-    if request.method == "POST" and request.user.rol != "admin":
+    if request.method == "POST" and request.user.rol not in {"admin", "gerente"}:
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     if request.method == "GET":
         try:
@@ -93,9 +93,9 @@ def entries_list_create(request):
 
 @api_view(["PUT", "DELETE"])
 def entry_detail(request, entry_id):
-    if request.method == "PUT" and request.user.rol != "admin":
+    if request.method == "PUT" and request.user.rol not in {"admin", "gerente"}:
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
-    if request.method == "DELETE" and request.user.rol != "admin":
+    if request.method == "DELETE" and request.user.rol not in {"admin", "gerente"}:
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     try:
         mov = Movimiento.objects.select_related("libro").get(pk=entry_id)

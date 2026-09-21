@@ -10,13 +10,18 @@ class ProviderSerializer(serializers.ModelSerializer):
 
 class ExpenseSerializer(serializers.ModelSerializer):
     provider_nombre = serializers.CharField(source="provider.nombre", read_only=True)
+    sello_digital = serializers.SerializerMethodField()
 
     class Meta:
         model = Expense
         fields = [
             "id", "provider", "provider_nombre", "descripcion", "fecha",
             "descripcion_producto", "valor_unitario", "valor_pagado", "cantidad", "libro",
+            "sello_digital",
         ]
+
+    def get_sello_digital(self, obj):
+        return getattr(obj, "sello_digital", "")
 
     def validate(self, attrs):
         for field in ("valor_unitario", "valor_pagado", "cantidad"):

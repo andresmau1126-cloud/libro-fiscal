@@ -1,3 +1,5 @@
+import hashlib
+
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.decorators import permission_classes
@@ -179,6 +181,28 @@ def _venta_data(venta):
     }
 
 
+def _sello_digital(*parts):
+    payload = "|".join(str(part) for part in parts if part is not None)
+    if not payload:
+        return ""
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32].upper()
+
+
+def _turno_payment_totals(ventas_qs):
+    summary = {}
+    for medio in ["efectivo", "tarjeta", "transferencia"]:
+        summary[medio] = {"ventas": 0, "total": 0.0}
+
+    for venta in ventas_qs:
+        medio = venta.medio_pago or "efectivo"
+        if medio not in summary:
+            summary[medio] = {"ventas": 0, "total": 0.0}
+        summary[medio]["ventas"] += 1
+        summary[medio]["total"] += float(venta.total or 0)
+
+    return summary
+
+
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def ventas_list_create(request):
@@ -273,43 +297,141 @@ def ventas_list_create(request):
     return Response(_venta_data(venta), status=status.HTTP_201_CREATED)
 
 
-@api_view(["DELETE"])
+@api_view(["PUT", "PATCH", "DELETE"])
 @permission_classes([IsAuthenticated])
 def venta_delete(request, venta_id):
     """
-    Elimina una venta y restaura el stock de los productos.
+    Actualiza o elimina una venta y restaura el stock de los productos.
     
-    Solo el vendedor que registró la venta o admin/gerente pueden eliminar.
-    Restaura automáticamente el stock de todos los productos.
+    La eliminación de una transacción solo la puede ejecutar el gerente.
     """
     try:
         venta = Venta.objects.get(pk=venta_id)
     except Venta.DoesNotExist:
         return Response({"error": "Venta no existe"}, status=status.HTTP_404_NOT_FOUND)
-    
-    # Los registros de ventas solo pueden gestionarlos los roles de supervisión.
-    if request.user.rol not in {"admin"} and venta.vendedor_id != request.user.id:
+
+    if request.method in ("PUT", "PATCH"):
+        # Permitir edición de fecha de venta por vendedor/admin/gerente
+        if request.user.rol not in {"admin", "gerente"} and venta.vendedor_id != request.user.id:
+            return Response(
+                {"error": "No tiene permisos para editar registros de ventas"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        nueva_fecha = request.data.get("fecha")
+        if not nueva_fecha:
+            return Response({"error": "Debe indicar la nueva fecha de la venta."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            fecha_value = timezone.datetime.fromisoformat(str(nueva_fecha))
+        except ValueError:
+            try:
+                fecha_value = timezone.datetime.strptime(str(nueva_fecha), "%Y-%m-%d")
+            except ValueError:
+                return Response({"error": "La fecha debe tener formato YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
+
+        old_date = timezone.localtime(venta.fecha).date()
+        venta.fecha = timezone.make_aware(fecha_value, timezone.get_current_timezone()) if timezone.is_naive(fecha_value) else fecha_value
+        venta.save(update_fields=["fecha"])
+        compilar_ventas_diarias(old_date)
+        compilar_ventas_diarias(timezone.localtime(venta.fecha).date())
+
+        return Response({
+            "ok": True,
+            "mensaje": "Fecha de venta actualizada correctamente",
+            "fecha": venta.fecha.isoformat(),
+            "id": venta.id,
+        })
+
+    # DELETE
+    if request.user.rol != "gerente":
         return Response(
-            {"error": "No tiene permisos para eliminar registros de ventas"},
+            {"error": "Solo el gerente puede eliminar registros de ventas."},
             status=status.HTTP_403_FORBIDDEN
         )
-    
-    # Restaurar stock de cada producto
+
     with transaction.atomic():
         fecha_venta = timezone.localtime(venta.fecha).date()
         for detalle in venta.detalles.all():
             detalle.producto.stock_actual += detalle.cantidad
             detalle.producto.save(update_fields=["stock_actual", "updated_at"])
 
-        # Eliminar la venta (esto elimina los detalles por CASCADE)
         venta_id_log = venta.id
         venta.delete()
         compilar_ventas_diarias(fecha_venta)
-    
+
     return Response({
         "ok": True,
         "mensaje": f"Venta #{venta_id_log} eliminada y stock restaurado"
     })
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def cierre_turno(request):
+    """Cierra un turno y devuelve un consolidado por medio de pago y egresos."""
+    if request.user.rol not in {"admin", "gerente"}:
+        return Response({"error": "Solo el gerente puede cerrar turnos."}, status=status.HTTP_403_FORBIDDEN)
+
+    fecha_str = request.data.get("fecha") or timezone.localdate().isoformat()
+    turno = (request.data.get("turno") or "mañana").strip()
+    if turno not in {value for value, _ in Venta.TURNOS}:
+        return Response({"error": "Turno inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        from django.utils.dateparse import parse_date
+        fecha = parse_date(fecha_str) or timezone.localdate()
+    except Exception:
+        return Response({"error": "La fecha debe ser YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
+
+    ventas = Venta.objects.filter(turno=turno, fecha__date=fecha).select_related("vendedor").prefetch_related("detalles__producto")
+    resumen = _turno_payment_totals(ventas)
+    total_ventas = sum(float(item["total"]) for item in resumen.values())
+
+    egresos_qs = Producto.objects.none()
+    try:
+        from apps.finanzas.models import Expense
+        egresos_qs = Expense.objects.filter(fecha=fecha)
+    except Exception:
+        egresos_qs = []
+    total_egresos = sum(float(item.valor_pagado or 0) for item in egresos_qs) if hasattr(egresos_qs, "__iter__") else 0.0
+    balance = total_ventas - total_egresos
+    inventario_actualizado = [
+        {
+            "id": producto.id,
+            "nombre": producto.nombre,
+            "stock_actual": float(producto.stock_actual),
+            "stock_minimo": float(producto.stock_minimo),
+            "precio_venta": float(producto.precio_venta),
+        }
+        for producto in Producto.objects.filter(activo=True).order_by("nombre", "id")[:200]
+    ]
+
+    payload = {
+        "ok": True,
+        "turno": turno,
+        "fecha": fecha.isoformat(),
+        "cantidad_ventas": ventas.count(),
+        "total_ventas": round(total_ventas, 2),
+        "ventas_totales": round(total_ventas, 2),
+        "total_egresos": round(total_egresos, 2),
+        "egresos": round(total_egresos, 2),
+        "balance": round(balance, 2),
+        "totales_por_medio_pago": {
+            key: {"ventas": value["ventas"], "total": round(value["total"], 2)}
+            for key, value in resumen.items()
+        },
+        "inventario_actualizado": inventario_actualizado,
+        "sello_digital": _sello_digital(
+            "cierre-turno",
+            turno,
+            fecha.isoformat(),
+            total_ventas,
+            total_egresos,
+            request.user.id,
+        ),
+    }
+    return Response(payload)
 
 
 @api_view(["GET"])
@@ -781,16 +903,20 @@ def monitoreo_turnos_hoy(request):
         )
     
     hoy = timezone.localdate()
-    ventas = Venta.objects.filter(
-        fecha__date=hoy
-    ).select_related("vendedor").values(
-        "turno", "vendedor__id", "vendedor__nombre"
-    ).annotate(
-        cantidad=models.Count("id"),
-        total_dinero=models.Sum("total")
-    ).order_by("turno", "vendedor__nombre")
-    
-    # Agrupar por turno y vendedor
+    ventas_hoy = list(
+        Venta.objects.filter(fecha__date=hoy)
+        .select_related("vendedor")
+        .order_by("turno", "vendedor__nombre")
+    )
+
+    ventas_agrupadas = (
+        Venta.objects.filter(fecha__date=hoy)
+        .select_related("vendedor")
+        .values("turno", "vendedor__id", "vendedor__nombre")
+        .annotate(cantidad=models.Count("id"), total_dinero=models.Sum("total"))
+        .order_by("turno", "vendedor__nombre")
+    )
+
     turnos_dict = {}
     for turno_name, turno_label in Venta.TURNOS:
         turnos_dict[turno_name] = {
@@ -799,48 +925,66 @@ def monitoreo_turnos_hoy(request):
             "vendedores": [],
             "total_ventas": 0,
             "total_dinero": 0.0,
-            "promedio_venta": 0.0
+            "promedio_venta": 0.0,
+            "totales_por_medio_pago": {key: {"ventas": 0, "total": 0.0} for key in ["efectivo", "tarjeta", "transferencia"]},
         }
-    
+
     total_general_ventas = 0
     total_general_dinero = 0.0
-    
-    for row in ventas:
+    total_por_medio_pago = {key: {"ventas": 0, "total": 0.0} for key in ["efectivo", "tarjeta", "transferencia"]}
+
+    for row in ventas_agrupadas:
         turno = row["turno"]
         if turno not in turnos_dict:
             continue
-        
+
         vendedor_data = {
             "id": row["vendedor__id"],
             "nombre": row["vendedor__nombre"],
             "ventas": row["cantidad"],
             "total": float(row["total_dinero"] or 0),
-            "promedio": float((row["total_dinero"] or 0) / row["cantidad"]) if row["cantidad"] else 0
+            "promedio": float((row["total_dinero"] or 0) / row["cantidad"]) if row["cantidad"] else 0,
         }
-        
+
         turnos_dict[turno]["vendedores"].append(vendedor_data)
         turnos_dict[turno]["total_ventas"] += row["cantidad"]
         turnos_dict[turno]["total_dinero"] += float(row["total_dinero"] or 0)
-        
+
         total_general_ventas += row["cantidad"]
         total_general_dinero += float(row["total_dinero"] or 0)
-    
-    # Calcular promedios de turno
+
+    for venta in ventas_hoy:
+        turno = venta.turno
+        if turno not in turnos_dict:
+            continue
+        medio = venta.medio_pago or "efectivo"
+        turnos_dict[turno]["totales_por_medio_pago"].setdefault(medio, {"ventas": 0, "total": 0.0})
+        turnos_dict[turno]["totales_por_medio_pago"][medio]["ventas"] += 1
+        turnos_dict[turno]["totales_por_medio_pago"][medio]["total"] += float(venta.total or 0)
+        total_por_medio_pago.setdefault(medio, {"ventas": 0, "total": 0.0})
+        total_por_medio_pago[medio]["ventas"] += 1
+        total_por_medio_pago[medio]["total"] += float(venta.total or 0)
+
     for turno_data in turnos_dict.values():
         if turno_data["total_ventas"] > 0:
-            turno_data["promedio_venta"] = round(
-                turno_data["total_dinero"] / turno_data["total_ventas"], 2
-            )
-    
+            turno_data["promedio_venta"] = round(turno_data["total_dinero"] / turno_data["total_ventas"], 2)
+
     return Response({
         "fecha": hoy.isoformat(),
         "turnos": list(turnos_dict.values()),
         "resumen_total": {
             "ventas": total_general_ventas,
             "dinero": round(total_general_dinero, 2),
-            "promedio": round(total_general_dinero / total_general_ventas, 2) if total_general_ventas > 0 else 0
+            "promedio": round(total_general_dinero / total_general_ventas, 2) if total_general_ventas > 0 else 0,
+            "por_medio_pago": {
+                medio: {
+                    "ventas": value["ventas"],
+                    "total": round(value["total"], 2),
+                }
+                for medio, value in total_por_medio_pago.items()
+            },
         },
-        "timestamp": timezone.now().isoformat()
+        "timestamp": timezone.now().isoformat(),
     })
 
 
@@ -915,14 +1059,24 @@ def reportes_turnos(request):
     # Agrupar por turno y vendedor
     reportes = []
     ranking_dict = {}
-    
+    total_por_medio_pago = {key: {"ventas": 0, "total": 0.0} for key in ["efectivo", "tarjeta", "transferencia"]}
+
+    try:
+        from apps.finanzas.models import Expense
+        egresos_qs = Expense.objects.filter(fecha__date__gte=fecha_inicio, fecha__date__lte=fecha_fin)
+        total_egresos = sum(float(item.valor_pagado or 0) for item in egresos_qs)
+    except Exception:
+        egresos_qs = []
+        total_egresos = 0.0
+
     for venta in ventas_qs:
         turno_name = venta.turno
         vendedor_name = venta.vendedor.nombre
-        
+        medio = venta.medio_pago or "efectivo"
+
         # Contar productos vendidos
         productos_count = sum(d.cantidad for d in venta.detalles.all())
-        
+
         # Agregar al reporte
         reportes.append({
             "turno": turno_name,
@@ -930,9 +1084,14 @@ def reportes_turnos(request):
             "venta_id": venta.id,
             "fecha": venta.fecha.date().isoformat(),
             "total_dinero": float(venta.total),
+            "medio_pago": medio,
             "productos_vendidos": int(productos_count)
         })
-        
+
+        total_por_medio_pago.setdefault(medio, {"ventas": 0, "total": 0.0})
+        total_por_medio_pago[medio]["ventas"] += 1
+        total_por_medio_pago[medio]["total"] += float(venta.total)
+
         # Agregar al ranking
         if vendedor_name not in ranking_dict:
             ranking_dict[vendedor_name] = {
@@ -941,27 +1100,52 @@ def reportes_turnos(request):
                 "dinero": 0.0,
                 "promedio": 0.0
             }
-        
+
         ranking_dict[vendedor_name]["ventas"] += 1
         ranking_dict[vendedor_name]["dinero"] += float(venta.total)
-    
+
     # Calcular promedios en ranking
     for vendedor_data in ranking_dict.values():
         if vendedor_data["ventas"] > 0:
             vendedor_data["promedio"] = round(
                 vendedor_data["dinero"] / vendedor_data["ventas"], 2
             )
-    
+
     # Ordenar ranking por dinero (descendente)
     ranking = sorted(ranking_dict.values(), key=lambda x: x["dinero"], reverse=True)
-    
+
+    total_ventas = sum(float(item["total_dinero"]) for item in reportes)
+    inventario_actualizado = [
+        {
+            "id": producto.id,
+            "nombre": producto.nombre,
+            "stock_actual": float(producto.stock_actual),
+            "stock_minimo": float(producto.stock_minimo),
+            "precio_venta": float(producto.precio_venta),
+        }
+        for producto in Producto.objects.filter(activo=True).order_by("nombre", "id")[:200]
+    ]
+
     return Response({
         "periodo": {
             "inicio": fecha_inicio.isoformat(),
             "fin": fecha_fin.isoformat()
         },
         "reportes": reportes,
+        "ventas_totales": round(total_ventas, 2),
+        "total_ventas": round(total_ventas, 2),
+        "total_egresos": round(total_egresos, 2),
+        "egresos": round(total_egresos, 2),
+        "balance": round(total_ventas - total_egresos, 2),
         "total_registros": len(reportes),
+        "totales_por_medio_pago": {
+            key: {
+                "ventas": value["ventas"],
+                "total": round(value["total"], 2),
+            }
+            for key, value in total_por_medio_pago.items()
+        },
+        "inventario_actualizado": inventario_actualizado,
         "ranking": ranking,
         "timestamp": timezone.now().isoformat()
     })

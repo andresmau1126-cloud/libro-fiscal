@@ -15,7 +15,7 @@ from django.core.files.base import ContentFile
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from .models import PuntoControl, RegistroRestauracion
 from .serializers import PuntoControlSerializer, RegistroRestauracionSerializer
@@ -38,7 +38,7 @@ class PuntoControlViewSet(viewsets.ModelViewSet):
     queryset = PuntoControl.objects.all()
     serializer_class = PuntoControlSerializer
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = (MultiPartParser, FormParser)
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
     
     def get_queryset(self):
         """Filtra los puntos de control según el usuario actual"""

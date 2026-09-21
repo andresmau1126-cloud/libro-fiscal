@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.core import mail
 from django.test import Client, TestCase, override_settings
 from apps.usuarios.apps import _seed_default_users
-from apps.usuarios.models import Usuario
+from apps.usuarios.models import Usuario, SellerSchedule
 
 
 class UsuarioAuthBypassTests(TestCase):
@@ -232,3 +232,70 @@ class UsuarioAuthBypassTests(TestCase):
 
         self.assertTrue(Usuario.objects.filter(email='sinsmtp@example.com').exists())
         self.assertFalse(response.cookies.get('session_token'))
+
+
+class SellerScheduleTests(TestCase):
+    def setUp(self):
+        self.admin = Usuario.objects.create_user(
+            email='admin.schedule@test.com',
+            nombre='Admin Turno',
+            password='admin123',
+            rol='admin',
+            is_staff=True,
+            is_superuser=True,
+            email_verified=True,
+        )
+        self.seller = Usuario.objects.create_user(
+            email='vendedor.turno@test.com',
+            nombre='Vendedor Turno',
+            password='admin123',
+            rol='vendedor',
+            email_verified=True,
+        )
+
+    def test_seller_shift_helper_blocks_outside_window(self):
+        from datetime import time
+
+        schedule = SellerSchedule.objects.create(
+            usuario=self.seller,
+            name='vendedor.turno@test.com',
+            start_time='08:00:00',
+            end_time='12:00:00',
+            is_active=True,
+        )
+
+        self.assertTrue(schedule.contains(time(9, 0)))
+        self.assertFalse(schedule.contains(time(13, 0)))
+        self.assertTrue(self.seller_is_in_shift(time(10, 0)))
+        self.assertFalse(self.seller_is_in_shift(time(13, 0)))
+
+    def test_admin_can_list_and_update_schedules(self):
+        schedule = SellerSchedule.objects.create(
+            usuario=self.seller,
+            name='vendedor.turno@test.com',
+            start_time='08:00:00',
+            end_time='12:00:00',
+            is_active=True,
+        )
+
+        from apps.usuarios.authentication import create_session
+
+        token = create_session(self.admin, ip='127.0.0.1', user_agent='test-agent')
+        self.client.cookies['session_token'] = token
+
+        response = self.client.get('/api/schedules')
+        self.assertEqual(response.status_code, 200)
+        self.assertGreater(len(response.json()), 0)
+
+        update = self.client.put(
+            f'/api/schedules/{schedule.id}',
+            data=json.dumps({'start_time': '09:00:00', 'end_time': '13:00:00'}),
+            content_type='application/json',
+        )
+        self.assertEqual(update.status_code, 200)
+        self.assertEqual(update.json()['start_time'], '09:00:00')
+
+    def seller_is_in_shift(self, current_time):
+        from apps.usuarios.utils import user_is_in_shift
+
+        return user_is_in_shift(self.seller, current_time)

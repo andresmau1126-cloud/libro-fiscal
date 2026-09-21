@@ -15,7 +15,7 @@ export default function ProvidersPage() {
   const [form, setForm] = useState(providerInitial);
   const [deleting, setDeleting] = useState(null);
   const [editingProvider, setEditingProvider] = useState(null);
-  const [editForm, setEditForm] = useState({ phone: '', address: '' });
+  const [editForm, setEditForm] = useState({ nit: '', phone: '', address: '' });
   const [savingEdit, setSavingEdit] = useState(false);
 
   const load = async () => {
@@ -65,7 +65,7 @@ export default function ProvidersPage() {
 
   const openEdit = (provider) => {
     setEditingProvider(provider);
-    setEditForm({ phone: provider.telefono || '', address: provider.direccion || '' });
+    setEditForm({ nit: provider.nit || '', phone: provider.telefono || '', address: provider.direccion || '' });
   };
 
   const handleEditSubmit = async (event) => {
@@ -235,6 +235,17 @@ export default function ProvidersPage() {
             </div>
             <form onSubmit={handleEditSubmit}>
               <div className="modal-body-custom">
+                <div className="mb-3">
+                  <label className="form-label" htmlFor="provider-nit">NIT / número de proveedor</label>
+                  <input
+                    id="provider-nit"
+                    type="text"
+                    className="form-control"
+                    value={editForm.nit}
+                    onChange={(event) => setEditForm({ ...editForm, nit: event.target.value })}
+                    maxLength={50}
+                  />
+                </div>
                 <div className="mb-3">
                   <label className="form-label" htmlFor="provider-phone">Teléfono</label>
                   <input

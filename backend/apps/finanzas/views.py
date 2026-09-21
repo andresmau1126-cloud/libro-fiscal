@@ -193,15 +193,19 @@ def provider_detail(request, provider_id):
     if request.method == "PUT":
         phone = request.data.get("phone", "")
         address = request.data.get("address", "")
+        nit = request.data.get("nit", "")
         if not isinstance(phone, str) or re.fullmatch(r"\d{10}", phone) is None:
             return Response({"error": "El teléfono debe tener exactamente 10 dígitos."}, status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(nit, str) or len(nit) > 50:
+            return Response({"error": "El NIT no puede superar 50 caracteres."}, status=status.HTTP_400_BAD_REQUEST)
         try:
             provider = Provider.objects.get(pk=provider_id)
         except Provider.DoesNotExist:
             return Response({"error": "El proveedor no existe."}, status=status.HTTP_404_NOT_FOUND)
+        provider.nit = nit.strip()
         provider.telefono = phone
         provider.direccion = address
-        provider.save(update_fields=["telefono", "direccion"])
+        provider.save(update_fields=["nit", "telefono", "direccion"])
         return Response(ProviderSerializer(provider).data)
 
     try:

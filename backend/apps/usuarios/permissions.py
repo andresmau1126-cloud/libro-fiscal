@@ -5,7 +5,7 @@ SELLER_ROLES = {"vendedor", "vendedor_2"}
 SUPERVISOR_ROLES = {"admin", "gerente", "auditor"}
 READ_ONLY_ROLES = {"auditor"}
 WRITE_ROLES = {"admin", "vendedor", "vendedor_2"}
-DELETE_ROLES = {"admin", "vendedor", "vendedor_2"}
+DELETE_ROLES = {"gerente"}
 PROTECTED_ROLE_BY_EMAIL = {
     "mauricio1126@gmail.com": "gerente",
     "andresmau1126@gmail.com": "admin",

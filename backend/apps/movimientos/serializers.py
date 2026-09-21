@@ -9,11 +9,38 @@ class MovimientoSerializer(serializers.Serializer):
     ingresos = serializers.FloatField()
     egresos = serializers.FloatField()
     saldo = serializers.FloatField()
+    sello_digital = serializers.SerializerMethodField()
+    tipo = serializers.SerializerMethodField()
+    medio_pago = serializers.SerializerMethodField()
+    turno = serializers.SerializerMethodField()
 
     def get_dia(self, obj):
         if hasattr(obj, "fecha"):
             return obj.fecha.day
         return 0
+
+    def get_sello_digital(self, obj):
+        return getattr(obj, "sello_digital", "")
+
+    def get_tipo(self, obj):
+        if getattr(obj, "venta_id", None):
+            return "venta"
+        try:
+            if getattr(obj, "expense", None) is not None:
+                return "egreso"
+        except Exception:
+            pass
+        return "movimiento"
+
+    def get_medio_pago(self, obj):
+        if getattr(obj, "venta_id", None) and getattr(obj, "venta", None) is not None:
+            return obj.venta.medio_pago
+        return None
+
+    def get_turno(self, obj):
+        if getattr(obj, "venta_id", None) and getattr(obj, "venta", None) is not None:
+            return obj.venta.turno
+        return None
 
 
 class MovimientoCreateSerializer(serializers.Serializer):

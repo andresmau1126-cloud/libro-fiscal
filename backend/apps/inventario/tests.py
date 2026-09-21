@@ -109,7 +109,7 @@ class InventarioBlackBoxAPITests(APITestCase):
     def test_create_sale_updates_fiscal_book_daily_income(self):
         libro = Libro.objects.create(
             nombre="Andres",
-            nit="1010085627",
+            nit="1020085627-1",
             anio=date.today().year,
             propietario=self.user,
         )
@@ -140,6 +140,116 @@ class InventarioBlackBoxAPITests(APITestCase):
         self.assertEqual(Movimiento.objects.filter(libro=libro, es_compilacion_ventas=True).count(), 1)
         self.assertEqual(movimiento.ingresos, Decimal("25.00"))
         self.assertEqual(movimiento.saldo, Decimal("25.00"))
+
+    def test_reportes_turnos_include_payment_breakdown(self):
+        manager = Usuario.objects.create_user(
+            email="gerente-turno@test.com",
+            nombre="Gerente Turno",
+            password="123456",
+            rol="gerente",
+        )
+        product_1 = Producto.objects.create(
+            nombre="Producto turno efectivo",
+            stock_actual=10,
+            precio_venta="50.00",
+            propietario=self.user,
+        )
+        product_2 = Producto.objects.create(
+            nombre="Producto turno tarjeta",
+            stock_actual=10,
+            precio_venta="30.00",
+            propietario=self.user,
+        )
+
+        self.client.force_authenticate(user=self.user)
+        self.client.post(
+            "/api/ventas",
+            {"medio_pago": "efectivo", "turno": "mañana", "detalles": [{"producto_id": product_1.id, "cantidad": "1"}]},
+            format="json",
+        )
+        self.client.post(
+            "/api/ventas",
+            {"medio_pago": "tarjeta", "turno": "mañana", "detalles": [{"producto_id": product_2.id, "cantidad": "1"}]},
+            format="json",
+        )
+
+        self.client.force_authenticate(user=manager)
+        response = self.client.get("/api/reportes/turnos?fecha_inicio=" + date.today().isoformat() + "&fecha_fin=" + date.today().isoformat())
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("totales_por_medio_pago", response.data)
+        self.assertEqual(response.data["totales_por_medio_pago"]["efectivo"]["total"], 50.0)
+        self.assertEqual(response.data["totales_por_medio_pago"]["tarjeta"]["total"], 30.0)
+
+    def test_shift_close_endpoint_requires_manager(self):
+        manager = Usuario.objects.create_user(
+            email="gerente-cierre@test.com",
+            nombre="Gerente Cierre",
+            password="123456",
+            rol="gerente",
+        )
+        product = Producto.objects.create(
+            nombre="Producto cierre",
+            stock_actual=5,
+            precio_venta="25.00",
+            propietario=self.user,
+        )
+        self.client.force_authenticate(user=self.user)
+        self.client.post(
+            "/api/ventas",
+            {"medio_pago": "efectivo", "turno": "mañana", "detalles": [{"producto_id": product.id, "cantidad": "1"}]},
+            format="json",
+        )
+
+        self.client.force_authenticate(user=manager)
+        response = self.client.post(
+            "/api/turnos/cierre",
+            {"turno": "mañana", "fecha": date.today().isoformat()},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["turno"], "mañana")
+        self.assertEqual(response.data["totales_por_medio_pago"]["efectivo"]["total"], 25.0)
+
+    def test_manager_only_can_delete_sales_and_shift_report_includes_expenses_and_balance(self):
+        manager = Usuario.objects.create_user(
+            email="gerente-elimina@test.com",
+            nombre="Gerente Elimina",
+            password="123456",
+            rol="gerente",
+        )
+        product = Producto.objects.create(
+            nombre="Producto eliminación",
+            stock_actual=4,
+            precio_venta="40.00",
+            propietario=self.user,
+        )
+        self.client.force_authenticate(user=self.user)
+        sale_response = self.client.post(
+            "/api/ventas",
+            {"medio_pago": "tarjeta", "turno": "mañana", "detalles": [{"producto_id": product.id, "cantidad": "1"}]},
+            format="json",
+        )
+        self.assertEqual(sale_response.status_code, status.HTTP_201_CREATED)
+
+        delete_response = self.client.delete(f"/api/ventas/{sale_response.data['id']}")
+        self.assertEqual(delete_response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.client.force_authenticate(user=manager)
+        cierre = self.client.post(
+            "/api/turnos/cierre",
+            {"turno": "mañana", "fecha": date.today().isoformat()},
+            format="json",
+        )
+        self.assertEqual(cierre.status_code, status.HTTP_200_OK)
+        self.assertIn("total_egresos", cierre.data)
+        self.assertIn("balance", cierre.data)
+        self.assertIn("inventario_actualizado", cierre.data)
+
+        sale_delete = self.client.delete(f"/api/ventas/{sale_response.data['id']}")
+        self.assertEqual(sale_delete.status_code, status.HTTP_200_OK)
+        self.assertTrue(sale_delete.data["ok"])
 
     def test_create_sale_is_registered_in_audit_log_for_supervisors(self):
         product = Producto.objects.create(
@@ -178,7 +288,7 @@ class InventarioBlackBoxAPITests(APITestCase):
     def test_seller_sale_goes_to_andres_fiscal_book(self):
         libro_andres = Libro.objects.create(
             nombre="Andres",
-            nit="1010085627",
+            nit="1020085627-1",
             anio=date.today().year,
             propietario=self.other_user,
         )
@@ -204,7 +314,7 @@ class InventarioBlackBoxAPITests(APITestCase):
     def test_supervisors_can_view_consolidated_seller_sales(self):
         libro_andres = Libro.objects.create(
             nombre="Andres",
-            nit="1010085627",
+            nit="1020085627-1",
             anio=date.today().year,
             propietario=self.other_user,
         )
@@ -245,6 +355,34 @@ class InventarioBlackBoxAPITests(APITestCase):
             ]
             self.assertEqual(len(compilaciones), 1)
             self.assertEqual(compilaciones[0]["ingresos"], 10.0)
+
+    def test_seller_can_update_sale_date(self):
+        product = Producto.objects.create(
+            nombre="Producto fecha",
+            stock_actual=5,
+            precio_venta="10.00",
+            propietario=self.user,
+        )
+        self.client.force_authenticate(user=self.user)
+        sale_response = self.client.post(
+            "/api/ventas",
+            {"detalles": [{"producto_id": product.id, "cantidad": "2"}]},
+            format="json",
+        )
+
+        self.assertEqual(sale_response.status_code, status.HTTP_201_CREATED)
+        venta = Venta.objects.get(pk=sale_response.data["id"])
+        nueva_fecha = (date.today() + timedelta(days=2)).isoformat()
+
+        response = self.client.put(
+            f"/api/ventas/{venta.id}",
+            {"fecha": nueva_fecha},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        venta.refresh_from_db()
+        self.assertEqual(venta.fecha.date().isoformat(), nueva_fecha)
 
     def test_create_sale_rejects_insufficient_stock(self):
         product = Producto.objects.create(
@@ -407,7 +545,7 @@ class InventarioBlackBoxAPITests(APITestCase):
         self.assertEqual(own_sales.status_code, status.HTTP_200_OK)
         self.assertEqual([item["id"] for item in own_sales.data["ventas"]], [sale.id])
         self.assertEqual(self.client.get("/api/historial/ventas").status_code, status.HTTP_200_OK)
-        self.assertEqual(self.client.delete(f"/api/ventas/{sale.id}").status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.delete(f"/api/ventas/{sale.id}").status_code, status.HTTP_403_FORBIDDEN)
 
         self.client.force_authenticate(user=seller_2)
         self.assertEqual(self.client.get("/api/ventas").status_code, status.HTTP_200_OK)

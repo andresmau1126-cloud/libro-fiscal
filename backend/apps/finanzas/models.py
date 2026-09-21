@@ -1,3 +1,5 @@
+import hashlib
+
 from django.conf import settings
 from django.db import models
 
@@ -29,6 +31,20 @@ class Expense(models.Model):
     creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="expenses_created")
     movimiento = models.OneToOneField("movimientos.Movimiento", on_delete=models.PROTECT, related_name="expense", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def sello_digital(self):
+        payload = "|".join(
+            [
+                str(self.fecha or ""),
+                str(self.descripcion or ""),
+                str(self.valor_pagado or 0),
+                str(self.provider_id or ""),
+                str(self.libro_id or ""),
+                str(self.id or ""),
+            ]
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32].upper()
 
     class Meta:
         db_table = "expenses"

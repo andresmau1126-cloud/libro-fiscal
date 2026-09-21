@@ -1,3 +1,5 @@
+import hashlib
+
 from django.db import models
 from apps.libros.models import Libro
 
@@ -42,6 +44,20 @@ class Movimiento(models.Model):
         else:
             self.nombre = None
         super().save(*args, **kwargs)
+
+    @property
+    def sello_digital(self):
+        payload = "|".join(
+            [
+                str(self.fecha or ""),
+                str(self.descripcion or ""),
+                str(self.ingresos or 0),
+                str(self.egresos or 0),
+                str(self.libro_id or ""),
+                str(self.id or ""),
+            ]
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32].upper()
 
     def __str__(self):
         return f"{self.fecha} — {self.descripcion} (I:{self.ingresos} E:{self.egresos})"
