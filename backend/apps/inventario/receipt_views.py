@@ -36,6 +36,7 @@ def venta_receipt(request, venta_id):
         "fecha": venta.fecha.isoformat(),
         "cliente": {
             "nombre": venta.cliente,
+            "nit": venta.cliente_nit,
             "cedula": "",
             "telefono": "",
         },

@@ -162,6 +162,7 @@ def _venta_data(venta):
         "id": venta.id,
         "fecha": venta.fecha.isoformat(),
         "cliente": venta.cliente,
+        "cliente_nit": venta.cliente_nit,
         "medio_pago": venta.medio_pago,
         "turno": venta.turno,
         "total": float(venta.total),
@@ -263,6 +264,7 @@ def ventas_list_create(request):
 
         venta = Venta.objects.create(
             cliente=data.get("cliente", "").strip(),
+            cliente_nit=data.get("cliente_nit", "").strip(),
             medio_pago=data["medio_pago"],
             turno=data.get("turno", "mañana"),
             total=total,

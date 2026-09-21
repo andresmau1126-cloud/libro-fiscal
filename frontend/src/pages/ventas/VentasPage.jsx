@@ -30,6 +30,7 @@ export default function VentasPage() {
       return {
         fecha: parsed.fecha || today,
         cliente: parsed.cliente || '',
+        clienteNit: parsed.clienteNit || '',
         medioPago: parsed.medioPago || 'efectivo',
         cart: Array.isArray(parsed.cart) ? parsed.cart : [],
       };
@@ -44,6 +45,7 @@ export default function VentasPage() {
   const [ventas, setVentas] = useState([]);
   const [fecha, setFecha] = useState(initialState?.fecha || today);
   const [cliente, setCliente] = useState(initialState?.cliente || '');
+  const [clienteNit, setClienteNit] = useState(initialState?.clienteNit || '');
   const [medioPago, setMedioPago] = useState(initialState?.medioPago || 'efectivo');
   const [cart, setCart] = useState(initialState?.cart || []);
   const [selectedId, setSelectedId] = useState('');
@@ -57,10 +59,10 @@ export default function VentasPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const payload = JSON.stringify({ fecha, cliente, medioPago, cart });
+      const payload = JSON.stringify({ fecha, cliente, clienteNit, medioPago, cart });
       window.localStorage.setItem(STORAGE_KEY, payload);
     }
-  }, [fecha, cliente, medioPago, cart]);
+  }, [fecha, cliente, clienteNit, medioPago, cart]);
 
   const load = async () => {
     setLoading(true);
@@ -105,12 +107,14 @@ export default function VentasPage() {
     try {
       const newSale = await createVenta({
         cliente,
+        cliente_nit: clienteNit,
         medio_pago: medioPago,
         detalles: cart.map((item) => ({ producto_id: item.id, cantidad: item.cantidad })),
       });
       const soldIds = new Set(cart.map((item) => item.id));
       setCart([]);
       setCliente('');
+      setClienteNit('');
       setMedioPago('efectivo');
       setSelectedId('');
       setCantidad('1');
@@ -214,7 +218,8 @@ export default function VentasPage() {
               </div>
 
               <div className="row g-2">
-                <div className="col-md-5"><label className="form-label small">Cliente (opcional)</label><input className="form-control" value={cliente} onChange={(event) => setCliente(event.target.value)} placeholder="Consumidor final" /></div>
+                <div className="col-md-4"><label className="form-label small">Cliente (opcional)</label><input className="form-control" value={cliente} onChange={(event) => setCliente(event.target.value)} placeholder="Consumidor final" /></div>
+                <div className="col-md-3"><label className="form-label small">NIT del comprador</label><input className="form-control" value={clienteNit} onChange={(event) => setClienteNit(event.target.value)} placeholder="NIT del comprador" maxLength="50" /></div>
                 <div className="col-md-4"><label className="form-label small">Medio de pago</label><select className="form-select" value={medioPago} onChange={(event) => { const value = event.target.value; setMedioPago(value); if (value !== 'efectivo') setPaymentSimulation({ medio: value, referencia: String(Math.floor(1000 + Math.random() * 9000)), fecha: new Date().toLocaleString('es-CO'), valor: total }); }}><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option></select></div>
                 <div className="col-md-3 d-flex align-items-end"><button className="btn btn-primary w-100" disabled={saving || !cart.length}>{saving ? 'Registrando...' : `Cobrar ${money(total)}`}</button></div>
               </div>

@@ -70,6 +70,7 @@ class VentaDetalleCreateSerializer(serializers.Serializer):
 class VentaCreateSerializer(serializers.Serializer):
     libro_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
     cliente = serializers.CharField(max_length=180, required=False, allow_blank=True, default="")
+    cliente_nit = serializers.CharField(max_length=50, required=False, allow_blank=True, default="")
     medio_pago = serializers.ChoiceField(choices=["efectivo", "transferencia", "tarjeta"], default="efectivo")
     turno = serializers.ChoiceField(choices=["mañana", "tarde", "noche"], default="mañana", required=False)
     detalles = VentaDetalleCreateSerializer(many=True, allow_empty=False)

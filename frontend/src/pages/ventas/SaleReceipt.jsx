@@ -14,8 +14,8 @@ const formatDate = (value) => new Date(value).toLocaleString('es-CO', {
 });
 
 const customer = (receipt) => (typeof receipt.cliente === 'string'
-  ? { nombre: receipt.cliente, cedula: '', telefono: '' }
-  : receipt.cliente || { nombre: '', cedula: '', telefono: '' });
+  ? { nombre: receipt.cliente, nit: receipt.cliente_nit || '', cedula: '', telefono: '' }
+  : receipt.cliente || { nombre: '', nit: '', cedula: '', telefono: '' });
 
 export default function SaleReceipt() {
   const { id } = useParams();
@@ -51,7 +51,7 @@ export default function SaleReceipt() {
     doc.text(`Vendedor: ${receipt.vendedor}`, 42, y + 20);
     const client = customer(receipt);
     doc.text(`Cliente: ${client.nombre || 'Consumidor final'}`, 300, y);
-    doc.text(`Cédula: ${client.cedula || '-'}`, 300, y + 20);
+    doc.text(`NIT: ${client.nit || '-'}`, 300, y + 20);
     doc.text(`Pago: ${receipt.medio_pago}`, 300, y + 40);
     y += 60;
     doc.setFont('helvetica', 'bold');
@@ -91,7 +91,7 @@ export default function SaleReceipt() {
           <div className="col-md-3"><strong>Fecha</strong><div>{formatDate(receipt.fecha)}</div></div>
           <div className="col-md-3"><strong>Vendedor</strong><div>{receipt.vendedor}</div></div>
           <div className="col-md-3"><strong>Cliente</strong><div>{customer(receipt).nombre || 'Consumidor final'}</div></div>
-          <div className="col-md-3"><strong>Cédula / teléfono</strong><div>{customer(receipt).cedula || '-'} / {customer(receipt).telefono || '-'}</div></div>
+          <div className="col-md-3"><strong>NIT del comprador</strong><div>{customer(receipt).nit || '-'}</div></div>
           <div className="col-md-3"><strong>Pago</strong><div>{receipt.medio_pago}</div></div>
         </div>
         <div className="table-responsive">
