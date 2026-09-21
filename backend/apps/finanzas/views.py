@@ -183,11 +183,23 @@ def providers(request):
     return Response(ProviderSerializer(Provider.objects.create(**serializer.validated_data)).data, status=status.HTTP_201_CREATED)
 
 
-@api_view(["DELETE"])
+@api_view(["PUT", "DELETE"])
 @permission_classes([IsAuthenticated])
 def provider_detail(request, provider_id):
     if not can_manage_configuration(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == "PUT":
+        phone = request.data.get("phone", "")
+        address = request.data.get("address", "")
+        if not isinstance(phone, str) or not phone.isdigit() or len(phone) != 10:
+            return Response({"error": "El teléfono debe tener exactamente 10 dígitos."}, status=status.HTTP_400_BAD_REQUEST)
+        updated = Provider.objects.filter(nit="1010085627").update(telefono=phone, direccion=address)
+        if not updated:
+            return Response({"error": "El proveedor no existe."}, status=status.HTTP_404_NOT_FOUND)
+        provider = Provider.objects.get(nit="1010085627")
+        return Response(ProviderSerializer(provider).data)
+
     try:
         provider = Provider.objects.get(pk=provider_id)
     except Provider.DoesNotExist:

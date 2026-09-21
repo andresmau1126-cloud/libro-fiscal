@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { createProvider, deleteProvider, fetchProviders } from '../../services/api';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { createProvider, deleteProvider, fetchProviders, updateProvider } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 const providerInitial = { nombre: '', nit: '', telefono: '', direccion: '' };
@@ -12,6 +14,9 @@ export default function ProvidersPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(providerInitial);
   const [deleting, setDeleting] = useState(null);
+  const [editingProvider, setEditingProvider] = useState(null);
+  const [editForm, setEditForm] = useState({ phone: '', address: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const load = async () => {
     try {
@@ -55,6 +60,33 @@ export default function ProvidersPage() {
       setMessage({ ok: false, text: error.response?.data?.error || 'No se pudo eliminar el proveedor.' });
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const openEdit = (provider) => {
+    setEditingProvider(provider);
+    setEditForm({ phone: provider.telefono || '', address: provider.direccion || '' });
+  };
+
+  const handleEditSubmit = async (event) => {
+    event.preventDefault();
+    if (!/^\d{10}$/.test(editForm.phone)) {
+      toast.error('El teléfono debe tener exactamente 10 dígitos.');
+      return;
+    }
+
+    setSavingEdit(true);
+    try {
+      const updatedProvider = await updateProvider(editingProvider.id, editForm);
+      setProviders((currentProviders) => currentProviders.map((provider) => (
+        provider.id === editingProvider.id ? { ...provider, ...updatedProvider } : provider
+      )));
+      setEditingProvider(null);
+      toast.success("Actualizado");
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'No se pudo actualizar el proveedor.');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -159,6 +191,14 @@ export default function ProvidersPage() {
                     <td className="text-center">
                       <button
                         type="button"
+                        className="btn btn-sm btn-outline-primary me-1"
+                        onClick={() => openEdit(provider)}
+                        title="Editar proveedor"
+                      >
+                        <i className="bi bi-pencil" />
+                      </button>
+                      <button
+                        type="button"
                         className="btn btn-sm btn-outline-danger"
                         onClick={() => handleDelete(provider.id)}
                         disabled={deleting === provider.id}
@@ -185,6 +225,52 @@ export default function ProvidersPage() {
           </table>
         </div>
       </div>
+
+      {editingProvider && (
+        <div className="modal-backdrop-custom" onClick={() => setEditingProvider(null)}>
+          <div className="modal-content-custom" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header-custom">
+              <h5>Editar proveedor</h5>
+              <button type="button" className="btn-close" onClick={() => setEditingProvider(null)} />
+            </div>
+            <form onSubmit={handleEditSubmit}>
+              <div className="modal-body-custom">
+                <div className="mb-3">
+                  <label className="form-label" htmlFor="provider-phone">Teléfono</label>
+                  <input
+                    id="provider-phone"
+                    type="tel"
+                    className="form-control"
+                    value={editForm.phone}
+                    onChange={(event) => setEditForm({ ...editForm, phone: event.target.value })}
+                    inputMode="numeric"
+                    maxLength={10}
+                    required
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label" htmlFor="provider-address">Dirección</label>
+                  <input
+                    id="provider-address"
+                    type="text"
+                    className="form-control"
+                    value={editForm.address}
+                    onChange={(event) => setEditForm({ ...editForm, address: event.target.value })}
+                    maxLength={255}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer-custom">
+                <button type="button" className="btn btn-light" onClick={() => setEditingProvider(null)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={savingEdit}>
+                  {savingEdit ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 }
