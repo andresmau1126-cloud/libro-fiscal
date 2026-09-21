@@ -45,9 +45,9 @@ export default function ExpenseReceipt() {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('AGENTS WEST', 42, 26);
+    doc.text('Multivariedades Ricaurte', 42, 26);
     doc.setFontSize(10);
-    doc.text('NIT: 1010085627', 42, 42);
+    doc.text('NIT: 1020085627-1', 42, 42);
     doc.text('COMPROBANTE DE EGRESO', pageWidth - 170, 26);
     doc.text(`N° ${receipt.numero_comprobante}`, pageWidth - 170, 42);
 
@@ -137,8 +137,8 @@ export default function ExpenseReceipt() {
               AW
             </div>
             <div>
-              <p className="text-xl font-black uppercase tracking-wide">AGENTS WEST</p>
-              <p className="text-sm text-slate-500">NIT: 1010085627</p>
+              <p className="text-xl font-black uppercase tracking-wide">Multivariedades Ricaurte</p>
+              <p className="text-sm text-slate-500">NIT: 1020085627-1</p>
             </div>
           </div>
 
@@ -218,8 +218,8 @@ export default function ExpenseReceipt() {
               <span className="text-2xl font-black">{money(receipt.total_pagado)}</span>
             </div>
             <div className="mt-4 text-sm text-slate-300">
-              <p>Empresa: AGENTS WEST</p>
-              <p className="mt-1">NIT: 1010085627</p>
+              <p>Empresa: Multivariedades Ricaurte</p>
+              <p className="mt-1">NIT: 1020085627-1</p>
             </div>
           </div>
         </div>

@@ -107,16 +107,16 @@ def expense_receipt(request, expense_id):
             "rol": expense.creado_por.rol,
         },
         "firma": {
-            "entrega": "AGENTS WEST",
+            "entrega": "Multivariedades Ricaurte",
             "recibe": expense.creado_por.nombre,
-            "nit_empresa": "1010085627",
+            "nit_empresa": "1020085627-1",
         },
         "forma_pago": "No especificada",
         "observaciones": expense.descripcion,
         "empresa": {
-            "nombre": "AGENTS WEST",
-            "nit": "1010085627",
-            "logo": "AGENTS WEST",
+            "nombre": "Multivariedades Ricaurte",
+            "nit": "1020085627-1",
+            "logo": "Multivariedades Ricaurte",
         },
     }
     return Response(receipt)
@@ -194,10 +194,10 @@ def provider_detail(request, provider_id):
         address = request.data.get("address", "")
         if not isinstance(phone, str) or not phone.isdigit() or len(phone) != 10:
             return Response({"error": "El teléfono debe tener exactamente 10 dígitos."}, status=status.HTTP_400_BAD_REQUEST)
-        updated = Provider.objects.filter(nit="1010085627").update(telefono=phone, direccion=address)
+        updated = Provider.objects.filter(nit="1020085627-1").update(telefono=phone, direccion=address)
         if not updated:
             return Response({"error": "El proveedor no existe."}, status=status.HTTP_404_NOT_FOUND)
-        provider = Provider.objects.get(nit="1010085627")
+        provider = Provider.objects.get(nit="1020085627-1")
         return Response(ProviderSerializer(provider).data)
 
     try:

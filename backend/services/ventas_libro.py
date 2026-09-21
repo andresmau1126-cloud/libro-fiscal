@@ -12,8 +12,8 @@ from apps.movimientos.models import Movimiento
 from apps.usuarios.permissions import SELLER_ROLES
 from services.saldo import recompute_saldos
 
-LIBRO_VENTAS_VENDEDORES_NIT = "1010085627"
-LIBRO_VENTAS_VENDEDORES_NOMBRE = "Andres"
+LIBRO_VENTAS_VENDEDORES_NIT = "1020085627-1"
+LIBRO_VENTAS_VENDEDORES_NOMBRE = "Multivariedades Ricaurte"
 logger = logging.getLogger(__name__)
 
 

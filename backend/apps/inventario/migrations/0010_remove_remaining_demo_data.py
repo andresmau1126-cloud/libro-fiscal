@@ -55,7 +55,7 @@ def remove_remaining_demo_data(apps, schema_editor):
         HistorialInventario.objects.filter(producto_id__in=product_ids).delete()
         demo_products.delete()
 
-    Libro.objects.filter(propietario_id__in=demo_user_ids, nit="1010085627").delete()
+    Libro.objects.filter(propietario_id__in=demo_user_ids, nit="1020085627-1").delete()
     SellerStats.objects.filter(vendedor_id__in=demo_user_ids).delete()
     for provider in Provider.objects.filter(nombre__in=DEMO_PROVIDER_NAMES):
         if not provider.productos.exists() and not provider.expenses.exists():

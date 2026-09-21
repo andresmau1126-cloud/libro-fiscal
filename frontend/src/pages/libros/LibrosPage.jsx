@@ -494,7 +494,7 @@ export default function LibrosPage() {
                   </div>
                   <div className="col-12 col-md-3">
                     <label className="form-label fw-semibold"><i className="bi bi-hash me-1 text-primary" />NIT</label>
-                    <input className="form-control form-control-lg" placeholder="Ej: 1010085627-1" value={libroForm.nit} onChange={e => setLibroForm({ ...libroForm, nit: e.target.value })} required maxLength={50} />
+                    <input className="form-control form-control-lg" placeholder="Ej: 1020085627-1" value={libroForm.nit} onChange={e => setLibroForm({ ...libroForm, nit: e.target.value })} required maxLength={50} />
                   </div>
                   <div className="col-6 col-md-2">
                     <label className="form-label fw-semibold"><i className="bi bi-calendar3 me-1 text-primary" />Año</label>

@@ -25,7 +25,7 @@ class FinanzasPermissionsAndFiscalTests(APITestCase):
             rol="auditor",
         )
         self.libro = Libro.objects.create(
-            nombre="Andres", nit="1010085627", anio=date.today().year, propietario=self.admin
+            nombre="Multivariedades Ricaurte", nit="1020085627-1", anio=date.today().year, propietario=self.admin
         )
         self.provider = Provider.objects.create(nombre="Proveedor prueba")
 

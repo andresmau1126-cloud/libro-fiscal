@@ -35,10 +35,10 @@ export default function SaleReceipt() {
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
-    doc.text('AGENTS WEST', 42, 30);
+    doc.text('Multivariedades Ricaurte', 42, 30);
     doc.setFontSize(10);
-    doc.text('NIT: 1010085627', 42, 50);
-    doc.text(receipt.numero_comprobante, width - 130, 38);
+    doc.text('NIT 1020085627-1', 42, 50);
+    doc.text(`Comprobante de Venta No. ${receipt.numero_comprobante}`, width - 250, 38);
     doc.setTextColor(17, 24, 39);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
@@ -78,8 +78,8 @@ export default function SaleReceipt() {
       </div>
       <article className="data-table p-4">
         <header className="d-flex justify-content-between border-bottom pb-3 mb-4">
-          <div><h2 className="mb-1">AGENTS WEST</h2><div>NIT 1010085627</div></div>
-          <div className="text-end"><div className="text-muted">Comprobante de venta</div><h3 className="mb-0">{receipt.numero_comprobante}</h3></div>
+          <div><h2 className="mb-1">Multivariedades Ricaurte</h2><div>NIT 1020085627-1</div></div>
+          <div className="text-end"><h3 className="mb-0">Comprobante de Venta No. {receipt.numero_comprobante}</h3></div>
         </header>
         <div className="row g-3 mb-4">
           <div className="col-md-3"><strong>Fecha</strong><div>{formatDate(receipt.fecha)}</div></div>

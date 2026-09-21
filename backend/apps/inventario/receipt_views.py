@@ -31,7 +31,8 @@ def venta_receipt(request, venta_id):
     return Response({
         "id": venta.id,
         "numero_comprobante": f"VEN-{venta.id:04d}",
-        "nit": "1010085627",
+        "nit": "1020085627-1",
+        "company": "Multivariedades Ricaurte",
         "fecha": venta.fecha.isoformat(),
         "cliente": venta.cliente,
         "medio_pago": venta.medio_pago,
