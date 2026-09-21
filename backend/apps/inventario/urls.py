@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .receipt_views import venta_receipt
 
 urlpatterns = [
     path("productos", views.productos_list_create, name="productos-list-create"),
@@ -8,8 +9,8 @@ urlpatterns = [
     path("ventas/", views.ventas_list_create, name="ventas-list-create-slash"),
     path("sales", views.ventas_list_create, name="sales-list-create"),
     path("sales/", views.ventas_list_create, name="sales-list-create-slash"),
-    path("sales/<int:venta_id>/receipt", views.venta_receipt, name="sale-receipt"),
-    path("sales/<int:venta_id>/receipt/", views.venta_receipt, name="sale-receipt-slash"),
+    path("sales/<int:venta_id>/receipt", venta_receipt, name="sale-receipt"),
+    path("sales/<int:venta_id>/receipt/", venta_receipt, name="sale-receipt-slash"),
     path("ventas/<int:venta_id>", views.venta_delete, name="venta-delete"),
     path("test-mail", views.test_mail, name="test-mail"),
     path("alertas-inventario", views.enviar_alertas_inventario_manual, name="alertas-inventario"),
