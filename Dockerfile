@@ -1,7 +1,7 @@
 # ── Stage 1: Build frontend ──
 FROM node:18-alpine AS frontend-build
 WORKDIR /app/frontend
-ARG RENDER_BUILD_REVISION=cd8ad6d
+ARG RENDER_BUILD_REVISION=1e7da26
 RUN echo "Render build revision: ${RENDER_BUILD_REVISION}"
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm install
