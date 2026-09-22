@@ -126,6 +126,7 @@ export const fetchTurnos = (params = {}) => {
 export const abrirTurno = (data) => api.post('/turnos/abrir', data).then(r => r.data);
 export const cerrarTurno = (data) => api.post('/turnos/cerrar', data).then(r => r.data);
 export const fetchTurnosReporte = (fecha = '') => api.get(`/turnos/reporte${fecha ? `?fecha=${fecha}` : ''}`).then(r => r.data);
+export const fetchTurnosVendedores = () => api.get('/turnos/vendedores').then(r => r.data);
 
 
 export default api;

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { abrirTurno, cerrarTurno, fetchTurnos, fetchTurnosReporte } from '../services/api';
+import { abrirTurno, cerrarTurno, fetchTurnos, fetchTurnosReporte, fetchTurnosVendedores } from '../services/api';
 
 const money = (value) => '$ ' + Number(value || 0).toLocaleString('es-CO', {
   minimumFractionDigits: 2,
@@ -19,6 +19,7 @@ export default function Turnos() {
 
   const [turnos, setTurnos] = useState([]);
   const [ausentes, setAusentes] = useState([]);
+  const [vendedores, setVendedores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(null);
 
@@ -32,6 +33,10 @@ export default function Turnos() {
   const [totalEntregado, setTotalEntregado] = useState('');
   const [forzarEntregado, setForzarEntregado] = useState({});
   const [saving, setSaving] = useState(false);
+
+  // Formulario de gerente/admin para abrir turno a nombre de un vendedor
+  const [nuevoVendedorId, setNuevoVendedorId] = useState('');
+  const [nuevaCajaInicial, setNuevaCajaInicial] = useState('');
 
   const misTurnos = useMemo(
     () => turnos.filter((t) => t.vendedor === user?.id),
@@ -68,6 +73,13 @@ export default function Turnos() {
   };
 
   useEffect(() => { load(); }, [isSupervisor, filtroFecha, filtroVendedor, filtroEstado]);
+
+  useEffect(() => {
+    if (!isSupervisor) return;
+    fetchTurnosVendedores()
+      .then((rows) => setVendedores(rows))
+      .catch(() => {});
+  }, [isSupervisor]);
 
   const handleAbrir = async (event) => {
     event.preventDefault();
@@ -112,6 +124,24 @@ export default function Turnos() {
       await load();
     } catch (error) {
       setMessage({ ok: false, text: error?.response?.data?.error || 'No se pudo forzar el cierre.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAbrirParaVendedor = async (event) => {
+    event.preventDefault();
+    if (!nuevoVendedorId) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      await abrirTurno({ vendedor_id: Number(nuevoVendedorId), caja_inicial: Number(nuevaCajaInicial || 0) });
+      setNuevoVendedorId('');
+      setNuevaCajaInicial('');
+      setMessage({ ok: true, text: 'Turno abierto correctamente.' });
+      await load();
+    } catch (error) {
+      setMessage({ ok: false, text: error?.response?.data?.error || 'No se pudo abrir el turno.' });
     } finally {
       setSaving(false);
     }
@@ -188,6 +218,33 @@ export default function Turnos() {
 
       {isSupervisor && (
         <>
+          <div className="card mb-3">
+            <div className="card-body">
+              <h5 className="card-title">Abrir turno para un vendedor</h5>
+              <form className="row g-2 align-items-end" onSubmit={handleAbrirParaVendedor}>
+                <div className="col-auto">
+                  <label className="form-label">Vendedor</label>
+                  <select className="form-select" value={nuevoVendedorId} onChange={(e) => setNuevoVendedorId(e.target.value)} required>
+                    <option value="">Seleccione un vendedor...</option>
+                    {vendedores.map((v) => (
+                      <option key={v.id} value={v.id}>{v.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-auto">
+                  <label className="form-label">Caja inicial</label>
+                  <input
+                    type="number" min="0" step="0.01" className="form-control"
+                    value={nuevaCajaInicial} onChange={(e) => setNuevaCajaInicial(e.target.value)} required
+                  />
+                </div>
+                <div className="col-auto">
+                  <button type="submit" className="btn btn-success" disabled={saving}>Abrir Turno</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
           <div className="card mb-3">
             <div className="card-body">
               <div className="row g-2">

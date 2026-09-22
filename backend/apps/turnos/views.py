@@ -22,6 +22,18 @@ def _ventas_dia(vendedor, fecha):
     return total or Decimal("0")
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def turnos_vendedores(request):
+    if request.user.rol not in TURNOS_SUPERVISOR_ROLES:
+        return Response(
+            {"error": "Solo gerente o admin pueden consultar vendedores."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    vendedores = Usuario.objects.filter(rol__in=SELLER_ROLES, activo=True).order_by("nombre")
+    return Response([{"id": v.id, "nombre": v.nombre} for v in vendedores])
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def abrir_turno(request):
