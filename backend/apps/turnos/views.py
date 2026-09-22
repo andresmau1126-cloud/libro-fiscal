@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from apps.inventario.models import Venta
 from apps.usuarios.models import Usuario
 from apps.usuarios.permissions import SELLER_ROLES
+from services.ventas_libro import compilar_ventas_diarias
 from .models import Turno
 from .serializers import TurnoAbrirSerializer, TurnoCerrarSerializer, TurnoSerializer
 
@@ -104,6 +105,9 @@ def cerrar_turno(request):
     else:
         turno.hora_salida = timezone.now()
     turno.save()
+
+    # Consolida el total final de ventas del día (todos los vendedores) en el libro fiscal.
+    compilar_ventas_diarias(fecha=turno.fecha)
 
     return Response(TurnoSerializer(turno).data)
 
