@@ -57,12 +57,16 @@ def abrir_turno(request):
     if Turno.objects.filter(vendedor=vendedor, fecha=hoy, estado="abierto").exists():
         return Response({"error": "Ya existe un turno abierto hoy para este vendedor."}, status=status.HTTP_409_CONFLICT)
 
-    turno = Turno.objects.create(
+    turno = Turno(
         vendedor=vendedor,
         fecha=hoy,
         caja_inicial=data["caja_inicial"],
         estado="abierto",
     )
+    # Solo gerente/admin pueden fijar manualmente la hora de entrada.
+    if request.user.rol in TURNOS_SUPERVISOR_ROLES and data.get("hora_entrada"):
+        turno.hora_entrada = data["hora_entrada"]
+    turno.save()
     return Response(TurnoSerializer(turno).data, status=status.HTTP_201_CREATED)
 
 
@@ -94,7 +98,11 @@ def cerrar_turno(request):
     turno.total_entregado = total_entregado
     turno.faltante = faltante
     turno.estado = "cerrado"
-    turno.hora_salida = timezone.now()
+    # Solo gerente/admin pueden fijar manualmente la hora de salida.
+    if is_supervisor and data.get("hora_salida"):
+        turno.hora_salida = data["hora_salida"]
+    else:
+        turno.hora_salida = timezone.now()
     turno.save()
 
     return Response(TurnoSerializer(turno).data)

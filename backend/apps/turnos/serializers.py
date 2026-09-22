@@ -16,8 +16,10 @@ class TurnoSerializer(serializers.ModelSerializer):
 class TurnoAbrirSerializer(serializers.Serializer):
     vendedor_id = serializers.IntegerField(required=False)
     caja_inicial = serializers.DecimalField(max_digits=18, decimal_places=2, min_value=0)
+    hora_entrada = serializers.DateTimeField(required=False)
 
 
 class TurnoCerrarSerializer(serializers.Serializer):
     turno_id = serializers.IntegerField()
     total_entregado = serializers.DecimalField(max_digits=18, decimal_places=2, min_value=0)
+    hora_salida = serializers.DateTimeField(required=False)

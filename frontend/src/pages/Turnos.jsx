@@ -37,6 +37,8 @@ export default function Turnos() {
   // Formulario de gerente/admin para abrir turno a nombre de un vendedor
   const [nuevoVendedorId, setNuevoVendedorId] = useState('');
   const [nuevaCajaInicial, setNuevaCajaInicial] = useState('');
+  const [nuevaHoraEntrada, setNuevaHoraEntrada] = useState('');
+  const [forzarHoraSalida, setForzarHoraSalida] = useState({});
 
   const misTurnos = useMemo(
     () => turnos.filter((t) => t.vendedor === user?.id),
@@ -116,10 +118,13 @@ export default function Turnos() {
 
   const handleForzarCierre = async (turno) => {
     const valor = Number(forzarEntregado[turno.id] || 0);
+    const horaSalida = forzarHoraSalida[turno.id];
     setSaving(true);
     setMessage(null);
     try {
-      await cerrarTurno({ turno_id: turno.id, total_entregado: valor });
+      const payload = { turno_id: turno.id, total_entregado: valor };
+      if (horaSalida) payload.hora_salida = new Date(horaSalida).toISOString();
+      await cerrarTurno(payload);
       setMessage({ ok: true, text: `Turno de ${turno.vendedor_nombre} cerrado.` });
       await load();
     } catch (error) {
@@ -135,9 +140,12 @@ export default function Turnos() {
     setSaving(true);
     setMessage(null);
     try {
-      await abrirTurno({ vendedor_id: Number(nuevoVendedorId), caja_inicial: Number(nuevaCajaInicial || 0) });
+      const payload = { vendedor_id: Number(nuevoVendedorId), caja_inicial: Number(nuevaCajaInicial || 0) };
+      if (nuevaHoraEntrada) payload.hora_entrada = new Date(nuevaHoraEntrada).toISOString();
+      await abrirTurno(payload);
       setNuevoVendedorId('');
       setNuevaCajaInicial('');
+      setNuevaHoraEntrada('');
       setMessage({ ok: true, text: 'Turno abierto correctamente.' });
       await load();
     } catch (error) {
@@ -239,6 +247,13 @@ export default function Turnos() {
                   />
                 </div>
                 <div className="col-auto">
+                  <label className="form-label">Hora de entrada (opcional)</label>
+                  <input
+                    type="datetime-local" className="form-control"
+                    value={nuevaHoraEntrada} onChange={(e) => setNuevaHoraEntrada(e.target.value)}
+                  />
+                </div>
+                <div className="col-auto">
                   <button type="submit" className="btn btn-success" disabled={saving}>Abrir Turno</button>
                 </div>
               </form>
@@ -320,6 +335,12 @@ export default function Turnos() {
                             placeholder="Entregado"
                             value={forzarEntregado[t.id] || ''}
                             onChange={(e) => setForzarEntregado({ ...forzarEntregado, [t.id]: e.target.value })}
+                          />
+                          <input
+                            type="datetime-local" className="form-control form-control-sm" style={{ width: 170 }}
+                            title="Hora de salida (opcional)"
+                            value={forzarHoraSalida[t.id] || ''}
+                            onChange={(e) => setForzarHoraSalida({ ...forzarHoraSalida, [t.id]: e.target.value })}
                           />
                           <button
                             className="btn btn-sm btn-outline-danger"
