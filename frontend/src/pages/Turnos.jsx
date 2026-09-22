@@ -329,19 +329,24 @@ export default function Turnos() {
                     </td>
                     <td>
                       {t.estado === 'abierto' && (
-                        <div className="d-flex gap-1">
-                          <input
-                            type="number" min="0" step="0.01" className="form-control form-control-sm" style={{ width: 110 }}
-                            placeholder="Entregado"
-                            value={forzarEntregado[t.id] || ''}
-                            onChange={(e) => setForzarEntregado({ ...forzarEntregado, [t.id]: e.target.value })}
-                          />
-                          <input
-                            type="datetime-local" className="form-control form-control-sm" style={{ width: 170 }}
-                            title="Hora de salida (opcional)"
-                            value={forzarHoraSalida[t.id] || ''}
-                            onChange={(e) => setForzarHoraSalida({ ...forzarHoraSalida, [t.id]: e.target.value })}
-                          />
+                        <div className="d-flex gap-2 align-items-end flex-wrap">
+                          <div>
+                            <label className="form-label small mb-0">Entregado</label>
+                            <input
+                              type="number" min="0" step="0.01" className="form-control form-control-sm" style={{ width: 110 }}
+                              placeholder="0.00"
+                              value={forzarEntregado[t.id] || ''}
+                              onChange={(e) => setForzarEntregado({ ...forzarEntregado, [t.id]: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <label className="form-label small mb-0">Hora salida (opcional)</label>
+                            <input
+                              type="datetime-local" className="form-control form-control-sm" style={{ width: 180 }}
+                              value={forzarHoraSalida[t.id] || ''}
+                              onChange={(e) => setForzarHoraSalida({ ...forzarHoraSalida, [t.id]: e.target.value })}
+                            />
+                          </div>
                           <button
                             className="btn btn-sm btn-outline-danger"
                             disabled={saving}
