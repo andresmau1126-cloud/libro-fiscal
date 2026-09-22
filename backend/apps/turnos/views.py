@@ -12,7 +12,7 @@ from apps.usuarios.models import Usuario
 from apps.usuarios.permissions import SELLER_ROLES
 from services.ventas_libro import compilar_ventas_diarias
 from .models import Turno
-from .serializers import TurnoAbrirSerializer, TurnoCerrarSerializer, TurnoSerializer
+from .serializers import TurnoAbrirSerializer, TurnoCerrarSerializer, TurnoHorasSerializer, TurnoSerializer
 
 # Solo gerente y admin administran/consultan los turnos de todos los vendedores.
 TURNOS_SUPERVISOR_ROLES = {"admin", "gerente"}
@@ -108,6 +108,35 @@ def cerrar_turno(request):
 
     # Consolida el total final de ventas del día (todos los vendedores) en el libro fiscal.
     compilar_ventas_diarias(fecha=turno.fecha)
+
+    return Response(TurnoSerializer(turno).data)
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def editar_horas_turno(request, turno_id):
+    if request.user.rol not in TURNOS_SUPERVISOR_ROLES:
+        return Response(
+            {"error": "Solo gerente o admin pueden editar la hora de entrada/salida."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    try:
+        turno = Turno.objects.get(pk=turno_id)
+    except Turno.DoesNotExist:
+        return Response({"error": "El turno no existe."}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = TurnoHorasSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    update_fields = []
+    if "hora_entrada" in data:
+        turno.hora_entrada = data["hora_entrada"]
+        update_fields.append("hora_entrada")
+    if "hora_salida" in data:
+        turno.hora_salida = data["hora_salida"]
+        update_fields.append("hora_salida")
+    turno.save(update_fields=update_fields)
 
     return Response(TurnoSerializer(turno).data)
 

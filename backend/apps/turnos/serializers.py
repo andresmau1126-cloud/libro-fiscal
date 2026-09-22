@@ -21,5 +21,15 @@ class TurnoAbrirSerializer(serializers.Serializer):
 
 class TurnoCerrarSerializer(serializers.Serializer):
     turno_id = serializers.IntegerField()
-    total_entregado = serializers.DecimalField(max_digits=18, decimal_places=2, min_value=0)
+    total_entregado = serializers.DecimalField(max_digits=18, decimal_places=2, min_value=0, required=False, default=0)
     hora_salida = serializers.DateTimeField(required=False)
+
+
+class TurnoHorasSerializer(serializers.Serializer):
+    hora_entrada = serializers.DateTimeField(required=False)
+    hora_salida = serializers.DateTimeField(required=False)
+
+    def validate(self, attrs):
+        if not attrs:
+            raise serializers.ValidationError("Debe enviar hora_entrada y/o hora_salida.")
+        return attrs

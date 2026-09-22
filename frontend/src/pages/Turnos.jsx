@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { abrirTurno, cerrarTurno, fetchTurnos, fetchTurnosReporte, fetchTurnosVendedores } from '../services/api';
+import { abrirTurno, cerrarTurno, editarHorasTurno, fetchTurnos, fetchTurnosReporte, fetchTurnosVendedores } from '../services/api';
 
 const money = (value) => '$ ' + Number(value || 0).toLocaleString('es-CO', {
   minimumFractionDigits: 2,
@@ -33,6 +33,9 @@ export default function Turnos() {
   const [totalEntregado, setTotalEntregado] = useState('');
   const [forzarEntregado, setForzarEntregado] = useState({});
   const [saving, setSaving] = useState(false);
+
+  // Edición independiente de hora entrada/salida (no requiere montos)
+  const [editHoras, setEditHoras] = useState({});
 
   // Formulario de gerente/admin para abrir turno a nombre de un vendedor
   const [nuevoVendedorId, setNuevoVendedorId] = useState('');
@@ -150,6 +153,26 @@ export default function Turnos() {
       await load();
     } catch (error) {
       setMessage({ ok: false, text: error?.response?.data?.error || 'No se pudo abrir el turno.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditarHoras = async (turno) => {
+    const valores = editHoras[turno.id] || {};
+    const payload = {};
+    if (valores.hora_entrada) payload.hora_entrada = new Date(valores.hora_entrada).toISOString();
+    if (valores.hora_salida) payload.hora_salida = new Date(valores.hora_salida).toISOString();
+    if (!payload.hora_entrada && !payload.hora_salida) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      await editarHorasTurno(turno.id, payload);
+      setEditHoras({ ...editHoras, [turno.id]: {} });
+      setMessage({ ok: true, text: `Horas de ${turno.vendedor_nombre} actualizadas.` });
+      await load();
+    } catch (error) {
+      setMessage({ ok: false, text: error?.response?.data?.error || 'No se pudieron actualizar las horas.' });
     } finally {
       setSaving(false);
     }
@@ -328,10 +351,35 @@ export default function Turnos() {
                       ) : '-'}
                     </td>
                     <td>
+                      <div className="d-flex gap-2 align-items-end flex-wrap mb-2">
+                        <div>
+                          <label className="form-label small mb-0">Entrada</label>
+                          <input
+                            type="datetime-local" className="form-control form-control-sm" style={{ width: 180 }}
+                            value={editHoras[t.id]?.hora_entrada || ''}
+                            onChange={(e) => setEditHoras({ ...editHoras, [t.id]: { ...editHoras[t.id], hora_entrada: e.target.value } })}
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label small mb-0">Salida</label>
+                          <input
+                            type="datetime-local" className="form-control form-control-sm" style={{ width: 180 }}
+                            value={editHoras[t.id]?.hora_salida || ''}
+                            onChange={(e) => setEditHoras({ ...editHoras, [t.id]: { ...editHoras[t.id], hora_salida: e.target.value } })}
+                          />
+                        </div>
+                        <button
+                          className="btn btn-sm btn-outline-primary"
+                          disabled={saving}
+                          onClick={() => handleEditarHoras(t)}
+                        >
+                          Guardar horas
+                        </button>
+                      </div>
                       {t.estado === 'abierto' && (
                         <div className="d-flex gap-2 align-items-end flex-wrap">
                           <div>
-                            <label className="form-label small mb-0">Entregado</label>
+                            <label className="form-label small mb-0">Entregado (opcional)</label>
                             <input
                               type="number" min="0" step="0.01" className="form-control form-control-sm" style={{ width: 110 }}
                               placeholder="0.00"
