@@ -99,6 +99,12 @@ export default function Layout() {
                   <span>Proveedores</span>
                 </NavLink>
               </li>
+              <li>
+                <NavLink to="/turnos" onClick={closeSidebar}>
+                  <i className="bi bi-clock-history" />
+                  <span>Turnos</span>
+                </NavLink>
+              </li>
             </ul>
           </div>
 

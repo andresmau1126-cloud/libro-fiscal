@@ -17,6 +17,7 @@ import ExpensesPage from './pages/gastos/ExpensesPage';
 import ExpenseReceipt from './pages/gastos/ExpenseReceipt';
 import ProvidersPage from './pages/gastos/ProvidersPage';
 import ManualesPage from './pages/ManualesPage';
+import Turnos from './pages/Turnos';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -56,6 +57,7 @@ function AppRoutes() {
         <Route path="egresos" element={<ExpensesPage />} />
         <Route path="egresos/:id/recibo" element={<ExpenseReceipt />} />
         <Route path="proveedores" element={<ProvidersPage />} />
+        <Route path="turnos" element={<Turnos />} />
         <Route path="manuales" element={<ManualesPage />} />
         <Route path="movimientos" element={<Navigate to="/libros" replace />} />
         <Route path="usuarios" element={<AdminRoute><UsuariosPage /></AdminRoute>} />

@@ -118,4 +118,14 @@ export const createExpense = (data) => api.post('/expenses', data).then(r => r.d
 export const updateExpense = (id, data) => api.put(`/expenses/${id}`, data).then(r => r.data);
 export const deleteExpense = (id) => api.delete(`/expenses/${id}`).then(r => r.data);
 
+/* ── Turnos ── */
+export const fetchTurnos = (params = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return api.get(`/turnos${qs ? `?${qs}` : ''}`).then(r => r.data);
+};
+export const abrirTurno = (data) => api.post('/turnos/abrir', data).then(r => r.data);
+export const cerrarTurno = (data) => api.post('/turnos/cerrar', data).then(r => r.data);
+export const fetchTurnosReporte = (fecha = '') => api.get(`/turnos/reporte${fecha ? `?fecha=${fecha}` : ''}`).then(r => r.data);
+
+
 export default api;
