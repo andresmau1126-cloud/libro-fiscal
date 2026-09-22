@@ -67,12 +67,14 @@ export default function Layout() {
           <div className="sidebar-section">
             <div className="sidebar-section-label">Operaciones</div>
             <ul className="sidebar-nav">
-              <li>
-                <NavLink to="/libros" onClick={closeSidebar}>
-                  <i className="bi bi-book-fill" />
-                  <span>Libros Fiscales</span>
-                </NavLink>
-              </li>
+              {['gerente', 'admin', 'auditor'].includes(user?.rol) && (
+                <li>
+                  <NavLink to="/libros" onClick={closeSidebar}>
+                    <i className="bi bi-book-fill" />
+                    <span>Libros Fiscales</span>
+                  </NavLink>
+                </li>
+              )}
               <li>
                 <NavLink to="/inventario" onClick={closeSidebar}>
                   <i className="bi bi-box-seam-fill" />

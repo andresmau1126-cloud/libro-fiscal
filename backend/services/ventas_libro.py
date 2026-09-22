@@ -12,7 +12,9 @@ from apps.movimientos.models import Movimiento
 from apps.usuarios.permissions import SELLER_ROLES
 from services.saldo import recompute_saldos
 
-LIBRO_VENTAS_VENDEDORES_NIT = "1020085627-1"
+# Libro fiscal único donde se consolidan las ventas de los vendedores.
+# Debe apuntar siempre al libro fiscal existente NIT 1010085627-1; NO crear libros nuevos.
+LIBRO_VENTAS_VENDEDORES_NIT = "1010085627-1"
 LIBRO_VENTAS_VENDEDORES_NOMBRE = "Multivariedades Ricaurte"
 logger = logging.getLogger(__name__)
 

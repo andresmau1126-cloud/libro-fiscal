@@ -11,6 +11,9 @@ from .serializers import LibroSerializer, LibroCreateSerializer
 from apps.auditoria.services import audit_log
 from apps.usuarios.permissions import can_delete, can_view_all, can_write
 
+# Libro fiscal principal de la empresa: solo gerente, admin y auditor pueden consultarlo.
+LIBRO_FISCAL_PRINCIPAL_NIT = "1010085627-1"
+
 
 def _libros_qs_for_user(user):
     if can_view_all(user):
@@ -101,6 +104,17 @@ def libro_detail(request, libro_id):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     if request.method == "DELETE" and request.user.rol not in {"admin", "vendedor", "vendedor_2"}:
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
+
+    if (
+        request.method == "GET"
+        and not can_view_all(request.user)
+        and Libro.objects.filter(pk=libro_id, nit=LIBRO_FISCAL_PRINCIPAL_NIT).exists()
+    ):
+        return Response(
+            {"error": "Solo gerente, admin o auditor pueden consultar el libro fiscal."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     try:
         libro = _libros_qs_for_user(request.user).get(pk=libro_id)
     except Libro.DoesNotExist:
