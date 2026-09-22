@@ -2,11 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { abrirTurno, cerrarTurno, editarHorasTurno, fetchTurnos, fetchTurnosReporte, fetchTurnosVendedores } from '../services/api';
 
-const money = (value) => '$ ' + Number(value || 0).toLocaleString('es-CO', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
 const localDate = () => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -28,20 +23,14 @@ export default function Turnos() {
   const [filtroFecha, setFiltroFecha] = useState(today);
   const [filtroEstado, setFiltroEstado] = useState('');
 
-  // Formularios del vendedor
-  const [cajaInicial, setCajaInicial] = useState('');
-  const [totalEntregado, setTotalEntregado] = useState('');
-  const [forzarEntregado, setForzarEntregado] = useState({});
   const [saving, setSaving] = useState(false);
 
-  // Edición independiente de hora entrada/salida (no requiere montos)
+  // Edición de hora entrada/salida (independiente, no requiere montos)
   const [editHoras, setEditHoras] = useState({});
 
   // Formulario de gerente/admin para abrir turno a nombre de un vendedor
   const [nuevoVendedorId, setNuevoVendedorId] = useState('');
-  const [nuevaCajaInicial, setNuevaCajaInicial] = useState('');
   const [nuevaHoraEntrada, setNuevaHoraEntrada] = useState('');
-  const [forzarHoraSalida, setForzarHoraSalida] = useState({});
 
   const misTurnos = useMemo(
     () => turnos.filter((t) => t.vendedor === user?.id),
@@ -91,8 +80,7 @@ export default function Turnos() {
     setSaving(true);
     setMessage(null);
     try {
-      await abrirTurno({ caja_inicial: Number(cajaInicial || 0) });
-      setCajaInicial('');
+      await abrirTurno({ caja_inicial: 0 });
       setMessage({ ok: true, text: 'Turno abierto correctamente.' });
       await load();
     } catch (error) {
@@ -102,14 +90,12 @@ export default function Turnos() {
     }
   };
 
-  const handleCerrar = async (event) => {
-    event.preventDefault();
+  const handleCerrar = async () => {
     if (!miTurnoHoy) return;
     setSaving(true);
     setMessage(null);
     try {
-      await cerrarTurno({ turno_id: miTurnoHoy.id, total_entregado: Number(totalEntregado || 0) });
-      setTotalEntregado('');
+      await cerrarTurno({ turno_id: miTurnoHoy.id, total_entregado: 0 });
       setMessage({ ok: true, text: 'Turno cerrado correctamente.' });
       await load();
     } catch (error) {
@@ -119,19 +105,18 @@ export default function Turnos() {
     }
   };
 
-  const handleForzarCierre = async (turno) => {
-    const valor = Number(forzarEntregado[turno.id] || 0);
-    const horaSalida = forzarHoraSalida[turno.id];
+  const handleCerrarDesdeAdmin = async (turno) => {
+    const horaSalida = editHoras[turno.id]?.hora_salida;
     setSaving(true);
     setMessage(null);
     try {
-      const payload = { turno_id: turno.id, total_entregado: valor };
+      const payload = { turno_id: turno.id, total_entregado: 0 };
       if (horaSalida) payload.hora_salida = new Date(horaSalida).toISOString();
       await cerrarTurno(payload);
       setMessage({ ok: true, text: `Turno de ${turno.vendedor_nombre} cerrado.` });
       await load();
     } catch (error) {
-      setMessage({ ok: false, text: error?.response?.data?.error || 'No se pudo forzar el cierre.' });
+      setMessage({ ok: false, text: error?.response?.data?.error || 'No se pudo cerrar el turno.' });
     } finally {
       setSaving(false);
     }
@@ -143,11 +128,10 @@ export default function Turnos() {
     setSaving(true);
     setMessage(null);
     try {
-      const payload = { vendedor_id: Number(nuevoVendedorId), caja_inicial: Number(nuevaCajaInicial || 0) };
+      const payload = { vendedor_id: Number(nuevoVendedorId), caja_inicial: 0 };
       if (nuevaHoraEntrada) payload.hora_entrada = new Date(nuevaHoraEntrada).toISOString();
       await abrirTurno(payload);
       setNuevoVendedorId('');
-      setNuevaCajaInicial('');
       setNuevaHoraEntrada('');
       setMessage({ ok: true, text: 'Turno abierto correctamente.' });
       await load();
@@ -201,47 +185,14 @@ export default function Turnos() {
                     {miTurnoHoy.estado === 'abierto' ? 'Abierto' : 'Cerrado'}
                   </strong>
                 </p>
-                <p>Caja inicial: {money(miTurnoHoy.caja_inicial)}</p>
-                {miTurnoHoy.estado === 'cerrado' && (
-                  <>
-                    <p>Ventas del día: {money(miTurnoHoy.ventas_dia)}</p>
-                    <p>Total entregado: {money(miTurnoHoy.total_entregado)}</p>
-                    <p>
-                      Faltante:{' '}
-                      <strong className={Number(miTurnoHoy.faltante) > 0 ? 'text-danger' : 'text-success'}>
-                        {money(miTurnoHoy.faltante)}
-                      </strong>
-                    </p>
-                  </>
-                )}
+                <p>Hora de entrada: {miTurnoHoy.hora_entrada ? new Date(miTurnoHoy.hora_entrada).toLocaleTimeString('es-CO') : '-'}</p>
+                <p>Hora de salida: {miTurnoHoy.hora_salida ? new Date(miTurnoHoy.hora_salida).toLocaleTimeString('es-CO') : '-'}</p>
                 {miTurnoHoy.estado === 'abierto' && (
-                  <form className="row g-2 align-items-end" onSubmit={handleCerrar}>
-                    <div className="col-auto">
-                      <label className="form-label">Total entregado</label>
-                      <input
-                        type="number" min="0" step="0.01" className="form-control"
-                        value={totalEntregado} onChange={(e) => setTotalEntregado(e.target.value)} required
-                      />
-                    </div>
-                    <div className="col-auto">
-                      <button type="submit" className="btn btn-danger" disabled={saving}>Cerrar Turno</button>
-                    </div>
-                  </form>
+                  <button type="button" className="btn btn-danger" disabled={saving} onClick={handleCerrar}>Cerrar Turno</button>
                 )}
               </div>
             ) : (
-              <form className="row g-2 align-items-end" onSubmit={handleAbrir}>
-                <div className="col-auto">
-                  <label className="form-label">Caja inicial</label>
-                  <input
-                    type="number" min="0" step="0.01" className="form-control"
-                    value={cajaInicial} onChange={(e) => setCajaInicial(e.target.value)} required
-                  />
-                </div>
-                <div className="col-auto">
-                  <button type="submit" className="btn btn-success" disabled={saving}>Abrir Turno</button>
-                </div>
-              </form>
+              <button type="button" className="btn btn-success" disabled={saving} onClick={handleAbrir}>Abrir Turno</button>
             )}
           </div>
         </div>
@@ -261,13 +212,6 @@ export default function Turnos() {
                       <option key={v.id} value={v.id}>{v.nombre}</option>
                     ))}
                   </select>
-                </div>
-                <div className="col-auto">
-                  <label className="form-label">Caja inicial</label>
-                  <input
-                    type="number" min="0" step="0.01" className="form-control"
-                    value={nuevaCajaInicial} onChange={(e) => setNuevaCajaInicial(e.target.value)} required
-                  />
                 </div>
                 <div className="col-auto">
                   <label className="form-label">Hora de entrada (opcional)</label>
@@ -321,10 +265,6 @@ export default function Turnos() {
                   <th>Entrada</th>
                   <th>Salida</th>
                   <th>Estado</th>
-                  <th>Caja inicial</th>
-                  <th>Ventas del día</th>
-                  <th>Entregado</th>
-                  <th>Faltante</th>
                   <th>Acción</th>
                 </tr>
               </thead>
@@ -339,16 +279,6 @@ export default function Turnos() {
                       <span className={`badge ${t.estado === 'abierto' ? 'bg-success' : 'bg-secondary'}`}>
                         {t.estado === 'abierto' ? 'Abierto' : 'Cerrado'}
                       </span>
-                    </td>
-                    <td>{money(t.caja_inicial)}</td>
-                    <td>{money(t.ventas_dia)}</td>
-                    <td>{t.total_entregado != null ? money(t.total_entregado) : '-'}</td>
-                    <td>
-                      {t.faltante != null ? (
-                        <strong className={Number(t.faltante) > 0 ? 'text-danger' : 'text-success'}>
-                          {money(t.faltante)}
-                        </strong>
-                      ) : '-'}
                     </td>
                     <td>
                       <div className="d-flex gap-2 align-items-end flex-wrap mb-2">
@@ -375,40 +305,21 @@ export default function Turnos() {
                         >
                           Guardar horas
                         </button>
-                      </div>
-                      {t.estado === 'abierto' && (
-                        <div className="d-flex gap-2 align-items-end flex-wrap">
-                          <div>
-                            <label className="form-label small mb-0">Entregado (opcional)</label>
-                            <input
-                              type="number" min="0" step="0.01" className="form-control form-control-sm" style={{ width: 110 }}
-                              placeholder="0.00"
-                              value={forzarEntregado[t.id] || ''}
-                              onChange={(e) => setForzarEntregado({ ...forzarEntregado, [t.id]: e.target.value })}
-                            />
-                          </div>
-                          <div>
-                            <label className="form-label small mb-0">Hora salida (opcional)</label>
-                            <input
-                              type="datetime-local" className="form-control form-control-sm" style={{ width: 180 }}
-                              value={forzarHoraSalida[t.id] || ''}
-                              onChange={(e) => setForzarHoraSalida({ ...forzarHoraSalida, [t.id]: e.target.value })}
-                            />
-                          </div>
+                        {t.estado === 'abierto' && (
                           <button
                             className="btn btn-sm btn-outline-danger"
                             disabled={saving}
-                            onClick={() => handleForzarCierre(t)}
+                            onClick={() => handleCerrarDesdeAdmin(t)}
                           >
-                            Forzar cierre
+                            Cerrar turno
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
                 {turnos.length === 0 && (
-                  <tr><td colSpan={10} className="text-center text-muted">Sin turnos para los filtros seleccionados.</td></tr>
+                  <tr><td colSpan={6} className="text-center text-muted">Sin turnos para los filtros seleccionados.</td></tr>
                 )}
               </tbody>
             </table>
