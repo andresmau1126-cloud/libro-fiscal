@@ -41,6 +41,23 @@ class ClientesAPITests(APITestCase):
         self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Cliente.objects.filter(nit_normalizado="9001234567").count(), 1)
 
+    def test_customer_changes_are_persisted(self):
+        created = self.client.post(
+            "/api/clientes",
+            {"nombre": "Nombre Inicial", "nit": "700123456-8", "telefono": "3000000000"},
+            format="json",
+        )
+        updated = self.client.patch(
+            f"/api/clientes/{created.data['id']}",
+            {"nombre": "Nombre Actualizado", "telefono": "3111111111"},
+            format="json",
+        )
+
+        self.assertEqual(updated.status_code, status.HTTP_200_OK)
+        cliente = Cliente.objects.get(pk=created.data["id"])
+        self.assertEqual(cliente.nombre, "Nombre Actualizado")
+        self.assertEqual(cliente.telefono, "3111111111")
+
     def test_sale_is_linked_to_registered_client(self):
         client_response = self.client.post(
             "/api/clientes",

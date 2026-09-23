@@ -26,9 +26,7 @@ export default function ClientesPage() {
     setMessage(null);
     try {
       const saved = editingId ? await updateCliente(editingId, form) : await createCliente(form);
-      setClientes((current) => editingId
-        ? current.map((item) => item.id === editingId ? saved : item)
-        : [...current, saved].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      await load();
       setForm(emptyForm);
       setEditingId(null);
       setMessage({ ok: true, text: editingId ? 'Cliente actualizado.' : 'Cliente registrado.' });
