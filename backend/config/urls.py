@@ -29,6 +29,7 @@ urlpatterns = [
     path("api/", include("apps.respaldo.urls")),
     path("api/", include("apps.finanzas.urls")),
     path("api/", include("apps.turnos.urls")),
+    path("api/", include("apps.clientes.urls")),
     # Serve frontend for all non-API routes
     re_path(r"^(?!api/|admin/).*$", TemplateView.as_view(template_name="index.html")),
 ]

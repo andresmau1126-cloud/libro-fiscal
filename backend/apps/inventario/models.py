@@ -65,6 +65,9 @@ class Venta(models.Model):
     fecha = models.DateTimeField(auto_now_add=True)
     cliente = models.CharField(max_length=180, blank=True, default="")
     cliente_nit = models.CharField(max_length=50, blank=True, default="")
+    cliente_registro = models.ForeignKey(
+        "clientes.Cliente", on_delete=models.SET_NULL, null=True, blank=True, related_name="ventas"
+    )
     medio_pago = models.CharField(max_length=20, choices=MEDIOS_PAGO, default="efectivo")
     turno = models.CharField(max_length=10, choices=TURNOS, default="mañana")
     total = models.DecimalField(max_digits=18, decimal_places=2, default=0)

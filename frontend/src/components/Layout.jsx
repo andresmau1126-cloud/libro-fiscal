@@ -105,6 +105,12 @@ export default function Layout() {
                   <span>Turnos</span>
                 </NavLink>
               </li>
+              <li>
+                <NavLink to="/clientes" onClick={closeSidebar}>
+                  <i className="bi bi-person-vcard" />
+                  <span>Clientes</span>
+                </NavLink>
+              </li>
             </ul>
           </div>
 

@@ -163,6 +163,7 @@ def _venta_data(venta):
         "fecha": venta.fecha.isoformat(),
         "cliente": venta.cliente,
         "cliente_nit": venta.cliente_nit,
+        "cliente_id": venta.cliente_registro_id,
         "medio_pago": venta.medio_pago,
         "turno": venta.turno,
         "total": float(venta.total),
@@ -262,9 +263,18 @@ def ventas_list_create(request):
             detalles_data.append((producto, cantidad, producto.precio_venta, subtotal))
             total += subtotal
 
+        cliente_registro = None
+        if data.get("cliente_id"):
+            from apps.clientes.models import Cliente
+            try:
+                cliente_registro = Cliente.objects.get(pk=data["cliente_id"], activo=True)
+            except Cliente.DoesNotExist:
+                return Response({"error": "El cliente seleccionado no existe o está inactivo."}, status=status.HTTP_400_BAD_REQUEST)
+
         venta = Venta.objects.create(
             cliente=data.get("cliente", "").strip(),
             cliente_nit=data.get("cliente_nit", "").strip(),
+            cliente_registro=cliente_registro,
             medio_pago=data["medio_pago"],
             turno=data.get("turno", "mañana"),
             total=total,

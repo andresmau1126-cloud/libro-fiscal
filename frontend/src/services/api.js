@@ -117,6 +117,9 @@ export const fetchExpenseReceipt = (id) => api.get(`/expenses/${id}/receipt`).th
 export const createExpense = (data) => api.post('/expenses', data).then(r => r.data);
 export const updateExpense = (id, data) => api.put(`/expenses/${id}`, data).then(r => r.data);
 export const deleteExpense = (id) => api.delete(`/expenses/${id}`).then(r => r.data);
+export const fetchClientes = (q = '') => api.get(`/clientes${q ? `?q=${encodeURIComponent(q)}` : ''}`).then(r => r.data);
+export const createCliente = (data) => api.post('/clientes', data).then(r => r.data);
+export const updateCliente = (id, data) => api.patch(`/clientes/${id}`, data).then(r => r.data);
 
 /* ── Turnos ── */
 export const fetchTurnos = (params = {}) => {

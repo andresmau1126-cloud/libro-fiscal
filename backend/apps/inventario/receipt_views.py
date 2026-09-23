@@ -11,12 +11,12 @@ from .models import Venta
 @permission_classes([IsAuthenticated])
 def venta_receipt(request, venta_id):
     try:
-        venta = Venta.objects.select_related("vendedor").prefetch_related("detalles__producto").get(pk=venta_id)
+        venta = Venta.objects.select_related("vendedor", "cliente_registro").prefetch_related("detalles__producto").get(pk=venta_id)
     except Venta.DoesNotExist:
         return Response({"error": "Venta no existe"}, status=status.HTTP_404_NOT_FOUND)
 
     if not can_view_all(request.user) and venta.vendedor_id != request.user.id:
-        return Response({"error": "No tiene permisos para consultar este comprobante."}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"error": "No tiene permisos para consultar este recibo de caja."}, status=status.HTTP_403_FORBIDDEN)
 
     items = [
         {
@@ -30,15 +30,15 @@ def venta_receipt(request, venta_id):
     ]
     return Response({
         "id": venta.id,
-        "numero_comprobante": f"VEN-{venta.id:04d}",
+        "numero_comprobante": f"RC-{venta.id:04d}",
         "nit": "1010085627-1",
         "company": "Multivariedades Ricaurte",
         "fecha": venta.fecha.isoformat(),
         "cliente": {
-            "nombre": venta.cliente,
-            "nit": venta.cliente_nit,
+            "nombre": venta.cliente_registro.nombre if venta.cliente_registro else venta.cliente,
+            "nit": venta.cliente_registro.nit if venta.cliente_registro else venta.cliente_nit,
             "cedula": "",
-            "telefono": "",
+            "telefono": venta.cliente_registro.telefono if venta.cliente_registro else "",
         },
         "medio_pago": venta.medio_pago,
         "vendedor": venta.vendedor.nombre,

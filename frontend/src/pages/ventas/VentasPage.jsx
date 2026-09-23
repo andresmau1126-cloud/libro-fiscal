@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createVenta, deleteVenta, fetchProductos, fetchVentas, updateVenta } from '../../services/api';
+import { createVenta, deleteVenta, fetchClientes, fetchProductos, fetchVentas, updateVenta } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 const money = (value) => '$ ' + Number(value || 0).toLocaleString('es-CO', {
@@ -42,10 +42,12 @@ export default function VentasPage() {
   const initialState = getInitialState();
 
   const [productos, setProductos] = useState([]);
+  const [clientes, setClientes] = useState([]);
   const [ventas, setVentas] = useState([]);
   const [fecha, setFecha] = useState(initialState?.fecha || today);
   const [cliente, setCliente] = useState(initialState?.cliente || '');
   const [clienteNit, setClienteNit] = useState(initialState?.clienteNit || '');
+  const [clienteId, setClienteId] = useState('');
   const [medioPago, setMedioPago] = useState(initialState?.medioPago || 'efectivo');
   const [cart, setCart] = useState(initialState?.cart || []);
   const [selectedId, setSelectedId] = useState('');
@@ -67,8 +69,9 @@ export default function VentasPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const productData = await fetchProductos();
+      const [productData, clientData] = await Promise.all([fetchProductos(), fetchClientes()]);
       setProductos(productData || []);
+      setClientes(clientData || []);
       if (canViewSalesRecords) {
         const saleData = await fetchVentas(fecha);
         setVentas(saleData?.ventas || []);
@@ -108,6 +111,7 @@ export default function VentasPage() {
       const newSale = await createVenta({
         cliente,
         cliente_nit: clienteNit,
+        cliente_id: clienteId ? Number(clienteId) : null,
         medio_pago: medioPago,
         detalles: cart.map((item) => ({ producto_id: item.id, cantidad: item.cantidad })),
       });
@@ -115,6 +119,7 @@ export default function VentasPage() {
       setCart([]);
       setCliente('');
       setClienteNit('');
+      setClienteId('');
       setMedioPago('efectivo');
       setSelectedId('');
       setCantidad('1');
@@ -218,8 +223,7 @@ export default function VentasPage() {
               </div>
 
               <div className="row g-2">
-                <div className="col-md-4"><label className="form-label small">Cliente (opcional)</label><input className="form-control" value={cliente} onChange={(event) => setCliente(event.target.value)} placeholder="Consumidor final" /></div>
-                <div className="col-md-3"><label className="form-label small">NIT del comprador</label><input className="form-control" value={clienteNit} onChange={(event) => setClienteNit(event.target.value)} placeholder="NIT del comprador" maxLength="50" /></div>
+                <div className="col-md-7"><label className="form-label small">Cliente registrado</label><select className="form-select" value={clienteId} onChange={(event) => { const selected = clientes.find((item) => String(item.id) === event.target.value); setClienteId(event.target.value); setCliente(selected?.nombre || ''); setClienteNit(selected?.nit || ''); }}><option value="">Consumidor final</option>{clientes.map((item) => <option key={item.id} value={item.id}>{item.nombre} | NIT {item.nit}</option>)}</select></div>
                 <div className="col-md-4"><label className="form-label small">Medio de pago</label><select className="form-select" value={medioPago} onChange={(event) => { const value = event.target.value; setMedioPago(value); if (value !== 'efectivo') setPaymentSimulation({ medio: value, referencia: String(Math.floor(1000 + Math.random() * 9000)), fecha: new Date().toLocaleString('es-CO'), valor: total }); }}><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option></select></div>
                 <div className="col-md-3 d-flex align-items-end"><button className="btn btn-primary w-100" disabled={saving || !cart.length}>{saving ? 'Registrando...' : `Cobrar ${money(total)}`}</button></div>
               </div>

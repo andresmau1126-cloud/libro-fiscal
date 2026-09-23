@@ -33,6 +33,8 @@ export default function Turnos() {
   // Formulario de gerente/admin para abrir turno a nombre de un vendedor
   const [nuevoVendedorId, setNuevoVendedorId] = useState('');
   const [nuevaHoraEntrada, setNuevaHoraEntrada] = useState('');
+  const [cajaInicial, setCajaInicial] = useState('0');
+  const [totalEntregado, setTotalEntregado] = useState('0');
 
   const misTurnos = useMemo(
     () => turnos.filter((t) => t.vendedor === user?.id),
@@ -108,7 +110,7 @@ export default function Turnos() {
     setSaving(true);
     setMessage(null);
     try {
-      await abrirTurno({ caja_inicial: 0 });
+      await abrirTurno({ caja_inicial: Number(cajaInicial) || 0 });
       setMessage({ ok: true, text: 'Turno abierto correctamente.' });
       await load();
     } catch (error) {
@@ -123,7 +125,7 @@ export default function Turnos() {
     setSaving(true);
     setMessage(null);
     try {
-      await cerrarTurno({ turno_id: miTurnoHoy.id, total_entregado: 0 });
+      await cerrarTurno({ turno_id: miTurnoHoy.id, total_entregado: Number(totalEntregado) || 0 });
       setMessage({ ok: true, text: 'Turno cerrado correctamente.' });
       await load();
     } catch (error) {
@@ -138,7 +140,7 @@ export default function Turnos() {
     setSaving(true);
     setMessage(null);
     try {
-      const payload = { turno_id: turno.id, total_entregado: 0 };
+      const payload = { turno_id: turno.id, total_entregado: Number(editHoras[turno.id]?.total_entregado) || 0 };
       if (horaSalida) payload.hora_salida = new Date(horaSalida).toISOString();
       await cerrarTurno(payload);
       setMessage({ ok: true, text: `Turno de ${turno.vendedor_nombre} cerrado.` });
@@ -156,7 +158,7 @@ export default function Turnos() {
     setSaving(true);
     setMessage(null);
     try {
-      const payload = { vendedor_id: Number(nuevoVendedorId), caja_inicial: 0 };
+      const payload = { vendedor_id: Number(nuevoVendedorId), caja_inicial: Number(cajaInicial) || 0 };
       if (nuevaHoraEntrada) payload.hora_entrada = new Date(nuevaHoraEntrada).toISOString();
       await abrirTurno(payload);
       setNuevoVendedorId('');
@@ -215,12 +217,10 @@ export default function Turnos() {
                 </p>
                 <p>Hora de entrada: {miTurnoHoy.hora_entrada ? new Date(miTurnoHoy.hora_entrada).toLocaleTimeString('es-CO') : '-'}</p>
                 <p>Hora de salida: {miTurnoHoy.hora_salida ? new Date(miTurnoHoy.hora_salida).toLocaleTimeString('es-CO') : '-'}</p>
-                {miTurnoHoy.estado === 'abierto' && (
-                  <button type="button" className="btn btn-danger" disabled={saving} onClick={handleCerrar}>Cerrar Turno</button>
-                )}
+                {miTurnoHoy.estado === 'abierto' && <div className="d-flex gap-2 align-items-end"><div><label className="form-label small">Total entregado</label><input type="number" min="0" step="0.01" className="form-control" value={totalEntregado} onChange={(e) => setTotalEntregado(e.target.value)} /></div><button type="button" className="btn btn-danger" disabled={saving} onClick={handleCerrar}>Cerrar turno</button></div>}
               </div>
             ) : (
-              <button type="button" className="btn btn-success" disabled={saving} onClick={handleAbrir}>Abrir Turno</button>
+              <div className="d-flex gap-2 align-items-end"><div><label className="form-label small">Caja inicial</label><input type="number" min="0" step="0.01" className="form-control" value={cajaInicial} onChange={(e) => setCajaInicial(e.target.value)} /></div><button type="button" className="btn btn-success" disabled={saving} onClick={handleAbrir}>Abrir turno</button></div>
             )}
           </div>
         </div>
@@ -248,6 +248,7 @@ export default function Turnos() {
                     value={nuevaHoraEntrada} onChange={(e) => setNuevaHoraEntrada(e.target.value)}
                   />
                 </div>
+                <div className="col-auto"><label className="form-label">Caja inicial</label><input type="number" min="0" step="0.01" className="form-control" value={cajaInicial} onChange={(e) => setCajaInicial(e.target.value)} /></div>
                 <div className="col-auto">
                   <button type="submit" className="btn btn-success" disabled={saving}>Abrir Turno</button>
                 </div>
@@ -356,6 +357,7 @@ export default function Turnos() {
                         >
                           Guardar horas
                         </button>
+                        {t.estado === 'abierto' && <div><label className="form-label small mb-0">Total entregado</label><input type="number" min="0" step="0.01" className="form-control form-control-sm" style={{ width: 150 }} value={editHoras[t.id]?.total_entregado || ''} onChange={(e) => setEditHoras({ ...editHoras, [t.id]: { ...editHoras[t.id], total_entregado: e.target.value } })} /></div>}
                         {t.estado === 'abierto' && (
                           <button
                             className="btn btn-sm btn-outline-danger"
