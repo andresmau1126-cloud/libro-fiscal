@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.core.mail import send_mail
 from django.http import HttpResponse
+from django.db.models import Count, Sum
 from django.db.models.deletion import ProtectedError
 
 from .models import (
@@ -801,10 +802,18 @@ def resumen_ventas_diarias(request):
         )
 
     vendedor_id = request.query_params.get("vendedor_id")
-    fecha = request.query_params.get("fecha")
-    
-    resumen = ResumenVentasPorVendedor.objects.select_related("vendedor")
-    
+    fecha = request.query_params.get("fecha") or timezone.localdate().isoformat()
+
+    resumen = Venta.objects.filter(
+        fecha__date=fecha,
+        vendedor__rol__in=SELLER_ROLES,
+    ).values(
+        "vendedor_id", "vendedor__nombre"
+    ).annotate(
+        cantidad_ventas=Count("id"),
+        monto_total=Sum("total"),
+    ).order_by("vendedor__nombre")
+
     if vendedor_id:
         if not can_view_all(request.user) and int(vendedor_id) != request.user.id:
             return Response(
@@ -813,15 +822,25 @@ def resumen_ventas_diarias(request):
             )
         resumen = resumen.filter(vendedor_id=vendedor_id)
     elif not can_view_all(request.user):
-        resumen = resumen.filter(vendedor=request.user)
-    
-    if fecha:
-        resumen = resumen.filter(fecha=fecha)
-    
-    serializer = ResumenVentasPorVendedorSerializer(resumen, many=True)
+        resumen = resumen.filter(vendedor_id=request.user.id)
+
+    rows = [{
+        "id": f"{row['vendedor_id']}-{fecha}",
+        "vendedor": row["vendedor__nombre"],
+        "vendedor_id": row["vendedor_id"],
+        "fecha": fecha,
+        "cantidad_ventas": row["cantidad_ventas"],
+        "cantidad_unidades": 0,
+        "monto_total": float(row["monto_total"] or 0),
+        "monto_costo": 0,
+        "ganancia_total": float(row["monto_total"] or 0),
+        "margen_promedio": 0,
+    } for row in resumen]
     return Response({
-        "resumen": serializer.data,
-        "total_registros": resumen.count(),
+        "fecha": fecha,
+        "resumen": rows,
+        "total_registros": len(rows),
+        "total_dia": sum(row["monto_total"] for row in rows),
     })
 
 
