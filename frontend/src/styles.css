@@ -15,6 +15,28 @@
 
 * { box-sizing: border-box; }
 
+.receipt-page-footer {
+  margin-top: 1.5rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--gray-200);
+  text-align: right;
+  color: var(--gray-500);
+  font-size: .8rem;
+}
+
+@media print {
+  .receipt-page {
+    break-after: page;
+    page-break-after: always;
+    box-shadow: none !important;
+  }
+
+  .receipt-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}
+
 body {
   margin: 0;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
