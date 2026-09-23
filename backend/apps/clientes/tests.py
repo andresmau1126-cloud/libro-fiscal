@@ -5,6 +5,7 @@ from django.utils import timezone
 from apps.inventario.models import Producto, Venta
 from apps.turnos.models import Turno
 from apps.usuarios.models import Usuario
+from apps.clientes.models import Cliente
 
 
 class ClientesAPITests(APITestCase):
@@ -23,6 +24,22 @@ class ClientesAPITests(APITestCase):
 
         self.assertEqual(first.status_code, status.HTTP_201_CREATED)
         self.assertEqual(duplicate.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_equivalent_nit_formats_use_one_customer_segment(self):
+        first = self.client.post(
+            "/api/clientes",
+            {"nombre": "Empresa Original", "nit": "900.123-456 7"},
+            format="json",
+        )
+        second = self.client.post(
+            "/api/clientes",
+            {"nombre": "Otro Nombre", "nit": "9001234567"},
+            format="json",
+        )
+
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Cliente.objects.filter(nit_normalizado="9001234567").count(), 1)
 
     def test_sale_is_linked_to_registered_client(self):
         client_response = self.client.post(

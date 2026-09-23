@@ -272,9 +272,24 @@ def ventas_list_create(request):
             except Cliente.DoesNotExist:
                 return Response({"error": "El cliente seleccionado no existe o está inactivo."}, status=status.HTTP_400_BAD_REQUEST)
 
+        cliente_nit = data.get("cliente_nit", "").strip()
+        cliente_nombre = data.get("cliente", "").strip()
+        if not cliente_registro and cliente_nit:
+            from apps.clientes.models import Cliente
+            from apps.clientes.utils import normalizar_nit
+            nit_normalizado = normalizar_nit(cliente_nit)
+            cliente_registro = Cliente.objects.filter(nit_normalizado=nit_normalizado, activo=True).first()
+            if not cliente_registro:
+                cliente_registro = Cliente.objects.create(nombre=cliente_nombre or "Cliente sin nombre", nit=cliente_nit)
+            cliente_nombre = cliente_registro.nombre
+            cliente_nit = cliente_registro.nit
+        elif cliente_registro:
+            cliente_nombre = cliente_registro.nombre
+            cliente_nit = cliente_registro.nit
+
         venta = Venta.objects.create(
-            cliente=data.get("cliente", "").strip(),
-            cliente_nit=data.get("cliente_nit", "").strip(),
+            cliente=cliente_nombre,
+            cliente_nit=cliente_nit,
             cliente_registro=cliente_registro,
             medio_pago=data["medio_pago"],
             turno=data.get("turno", "mañana"),

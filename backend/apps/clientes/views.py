@@ -6,6 +6,7 @@ from rest_framework.response import Response
 
 from .models import Cliente
 from .serializers import ClienteCreateSerializer, ClienteSerializer
+from .utils import normalizar_nit
 
 
 @api_view(["GET", "POST"])
@@ -15,7 +16,7 @@ def clientes_list_create(request):
         query = request.query_params.get("q", "").strip()
         clientes = Cliente.objects.filter(activo=True)
         if query:
-            clientes = clientes.filter(nombre__icontains=query) | clientes.filter(nit__icontains=query)
+            clientes = clientes.filter(nombre__icontains=query) | clientes.filter(nit__icontains=query) | clientes.filter(nit_normalizado=normalizar_nit(query))
         return Response(ClienteSerializer(clientes[:200], many=True).data)
 
     serializer = ClienteCreateSerializer(data=request.data)
