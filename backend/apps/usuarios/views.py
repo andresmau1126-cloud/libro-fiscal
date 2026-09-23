@@ -24,7 +24,7 @@ from .serializers import (
     SellerScheduleSerializer,
 )
 from .authentication import create_session, delete_session, delete_user_sessions
-from .permissions import IsAdmin, PROTECTED_ROLE_BY_EMAIL
+from .permissions import IsAdmin, IsManagerOrAdmin, PROTECTED_ROLE_BY_EMAIL
 from .otp_service import crear_otp, enviar_otp_email, verificar_otp
 from .utils import is_bypass_email, get_shift_error_for_user, time_ranges_overlap
 from apps.auditoria.services import audit_log
@@ -499,14 +499,14 @@ def usuarios_list_create(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdmin])
+@permission_classes([IsManagerOrAdmin])
 def seller_schedules(request):
     schedules = SellerSchedule.objects.select_related("usuario").all().order_by("usuario__nombre", "start_time")
     return Response(SellerScheduleSerializer(schedules, many=True).data)
 
 
 @api_view(["PUT", "PATCH"])
-@permission_classes([IsAdmin])
+@permission_classes([IsManagerOrAdmin])
 def seller_schedule_detail(request, schedule_id):
     try:
         schedule = SellerSchedule.objects.get(pk=schedule_id)

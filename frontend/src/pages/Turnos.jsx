@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { abrirTurno, cerrarTurno, editarHorasTurno, fetchTurnos, fetchTurnosReporte, fetchTurnosVendedores } from '../services/api';
+import { abrirTurno, cerrarTurno, editarHorasTurno, fetchSchedules, fetchTurnos, fetchTurnosReporte, fetchTurnosVendedores, updateSchedule } from '../services/api';
 
 const localDate = () => {
   const now = new Date();
@@ -15,6 +15,7 @@ export default function Turnos() {
   const [turnos, setTurnos] = useState([]);
   const [ausentes, setAusentes] = useState([]);
   const [vendedores, setVendedores] = useState([]);
+  const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(null);
 
@@ -24,6 +25,7 @@ export default function Turnos() {
   const [filtroEstado, setFiltroEstado] = useState('');
 
   const [saving, setSaving] = useState(false);
+  const [savingScheduleId, setSavingScheduleId] = useState(null);
 
   // Edición de hora entrada/salida (independiente, no requiere montos)
   const [editHoras, setEditHoras] = useState({});
@@ -73,7 +75,33 @@ export default function Turnos() {
     fetchTurnosVendedores()
       .then((rows) => setVendedores(rows))
       .catch(() => {});
+    fetchSchedules()
+      .then((rows) => setSchedules(rows))
+      .catch((error) => setMessage({ ok: false, text: error?.response?.data?.error || 'No se pudieron cargar los horarios.' }));
   }, [isSupervisor]);
+
+  const updateScheduleField = (id, field, value) => {
+    setSchedules((current) => current.map((schedule) => (
+      schedule.id === id ? { ...schedule, [field]: value } : schedule
+    )));
+  };
+
+  const handleSaveSchedule = async (schedule) => {
+    setSavingScheduleId(schedule.id);
+    setMessage(null);
+    try {
+      const updated = await updateSchedule(schedule.id, {
+        start_time: schedule.start_time,
+        end_time: schedule.end_time,
+      });
+      setSchedules((current) => current.map((item) => item.id === schedule.id ? updated : item));
+      setMessage({ ok: true, text: `Horario de ${schedule.name} actualizado.` });
+    } catch (error) {
+      setMessage({ ok: false, text: error?.response?.data?.error || 'No se pudo actualizar el horario.' });
+    } finally {
+      setSavingScheduleId(null);
+    }
+  };
 
   const handleAbrir = async (event) => {
     event.preventDefault();
@@ -224,6 +252,29 @@ export default function Turnos() {
                   <button type="submit" className="btn btn-success" disabled={saving}>Abrir Turno</button>
                 </div>
               </form>
+            </div>
+          </div>
+
+          <div className="card mb-3">
+            <div className="card-body">
+              <h5 className="card-title">Horario de venta por vendedor</h5>
+              <p className="text-muted small">Define las horas en las que cada vendedor puede registrar ventas.</p>
+              <div className="table-responsive">
+                <table className="table table-sm align-middle mb-0">
+                  <thead><tr><th>Vendedor</th><th>Inicio</th><th>Fin</th><th className="text-end">Acción</th></tr></thead>
+                  <tbody>
+                    {schedules.map((schedule) => (
+                      <tr key={schedule.id}>
+                        <td><div>{schedule.name}</div><small className="text-muted">{schedule.usuario_email}</small></td>
+                        <td><input type="time" className="form-control form-control-sm" value={schedule.start_time?.slice(0, 5) || ''} onChange={(e) => updateScheduleField(schedule.id, 'start_time', e.target.value)} /></td>
+                        <td><input type="time" className="form-control form-control-sm" value={schedule.end_time?.slice(0, 5) || ''} onChange={(e) => updateScheduleField(schedule.id, 'end_time', e.target.value)} /></td>
+                        <td className="text-end"><button type="button" className="btn btn-sm btn-primary" onClick={() => handleSaveSchedule(schedule)} disabled={savingScheduleId === schedule.id}>{savingScheduleId === schedule.id ? 'Guardando...' : 'Guardar'}</button></td>
+                      </tr>
+                    ))}
+                    {!schedules.length && <tr><td colSpan="4" className="text-center text-muted py-3">Sin horarios configurados.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 

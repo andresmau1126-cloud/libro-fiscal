@@ -34,6 +34,14 @@ function AdminRoute({ children }) {
   return children;
 }
 
+function ManagerOrAdminRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="d-flex justify-content-center p-5"><div className="spinner-border text-primary" /></div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!['admin', 'gerente'].includes(user.rol)) return <Navigate to="/" replace />;
+  return children;
+}
+
 function AuditRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="d-flex justify-content-center p-5"><div className="spinner-border text-primary" /></div>;
@@ -61,7 +69,7 @@ function AppRoutes() {
         <Route path="manuales" element={<ManualesPage />} />
         <Route path="movimientos" element={<Navigate to="/libros" replace />} />
         <Route path="usuarios" element={<AdminRoute><UsuariosPage /></AdminRoute>} />
-        <Route path="admin/horarios" element={<AdminRoute><ScheduleAdmin /></AdminRoute>} />
+        <Route path="admin/horarios" element={<ManagerOrAdminRoute><ScheduleAdmin /></ManagerOrAdminRoute>} />
         <Route path="auditoria" element={<AuditRoute><AuditoriaPage /></AuditRoute>} />
         <Route path="ventas-control" element={<AuditRoute><VentasControlPage /></AuditRoute>} />
         <Route path="respaldos" element={<AdminRoute><Respaldos /></AdminRoute>} />
