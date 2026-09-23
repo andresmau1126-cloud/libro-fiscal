@@ -269,6 +269,19 @@ class SellerScheduleTests(TestCase):
         self.assertTrue(self.seller_is_in_shift(time(10, 0)))
         self.assertFalse(self.seller_is_in_shift(time(13, 0)))
 
+    def test_open_turn_allows_seller_without_schedule(self):
+        from apps.turnos.models import Turno
+        from apps.usuarios.utils import get_shift_error_for_user
+        from django.utils import timezone
+
+        Turno.objects.create(
+            vendedor=self.seller,
+            fecha=timezone.localdate(),
+            estado="abierto",
+        )
+
+        self.assertIsNone(get_shift_error_for_user(self.seller))
+
     def test_admin_can_list_and_update_schedules(self):
         schedule = SellerSchedule.objects.create(
             usuario=self.seller,

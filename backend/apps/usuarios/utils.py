@@ -88,6 +88,15 @@ def get_shift_error_for_user(user, current_time=None):
     if getattr(user, "rol", None) not in {"vendedor", "vendedor_2"}:
         return None
 
+    from apps.turnos.models import Turno
+
+    if Turno.objects.filter(
+        vendedor=user,
+        fecha=timezone.localdate(),
+        estado="abierto",
+    ).exists():
+        return None
+
     from .models import SellerSchedule
 
     if current_time is None:

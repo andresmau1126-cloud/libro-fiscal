@@ -126,7 +126,7 @@ export default function VentasPage() {
       await load();
       setProductos((current) => current.filter((product) => !soldIds.has(product.id) || Number(product.stock_actual) > 0));
     } catch (error) {
-      setMessage({ ok: false, text: error.response?.data?.error || 'No se pudo registrar la venta.' });
+      setMessage({ ok: false, text: error.response?.data?.error || error.response?.data?.msg || 'No se pudo registrar la venta.' });
     } finally {
       setSaving(false);
     }
