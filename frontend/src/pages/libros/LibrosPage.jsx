@@ -12,7 +12,9 @@ const ITEMS_PER_PAGE = 12;
 
 export default function LibrosPage() {
   const { user } = useAuth();
-  const readOnly = user?.rol === 'auditor';
+  const canEdit = ['admin', 'gerente', 'auditor'].includes(user?.rol);
+  const canDeleteLibro = ['admin', 'vendedor', 'vendedor_2'].includes(user?.rol);
+  const canDeleteEntry = ['admin', 'gerente'].includes(user?.rol);
   /* ── Libros state ── */
   const [libros, setLibros] = useState([]);
   const [search, setSearch] = useState('');
@@ -418,7 +420,7 @@ export default function LibrosPage() {
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
           </div>
-          {!readOnly && <button className="action-btn action-btn-new-libro" onClick={() => { if (showForm) { handleCancelLibroForm(); } else { setEditingLibroId(null); setLibroForm({ nombre: '', nit: '', anio: new Date().getFullYear() }); setShowForm(true); } }}>
+          {canEdit && <button className="action-btn action-btn-new-libro" onClick={() => { if (showForm) { handleCancelLibroForm(); } else { setEditingLibroId(null); setLibroForm({ nombre: '', nit: '', anio: new Date().getFullYear() }); setShowForm(true); } }}>
             <i className={`bi ${showForm ? 'bi-x-lg' : 'bi-plus-circle-fill'}`} />
             <span>{showForm ? 'Cancelar' : 'Nuevo Libro'}</span>
           </button>}
@@ -441,10 +443,10 @@ export default function LibrosPage() {
                 <button className="libro-card-btn libro-card-btn-open" title="Abrir" onClick={(e) => { e.stopPropagation(); selectLibro(l); }}>
                   <i className="bi bi-folder2-open" />
                 </button>
-                {!readOnly && <button className="libro-card-btn libro-card-btn-open" title="Editar" onClick={(e) => handleEditLibro(e, l)}>
+                {canEdit && <button className="libro-card-btn libro-card-btn-open" title="Editar" onClick={(e) => handleEditLibro(e, l)}>
                   <i className="bi bi-pencil-fill" />
                 </button>}
-                {!readOnly && <button className="libro-card-btn libro-card-btn-del" title="Eliminar" onClick={(e) => handleDeleteLibro(e, l.id, l.nombre)}>
+                {canDeleteLibro && <button className="libro-card-btn libro-card-btn-del" title="Eliminar" onClick={(e) => handleDeleteLibro(e, l.id, l.nombre)}>
                   <i className="bi bi-trash3" />
                 </button>}
               </div>
@@ -476,7 +478,7 @@ export default function LibrosPage() {
         )}
 
         {/* New libro form (hidden by default) */}
-        {showForm && !readOnly && (
+        {showForm && canEdit && (
           <div className="card card-fiscal shadow-sm libro-form-card">
             <div className="card-header py-3 d-flex align-items-center justify-content-between">
               <h6 className="mb-0"><i className={`bi ${editingLibroId ? 'bi-pencil-square' : 'bi-plus-circle'} me-2`} />{editingLibroId ? 'Editar Libro Fiscal' : 'Crear Nuevo Libro Fiscal'}</h6>
@@ -569,7 +571,7 @@ export default function LibrosPage() {
             </div>
 
             <div className="action-toolbar mb-3">
-              {!readOnly && <button className="action-btn action-btn-add" onClick={openAddModal}>
+              {canEdit && <button className="action-btn action-btn-add" onClick={openAddModal}>
                 <i className="bi bi-plus-circle-fill" /><span>Nueva Operación</span>
               </button>}
               <button className="action-btn action-btn-export" onClick={handleExport}>
@@ -604,14 +606,14 @@ export default function LibrosPage() {
                         <>
                           {entries.map(e => (
                             <tr key={e.id} className="entry-row-anim">
-                              <td className="text-center editable-cell" onDoubleClick={readOnly ? undefined : () => startInlineEdit(e, 'dia')}>
+                              <td className="text-center editable-cell" onDoubleClick={canEdit ? () => startInlineEdit(e, 'dia') : undefined}>
                                 {inlineEdit?.id === e.id && inlineEdit.field === 'dia' ? (
                                   <input ref={inlineInputRef} type="number" min={1} max={daysInMonth} className="inline-edit-input text-center" style={{ width: 50 }}
                                     value={inlineEdit.value} onChange={ev => setInlineEdit({ ...inlineEdit, value: ev.target.value })}
                                     onBlur={commitInlineEdit} onKeyDown={handleInlineKeyDown} />
                                 ) : e.dia}
                               </td>
-                              <td className="editable-cell" onDoubleClick={readOnly ? undefined : () => startInlineEdit(e, 'descripcion')}>
+                              <td className="editable-cell" onDoubleClick={canEdit ? () => startInlineEdit(e, 'descripcion') : undefined}>
                                 {inlineEdit?.id === e.id && inlineEdit.field === 'descripcion' ? (
                                   <input ref={inlineInputRef} type="text" className="inline-edit-input" style={{ width: '100%' }}
                                     value={inlineEdit.value} onChange={ev => setInlineEdit({ ...inlineEdit, value: ev.target.value })}
@@ -621,7 +623,7 @@ export default function LibrosPage() {
                               <td className="text-end">
                                 {Number(e.ingresos) > 0 ? <span className="text-success">{fmt(e.ingresos)}</span> : ''}
                               </td>
-                              <td className="text-end editable-cell" onDoubleClick={readOnly ? undefined : () => startInlineEdit(e, 'egresos')}>
+                              <td className="text-end editable-cell" onDoubleClick={canEdit ? () => startInlineEdit(e, 'egresos') : undefined}>
                                 {inlineEdit?.id === e.id && inlineEdit.field === 'egresos' ? (
                                   <input ref={inlineInputRef} type="number" step="0.01" min="0" className="inline-edit-input text-end" style={{ width: 110 }}
                                     value={inlineEdit.value} onChange={ev => setInlineEdit({ ...inlineEdit, value: ev.target.value })}
@@ -630,21 +632,21 @@ export default function LibrosPage() {
                               </td>
                               <td className="text-end fw-semibold">{fmt(e.saldo)}</td>
                               <td className="text-center">
-                                {!readOnly && <div className="row-actions row-actions-visible">
-                                  {Number(e.ingresos) <= 0 && (
+                                {(canEdit || canDeleteEntry) && <div className="row-actions row-actions-visible">
+                                  {canEdit && Number(e.ingresos) <= 0 && (
                                     <button className="row-action-btn row-action-edit" title="Editar" onClick={() => openEditModal(e)}>
                                       <i className="bi bi-pencil-fill" />
                                     </button>
                                   )}
-                                  <button className="row-action-btn row-action-del" title="Eliminar" onClick={() => handleDeleteEntry(e.id)}>
+                                  {canDeleteEntry && <button className="row-action-btn row-action-del" title="Eliminar" onClick={() => handleDeleteEntry(e.id)}>
                                     <i className="bi bi-trash-fill" />
-                                  </button>
+                                  </button>}
                                 </div>}
                               </td>
                             </tr>
                           ))}
                           {/* ── Quick Add Row ── */}
-                          {!readOnly && <tr className="quick-add-row">
+                          {canEdit && <tr className="quick-add-row">
                             <td className="text-center">
                               <select className="quick-add-input text-center" style={{ width: 55 }} value={quickAdd.dia} onChange={ev => setQuickAdd({ ...quickAdd, dia: ev.target.value })}>
                                 {Array.from({ length: daysInMonth }, (_, i) => (

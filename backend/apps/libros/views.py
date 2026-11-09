@@ -9,7 +9,7 @@ from django.utils import timezone
 from .models import Libro
 from .serializers import LibroSerializer, LibroCreateSerializer
 from apps.auditoria.services import audit_log
-from apps.usuarios.permissions import can_delete, can_view_all, can_write
+from apps.usuarios.permissions import can_view_all, can_write
 
 # Libro fiscal principal de la empresa: solo gerente, admin y auditor pueden consultarlo.
 LIBRO_FISCAL_PRINCIPAL_NIT = "1010085627-1"
@@ -53,7 +53,7 @@ def fiscal_books(request):
 
 @api_view(["GET", "POST"])
 def libros_list_create(request):
-    if request.method == "POST" and request.user.rol not in {"admin", "vendedor", "vendedor_2"}:
+    if request.method == "POST" and not (can_view_all(request.user) or can_write(request.user)):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     if request.method == "GET":
         anio = request.query_params.get("anio")
@@ -100,7 +100,7 @@ def libros_list_create(request):
 
 @api_view(["GET", "PUT", "DELETE"])
 def libro_detail(request, libro_id):
-    if request.method == "PUT" and request.user.rol not in {"admin", "vendedor", "vendedor_2"}:
+    if request.method == "PUT" and not (can_view_all(request.user) or can_write(request.user)):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     if request.method == "DELETE" and request.user.rol not in {"admin", "vendedor", "vendedor_2"}:
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)

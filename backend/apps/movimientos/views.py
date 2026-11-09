@@ -7,7 +7,7 @@ from .models import Movimiento
 from .serializers import MovimientoSerializer, MovimientoCreateSerializer, MovimientoUpdateSerializer
 from apps.libros.models import Libro
 from services.saldo import recompute_saldos
-from apps.usuarios.permissions import can_delete, can_view_all, can_write
+from apps.usuarios.permissions import can_view_all
 from apps.usuarios.utils import get_shift_error_for_user
 
 
@@ -44,7 +44,7 @@ def entries_list_create(request):
     shift_error = get_shift_error_for_user(request.user)
     if shift_error:
         return Response({"error": shift_error}, status=status.HTTP_403_FORBIDDEN)
-    if request.method == "POST" and request.user.rol not in {"admin", "gerente"}:
+    if request.method == "POST" and not can_view_all(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     if request.method == "GET":
         try:
@@ -100,7 +100,7 @@ def entry_detail(request, entry_id):
     shift_error = get_shift_error_for_user(request.user)
     if shift_error:
         return Response({"error": shift_error}, status=status.HTTP_403_FORBIDDEN)
-    if request.method == "PUT" and request.user.rol not in {"admin", "gerente"}:
+    if request.method == "PUT" and not can_view_all(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     if request.method == "DELETE" and request.user.rol not in {"admin", "gerente"}:
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
