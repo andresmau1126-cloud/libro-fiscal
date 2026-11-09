@@ -14,7 +14,7 @@ export default function LibrosPage() {
   const { user } = useAuth();
   const canEdit = ['admin', 'gerente', 'auditor'].includes(user?.rol);
   const canDeleteLibro = ['admin', 'vendedor', 'vendedor_2'].includes(user?.rol);
-  const canDeleteEntry = ['admin', 'gerente'].includes(user?.rol);
+  const canDeleteEntry = user?.rol === 'admin';
   /* ── Libros state ── */
   const [libros, setLibros] = useState([]);
   const [search, setSearch] = useState('');

@@ -102,7 +102,7 @@ def entry_detail(request, entry_id):
         return Response({"error": shift_error}, status=status.HTTP_403_FORBIDDEN)
     if request.method == "PUT" and not can_view_all(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
-    if request.method == "DELETE" and request.user.rol not in {"admin", "gerente"}:
+    if request.method == "DELETE" and request.user.rol != "admin":
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     try:
         mov = Movimiento.objects.select_related("libro").get(pk=entry_id)

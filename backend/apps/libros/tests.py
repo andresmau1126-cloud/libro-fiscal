@@ -110,7 +110,7 @@ class FiscalBooksRolePermissionsTests(APITestCase):
                 self.assertEqual(update_response.status_code, status.HTTP_200_OK)
                 self.assertEqual(update_response.data["descripcion"], f"Movimiento actualizado por {user.rol}")
 
-    def test_auditor_cannot_delete_entries(self):
+    def test_supervisors_can_see_and_edit_the_same_admin_owned_entry(self):
         entry = Movimiento.objects.create(
             fecha=date.today(),
             descripcion="Movimiento",
@@ -119,9 +119,48 @@ class FiscalBooksRolePermissionsTests(APITestCase):
             saldo=100,
             libro=self.libro,
         )
-        self.client.force_authenticate(user=self.auditor)
 
-        response = self.client.delete(f"/api/entries/{entry.id}")
+        for user in self.supervisors:
+            with self.subTest(role=user.rol):
+                self.client.force_authenticate(user=user)
+                response = self.client.get(
+                    "/api/entries",
+                    {"libro_id": self.libro.id, "year": self.libro.anio, "month": date.today().month},
+                )
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+                self.assertIn(entry.id, [row["id"] for row in response.data["rows"]])
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertTrue(Movimiento.objects.filter(pk=entry.id).exists())
+                update_response = self.client.put(
+                    f"/api/entries/{entry.id}",
+                    {
+                        "fecha": date.today().isoformat(),
+                        "descripcion": f"Editado por {user.rol}",
+                        "ingresos": "200.00",
+                        "egresos": "0.00",
+                    },
+                    format="json",
+                )
+                self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+                self.assertEqual(update_response.data["descripcion"], f"Editado por {user.rol}")
+
+    def test_only_admin_can_delete_entries(self):
+        for user in self.supervisors:
+            with self.subTest(role=user.rol):
+                entry = Movimiento.objects.create(
+                    fecha=date.today(),
+                    descripcion="Movimiento",
+                    ingresos=100,
+                    egresos=0,
+                    saldo=100,
+                    libro=self.libro,
+                )
+                self.client.force_authenticate(user=user)
+
+                response = self.client.delete(f"/api/entries/{entry.id}")
+
+                if user == self.admin:
+                    self.assertEqual(response.status_code, status.HTTP_200_OK)
+                    self.assertFalse(Movimiento.objects.filter(pk=entry.id).exists())
+                else:
+                    self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+                    self.assertTrue(Movimiento.objects.filter(pk=entry.id).exists())
