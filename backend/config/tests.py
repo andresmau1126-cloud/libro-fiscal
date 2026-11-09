@@ -5,7 +5,8 @@ from unittest.mock import patch
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db import DatabaseError
-from django.test import SimpleTestCase
+from django.http import HttpResponse
+from django.test import RequestFactory, SimpleTestCase, override_settings
 
 
 class RenderDeploymentConfigTests(SimpleTestCase):
@@ -84,4 +85,22 @@ class RenderDeploymentConfigTests(SimpleTestCase):
         self.assertEqual(
             response.json(),
             {"status": "unavailable", "database": "unavailable"},
+        )
+
+    @override_settings(
+        DEBUG=False,
+        SECURE_HSTS_SECONDS=31536000,
+        SECURE_HSTS_INCLUDE_SUBDOMAINS=True,
+        SECURE_SSL_REDIRECT=False,
+    )
+    def test_production_hsts_is_set_when_tls_terminates_at_proxy(self):
+        from config.middleware import ProductionHstsMiddleware
+
+        request = RequestFactory().get("/healthz/")
+        middleware = ProductionHstsMiddleware(lambda _request: HttpResponse())
+        response = middleware(request)
+
+        self.assertEqual(
+            response["Strict-Transport-Security"],
+            "max-age=31536000; includeSubDomains",
         )
