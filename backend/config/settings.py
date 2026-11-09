@@ -22,8 +22,11 @@ if _env_file.exists():
 
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-change-me-in-production")
 
+RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
 _debug_env = os.getenv("DEBUG")
-if _debug_env is None:
+if RENDER_EXTERNAL_HOSTNAME:
+    DEBUG = False
+elif _debug_env is None:
     DEBUG = not bool(
         os.getenv("DATABASE_URL")
         or os.getenv("RENDER_DATABASE_URL")
@@ -38,7 +41,6 @@ for host in ["localhost", "127.0.0.1", "libro-fiscal.onrender.com"]:
     if host not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(host)
 # Render sets the public hostname in RENDER_EXTERNAL_HOSTNAME.
-RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
 if RENDER_EXTERNAL_HOSTNAME:
     if RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)

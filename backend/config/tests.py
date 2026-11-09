@@ -47,7 +47,7 @@ class RenderDeploymentConfigTests(SimpleTestCase):
         with patch.dict(
             os.environ,
             {
-                "DEBUG": "false",
+                "DEBUG": "true",
                 "DATABASE_URL": "postgresql://localhost:5432/libro_fiscal",
                 "RENDER_EXTERNAL_HOSTNAME": "libro-fiscal.onrender.com",
                 "CORS_ALLOWED_ORIGINS": "https://frontend.onrender.com",
@@ -57,6 +57,7 @@ class RenderDeploymentConfigTests(SimpleTestCase):
         ):
             reloaded_settings = importlib.reload(settings_module)
 
+        self.assertFalse(reloaded_settings.DEBUG)
         self.assertIn("https://frontend.onrender.com", reloaded_settings.CORS_ALLOWED_ORIGINS)
         self.assertIn("https://libro-fiscal.onrender.com", reloaded_settings.CORS_ALLOWED_ORIGINS)
         self.assertIn("https://libro-fiscal.onrender.com", reloaded_settings.CSRF_TRUSTED_ORIGINS)
