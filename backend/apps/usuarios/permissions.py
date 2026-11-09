@@ -23,6 +23,10 @@ def can_view_all(user):
     return has_role(user, SUPERVISOR_ROLES)
 
 
+def can_view_shared_data(user):
+    return has_role(user, SUPERVISOR_ROLES | SELLER_ROLES)
+
+
 def can_view_sales_records(user):
     return has_role(user, SUPERVISOR_ROLES | SELLER_ROLES)
 

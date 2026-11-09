@@ -446,7 +446,7 @@ export default function LibrosPage() {
                 {canEdit && <button className="libro-card-btn libro-card-btn-open" title="Editar" onClick={(e) => handleEditLibro(e, l)}>
                   <i className="bi bi-pencil-fill" />
                 </button>}
-                {canDeleteLibro && <button className="libro-card-btn libro-card-btn-del" title="Eliminar" onClick={(e) => handleDeleteLibro(e, l.id, l.nombre)}>
+                {canDeleteLibro && (user?.rol === 'admin' || l.propietario === user?.id) && <button className="libro-card-btn libro-card-btn-del" title="Eliminar" onClick={(e) => handleDeleteLibro(e, l.id, l.nombre)}>
                   <i className="bi bi-trash3" />
                 </button>}
               </div>

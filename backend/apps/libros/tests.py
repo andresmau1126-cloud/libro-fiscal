@@ -28,6 +28,19 @@ class FiscalBooksRolePermissionsTests(APITestCase):
             password="test-password",
             rol="auditor",
         )
+        self.seller = Usuario.objects.create_user(
+            email="seller.libros@test.com",
+            nombre="Vendedor",
+            password="test-pass-123",
+            rol="vendedor",
+        )
+        self.seller_2 = Usuario.objects.create_user(
+            email="seller2.libros@test.com",
+            nombre="Vendedor 2",
+            password="test-pass-123",
+            rol="vendedor_2",
+        )
+        self.shared_roles = (self.admin, self.manager, self.auditor, self.seller, self.seller_2)
         self.supervisors = (self.admin, self.manager, self.auditor)
         self.libro = Libro.objects.create(
             nombre="Libro fiscal",
@@ -46,6 +59,63 @@ class FiscalBooksRolePermissionsTests(APITestCase):
                 self.assertEqual(response.status_code, status.HTTP_200_OK)
                 self.assertEqual([book["id"] for book in response.data], [self.libro.id])
                 self.assertEqual(detail.status_code, status.HTTP_200_OK)
+
+    def test_dashboard_and_fiscal_records_are_shared_with_all_operational_roles(self):
+        entry = Movimiento.objects.create(
+            fecha=date.today(),
+            descripcion="Ingreso compartido",
+            ingresos=250,
+            egresos=0,
+            saldo=250,
+            libro=self.libro,
+        )
+
+        for user in self.shared_roles:
+            with self.subTest(role=user.rol):
+                self.client.force_authenticate(user=user)
+                books_response = self.client.get("/api/libros")
+                entries_response = self.client.get(
+                    "/api/entries",
+                    {"libro_id": self.libro.id, "year": self.libro.anio, "month": date.today().month},
+                )
+                dashboard_response = self.client.get("/api/dashboard")
+                summary_response = self.client.get(
+                    "/api/resumen-anual",
+                    {"libro_id": self.libro.id, "year": self.libro.anio},
+                )
+                fiscal_response = self.client.get(
+                    "/api/fiscal-books",
+                    {"date": date.today().isoformat()},
+                )
+                stats_response = self.client.get("/api/stats")
+
+                self.assertEqual(books_response.status_code, status.HTTP_200_OK)
+                self.assertIn(self.libro.id, [book["id"] for book in books_response.data])
+                self.assertEqual(entries_response.status_code, status.HTTP_200_OK)
+                self.assertIn(entry.id, [row["id"] for row in entries_response.data["rows"]])
+                self.assertEqual(dashboard_response.status_code, status.HTTP_200_OK)
+                self.assertEqual(dashboard_response.data["total_libros"], 1)
+                self.assertEqual(dashboard_response.data["total_ingresos"], 250.0)
+                self.assertEqual(summary_response.status_code, status.HTTP_200_OK)
+                self.assertEqual(summary_response.data["totales"]["ingresos"], 250.0)
+                self.assertEqual(fiscal_response.status_code, status.HTTP_200_OK)
+                self.assertIn(self.libro.id, [row["id"] for row in fiscal_response.data])
+                self.assertEqual(stats_response.status_code, status.HTTP_200_OK)
+
+    def test_sellers_cannot_edit_other_users_books_after_shared_read_access(self):
+        self.client.force_authenticate(user=self.seller)
+
+        response = self.client.put(
+            f"/api/libros/{self.libro.id}",
+            {
+                "nombre": "No autorizado",
+                "nit": self.libro.nit,
+                "anio": self.libro.anio,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_supervisors_can_create_and_update_books(self):
         for user in self.supervisors:

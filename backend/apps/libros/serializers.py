@@ -3,10 +3,11 @@ from .models import Libro
 
 
 class LibroSerializer(serializers.ModelSerializer):
+    propietario = serializers.IntegerField(source="propietario_id", read_only=True)
+
     class Meta:
         model = Libro
-        fields = ["id", "nombre", "nit", "anio"]
-        read_only_fields = ["id"]
+        fields = ["id", "nombre", "nit", "anio", "propietario"]
 
 
 class LibroCreateSerializer(serializers.Serializer):

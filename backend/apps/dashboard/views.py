@@ -1,5 +1,5 @@
 from django.db.models import Count, Sum
-from django.db.models.functions import ExtractMonth, ExtractYear
+from django.db.models.functions import ExtractMonth
 from django.utils import timezone
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -7,10 +7,11 @@ from rest_framework.response import Response
 from apps.libros.models import Libro
 from apps.movimientos.models import Movimiento
 from apps.usuarios.models import Usuario
+from apps.usuarios.permissions import can_view_shared_data
 
 
 def _libros_qs_for_user(user):
-    if getattr(user, "rol", None) == "admin":
+    if can_view_shared_data(user):
         return Libro.objects.all()
     return Libro.objects.filter(propietario=user)
 
@@ -104,10 +105,11 @@ def resumen_anual(request):
     except (ValueError, TypeError):
         return Response({"error": "libro_id inválido"}, status=400)
 
-    if not _libros_qs_for_user(request.user).filter(pk=libro_id).exists():
+    libros_qs = _libros_qs_for_user(request.user)
+    if not libros_qs.filter(pk=libro_id).exists():
         return Response({"error": "libro no existe"}, status=404)
 
-    qs = Movimiento.objects.filter(libro_id=libro_id, libro__in=_libros_qs_for_user(request.user))
+    qs = Movimiento.objects.filter(libro_id=libro_id, libro__in=libros_qs)
     if year:
         try:
             y = int(year)

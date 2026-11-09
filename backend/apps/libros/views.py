@@ -9,10 +9,7 @@ from django.utils import timezone
 from .models import Libro
 from .serializers import LibroSerializer, LibroCreateSerializer
 from apps.auditoria.services import audit_log
-from apps.usuarios.permissions import can_view_all, can_write
-
-# Libro fiscal principal de la empresa: solo gerente, admin y auditor pueden consultarlo.
-LIBRO_FISCAL_PRINCIPAL_NIT = "1010085627-1"
+from apps.usuarios.permissions import can_view_all, can_view_shared_data, can_write
 
 
 def _libros_qs_for_user(user):
@@ -21,19 +18,23 @@ def _libros_qs_for_user(user):
     return Libro.objects.filter(propietario=user)
 
 
+def _readable_libros_qs_for_user(user):
+    if can_view_shared_data(user):
+        return Libro.objects.all()
+    return Libro.objects.filter(propietario=user)
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def fiscal_books(request):
-    """Devuelve el consolidado fiscal diario visible para cada rol."""
+    """Devuelve el consolidado fiscal diario compartido entre los roles operativos."""
     fecha = request.query_params.get("date") or timezone.localdate().isoformat()
     try:
         date_value = timezone.datetime.strptime(fecha, "%Y-%m-%d").date()
     except ValueError:
         return Response({"error": "date debe tener formato YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST)
 
-    libros = _libros_qs_for_user(request.user)
-    if request.user.rol in {"admin", "gerente", "auditor"}:
-        libros = Libro.objects.filter(nit="1010085627-1", anio=date_value.year)
+    libros = _readable_libros_qs_for_user(request.user).filter(anio=date_value.year)
     rows = []
     for libro in libros.order_by("-anio", "nombre"):
         sales_total = libro.ventas.filter(fecha__date=date_value).aggregate(total=Sum("total"))["total"] or 0
@@ -57,7 +58,7 @@ def libros_list_create(request):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     if request.method == "GET":
         anio = request.query_params.get("anio")
-        qs = _libros_qs_for_user(request.user)
+        qs = _readable_libros_qs_for_user(request.user)
         if anio:
             try:
                 qs = qs.filter(anio=int(anio))
@@ -105,18 +106,13 @@ def libro_detail(request, libro_id):
     if request.method == "DELETE" and request.user.rol not in {"admin", "vendedor", "vendedor_2"}:
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
 
-    if (
-        request.method == "GET"
-        and not can_view_all(request.user)
-        and Libro.objects.filter(pk=libro_id, nit=LIBRO_FISCAL_PRINCIPAL_NIT).exists()
-    ):
-        return Response(
-            {"error": "Solo gerente, admin o auditor pueden consultar el libro fiscal."},
-            status=status.HTTP_403_FORBIDDEN,
-        )
-
     try:
-        libro = _libros_qs_for_user(request.user).get(pk=libro_id)
+        libros_qs = (
+            _readable_libros_qs_for_user(request.user)
+            if request.method == "GET"
+            else _libros_qs_for_user(request.user)
+        )
+        libro = libros_qs.get(pk=libro_id)
     except Libro.DoesNotExist:
         return Response({"error": "libro no existe"}, status=status.HTTP_404_NOT_FOUND)
 

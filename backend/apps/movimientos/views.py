@@ -7,7 +7,7 @@ from .models import Movimiento
 from .serializers import MovimientoSerializer, MovimientoCreateSerializer, MovimientoUpdateSerializer
 from apps.libros.models import Libro
 from services.saldo import recompute_saldos
-from apps.usuarios.permissions import can_view_all
+from apps.usuarios.permissions import can_view_all, can_view_shared_data
 from apps.usuarios.utils import get_shift_error_for_user
 
 
@@ -39,11 +39,18 @@ def _libros_qs_for_user(user):
     return Libro.objects.filter(propietario=user)
 
 
+def _readable_libros_qs_for_user(user):
+    if can_view_shared_data(user):
+        return Libro.objects.all()
+    return Libro.objects.filter(propietario=user)
+
+
 @api_view(["GET", "POST"])
 def entries_list_create(request):
-    shift_error = get_shift_error_for_user(request.user)
-    if shift_error:
-        return Response({"error": shift_error}, status=status.HTTP_403_FORBIDDEN)
+    if request.method == "POST":
+        shift_error = get_shift_error_for_user(request.user)
+        if shift_error:
+            return Response({"error": shift_error}, status=status.HTTP_403_FORBIDDEN)
     if request.method == "POST" and not can_view_all(request.user):
         return Response({"error": "Su rol solo tiene permisos de consulta"}, status=status.HTTP_403_FORBIDDEN)
     if request.method == "GET":
@@ -52,7 +59,7 @@ def entries_list_create(request):
         except (ValueError, TypeError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        qs = Movimiento.objects.filter(libro__in=_libros_qs_for_user(request.user), **filters).order_by("fecha", "id")
+        qs = Movimiento.objects.filter(libro__in=_readable_libros_qs_for_user(request.user), **filters).order_by("fecha", "id")
         rows = MovimientoSerializer(qs, many=True).data
 
         tot_ing = sum(r["ingresos"] for r in rows)

@@ -13,7 +13,7 @@ from rest_framework.response import Response
 
 from apps.inventario.models import Venta
 from apps.movimientos.models import Movimiento
-from apps.usuarios.permissions import SUPERVISOR_ROLES, can_manage_configuration
+from apps.usuarios.permissions import can_manage_configuration, can_view_shared_data
 from apps.usuarios.utils import get_shift_error_for_user
 from services.saldo import recompute_saldos
 from .models import Expense, Provider, SellerStats
@@ -34,8 +34,8 @@ def _period_bounds(period, requested):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def stats(request):
-    if request.user.rol not in SUPERVISOR_ROLES:
-        return Response({"error": "Solo los roles de supervisión pueden consultar estadísticas."}, status=status.HTTP_403_FORBIDDEN)
+    if not can_view_shared_data(request.user):
+        return Response({"error": "Su rol no puede consultar las estadísticas."}, status=status.HTTP_403_FORBIDDEN)
     period = request.query_params.get("period", "daily")
     try:
         start, end = _period_bounds(period, request.query_params.get("date"))

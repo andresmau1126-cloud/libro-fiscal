@@ -6,11 +6,17 @@ from rest_framework.response import Response
 from apps.libros.models import Libro
 from apps.movimientos.models import Movimiento
 from services.excel import generate_excel
-from apps.usuarios.permissions import can_view_all
+from apps.usuarios.permissions import can_view_all, can_view_shared_data
 
 
 def _libros_qs_for_user(user):
     if can_view_all(user):
+        return Libro.objects.all()
+    return Libro.objects.filter(propietario=user)
+
+
+def _readable_libros_qs_for_user(user):
+    if can_view_shared_data(user):
         return Libro.objects.all()
     return Libro.objects.filter(propietario=user)
 
@@ -30,11 +36,11 @@ def export_excel(request):
         return Response({"error": "libro_id inválido"}, status=400)
 
     try:
-        libro = _libros_qs_for_user(request.user).get(pk=libro_id)
+        libro = _readable_libros_qs_for_user(request.user).get(pk=libro_id)
     except Libro.DoesNotExist:
         return Response({"error": "libro no existe"}, status=404)
 
-    qs = Movimiento.objects.filter(libro_id=libro_id, libro__in=_libros_qs_for_user(request.user))
+    qs = Movimiento.objects.filter(libro_id=libro_id, libro__in=_readable_libros_qs_for_user(request.user))
 
     if year and month:
         try:
