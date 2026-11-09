@@ -1,44 +1,31 @@
-# ── Stage 1: Build frontend ──
-FROM node:18-alpine AS frontend-build
+FROM node:20-alpine AS frontend-build
 WORKDIR /app/frontend
-ARG RENDER_BUILD_REVISION=1e7da26
-RUN echo "Render build revision: ${RENDER_BUILD_REVISION}"
-COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm install
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-# ── Stage 2: Python + serve ──
 FROM python:3.11-slim
 WORKDIR /app
 
-# pg_dump es necesario para los respaldos diarios de PostgreSQL.
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends postgresql-client \
 	&& rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend
 COPY backend/ ./
 COPY docs/ ./docs/
-
-# Copy deployment scripts
-COPY scripts/ ./scripts
-
-# Copy frontend build
+COPY scripts/ ./scripts/
 COPY --from=frontend-build /app/frontend/dist ./frontend_dist
 
-# Ensure proper permissions for static files
-RUN chmod -R 755 frontend_dist && chmod -R 755 scripts
+RUN chmod +x scripts/start_render.sh \
+	&& chmod -R 755 frontend_dist scripts
 
 ENV PYTHONUNBUFFERED=1
 ENV DJANGO_SETTINGS_MODULE=config.settings
 
 EXPOSE 8000
-
-RUN chmod +x scripts/start_render.sh
 
 CMD ["./scripts/start_render.sh"]

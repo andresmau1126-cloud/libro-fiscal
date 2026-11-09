@@ -10,7 +10,8 @@ from apps.auditoria.models import Auditoria
 from apps.libros.models import Libro
 from apps.movimientos.models import Movimiento
 from apps.inventario.views import _productos_qs_for_user
-from apps.usuarios.models import Usuario
+from services.ventas_libro import LIBRO_VENTAS_VENDEDORES_NIT
+from apps.usuarios.models import SellerSchedule, Usuario
 
 
 class InventarioBlackBoxAPITests(APITestCase):
@@ -24,6 +25,19 @@ class InventarioBlackBoxAPITests(APITestCase):
             email="inventario2@test.com",
             nombre="Inventario 2",
             password="123456",
+        )
+
+        SellerSchedule.objects.create(
+            usuario=self.user,
+            name="Horario de pruebas",
+            start_time="00:00:00",
+            end_time="23:59:59",
+        )
+        SellerSchedule.objects.create(
+            usuario=self.other_user,
+            name="Horario de pruebas",
+            start_time="00:00:00",
+            end_time="23:59:59",
         )
 
     def test_productos_requires_authentication(self):
@@ -108,10 +122,9 @@ class InventarioBlackBoxAPITests(APITestCase):
 
     def test_create_sale_updates_fiscal_book_daily_income(self):
         libro = Libro.objects.create(
-            nombre="Andres",
-            nit="1020085627-1",
+            nombre="Multivariedades Ricaurte",
+            nit=LIBRO_VENTAS_VENDEDORES_NIT,
             anio=date.today().year,
-            propietario=self.user,
         )
         product = Producto.objects.create(
             nombre="Compresor",
@@ -285,12 +298,11 @@ class InventarioBlackBoxAPITests(APITestCase):
             self.assertEqual(auditoria_response.status_code, status.HTTP_200_OK)
             self.assertIn(venta.id, [item["entidad_id"] for item in auditoria_response.data])
 
-    def test_seller_sale_goes_to_andres_fiscal_book(self):
+    def test_seller_sale_goes_to_shared_fiscal_book(self):
         libro_andres = Libro.objects.create(
-            nombre="Andres",
-            nit="1020085627-1",
+            nombre="Multivariedades Ricaurte",
+            nit=LIBRO_VENTAS_VENDEDORES_NIT,
             anio=date.today().year,
-            propietario=self.other_user,
         )
         product = Producto.objects.create(
             nombre="Producto vendedor",
@@ -313,10 +325,9 @@ class InventarioBlackBoxAPITests(APITestCase):
 
     def test_supervisors_can_view_consolidated_seller_sales(self):
         libro_andres = Libro.objects.create(
-            nombre="Andres",
-            nit="1020085627-1",
+            nombre="Multivariedades Ricaurte",
+            nit=LIBRO_VENTAS_VENDEDORES_NIT,
             anio=date.today().year,
-            propietario=self.other_user,
         )
         product = Producto.objects.create(
             nombre="Producto consolidado",
@@ -474,6 +485,13 @@ class InventarioBlackBoxAPITests(APITestCase):
             password="123456",
             rol="vendedor_2",
         )
+        for seller in (seller_1, seller_2):
+            SellerSchedule.objects.create(
+                usuario=seller,
+                name="Horario de pruebas",
+                start_time="00:00:00",
+                end_time="23:59:59",
+            )
         admin = Usuario.objects.create_user(
             email="admin-sales@test.com",
             nombre="Administrador Ventas",
@@ -563,6 +581,13 @@ class InventarioBlackBoxAPITests(APITestCase):
             password="123456",
             rol="vendedor",
         )
+        for seller in (seller_1, seller_2):
+            SellerSchedule.objects.create(
+                usuario=seller,
+                name="Horario de pruebas",
+                start_time="00:00:00",
+                end_time="23:59:59",
+            )
         manager = Usuario.objects.create_user(
             email="gerente-scope@test.com",
             nombre="Gerente Scope",

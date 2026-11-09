@@ -1,20 +1,37 @@
-"""
-URL configuration for Libro Fiscal project.
-"""
+"""URL configuration for Libro Fiscal project."""
+import logging
+from pathlib import Path
+
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.generic import TemplateView
 from django.http import FileResponse, JsonResponse, Http404
-from pathlib import Path
+from django.db import DatabaseError, connection
 from apps.inventario.views import test_mail_page
 from apps.usuarios import views as usuarios_views
+
+logger = logging.getLogger(__name__)
+
+
+def health_check(request):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+    except DatabaseError:
+        logger.exception("Database health check failed")
+        return JsonResponse(
+            {"status": "unavailable", "database": "unavailable"},
+            status=503,
+        )
+    return JsonResponse({"status": "ok", "database": "ok"})
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("test-mail", test_mail_page, name="test-mail-page"),
     path("test-mail/", test_mail_page, name="test-mail-page-slash"),
     # Health check endpoint for uptime/monitoring
-    path("healthz/", lambda request: JsonResponse({"status": "ok"})),
+    path("healthz/", health_check, name="health-check"),
     path("docs/<str:filename>", lambda request, filename: serve_manual(filename)),
     path("api/auth/", include("apps.usuarios.urls")),
     path("api/schedules", usuarios_views.seller_schedules, name="seller-schedules"),

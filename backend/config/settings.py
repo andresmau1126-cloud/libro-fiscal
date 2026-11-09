@@ -134,11 +134,12 @@ DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("RENDER_DATABASE_URL")
 DB_ENGINE = os.getenv("DB_ENGINE", "").strip().lower()
 
 if DATABASE_URL:
+    _database_scheme = DATABASE_URL.split(":", 1)[0].lower()
     _database_config = dj_database_url.parse(
         DATABASE_URL,
         conn_max_age=600,
         conn_health_checks=True,
-        ssl_require=True,
+        ssl_require=_database_scheme in {"postgres", "postgresql"},
     )
     if not DEBUG and _database_config["ENGINE"] == "django.db.backends.sqlite3":
         raise ImproperlyConfigured(
@@ -301,6 +302,9 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     CSRF_COOKIE_SECURE = CSRF_COOKIE_SECURE
     SESSION_COOKIE_SECURE = SESSION_COOKIE_SECURE
 else:

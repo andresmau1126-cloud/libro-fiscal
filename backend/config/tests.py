@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from django.core.exceptions import ImproperlyConfigured
+from django.db import DatabaseError
 from django.test import SimpleTestCase
 
 
@@ -13,6 +14,10 @@ class RenderDeploymentConfigTests(SimpleTestCase):
         content = render_yaml_path.read_text(encoding="utf-8")
 
         self.assertIn("property: connectionString", content)
+        self.assertIn("healthCheckPath: /healthz/", content)
+        self.assertIn("generateValue: true", content)
+        self.assertNotIn("RENDER_SECRET_KEY", content)
+        self.assertNotIn("-p 10000", content)
 
     def test_database_url_takes_precedence_over_sqlite_when_debug_is_enabled(self) -> None:
         from config import settings as settings_module
@@ -42,6 +47,7 @@ class RenderDeploymentConfigTests(SimpleTestCase):
             os.environ,
             {
                 "DEBUG": "false",
+                "DATABASE_URL": "postgresql://localhost:5432/libro_fiscal",
                 "RENDER_EXTERNAL_HOSTNAME": "libro-fiscal.onrender.com",
                 "CORS_ALLOWED_ORIGINS": "https://frontend.onrender.com",
                 "CSRF_TRUSTED_ORIGINS": "https://frontend.onrender.com",
@@ -55,3 +61,27 @@ class RenderDeploymentConfigTests(SimpleTestCase):
         self.assertIn("https://libro-fiscal.onrender.com", reloaded_settings.CSRF_TRUSTED_ORIGINS)
         self.assertEqual(reloaded_settings.SESSION_COOKIE_SAMESITE, "None")
         self.assertTrue(reloaded_settings.SESSION_COOKIE_SECURE)
+        self.assertTrue(reloaded_settings.SECURE_SSL_REDIRECT)
+        self.assertEqual(reloaded_settings.SECURE_HSTS_SECONDS, 31536000)
+        self.assertTrue(reloaded_settings.SECURE_HSTS_INCLUDE_SUBDOMAINS)
+
+    @patch("config.urls.connection")
+    def test_health_check_verifies_database_connection(self, mock_connection):
+        response = self.client.get("/healthz/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "ok", "database": "ok"})
+        mock_connection.cursor.return_value.__enter__.return_value.execute.assert_called_once_with(
+            "SELECT 1"
+        )
+
+    @patch("config.urls.connection")
+    def test_health_check_fails_when_database_is_unavailable(self, mock_connection):
+        mock_connection.cursor.side_effect = DatabaseError("database unavailable")
+        response = self.client.get("/healthz/")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            response.json(),
+            {"status": "unavailable", "database": "unavailable"},
+        )

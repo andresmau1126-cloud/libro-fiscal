@@ -1,13 +1,11 @@
-import json
-
-from django.test import TestCase
+from rest_framework.test import APITestCase
 from django.contrib.auth import get_user_model
 from .models import PuntoControl, RegistroRestauracion
 
 User = get_user_model()
 
 
-class PuntoControlTestCase(TestCase):
+class PuntoControlTestCase(APITestCase):
     """Pruebas unitarias para el modelo PuntoControl"""
     
     def setUp(self):
@@ -44,7 +42,7 @@ class PuntoControlTestCase(TestCase):
 
     def test_crear_respaldo_acepta_json(self):
         """El endpoint debe aceptar JSON al crear un respaldo."""
-        self.client.force_login(self.usuario)
+        self.client.force_authenticate(user=self.usuario)
 
         payload = {
             'nombre': 'Respaldo JSON',
@@ -54,8 +52,8 @@ class PuntoControlTestCase(TestCase):
 
         response = self.client.post(
             '/api/respaldos/crear_respaldo/',
-            data=json.dumps(payload),
-            content_type='application/json',
+            data=payload,
+            format='json',
         )
 
         self.assertEqual(response.status_code, 201, response.content.decode())
