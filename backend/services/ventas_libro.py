@@ -77,6 +77,7 @@ def compilar_ventas_diarias(fecha=None, nit=None):
         ventas = Venta.objects.filter(
             fecha__date=fecha,
             vendedor__rol__in=SELLER_ROLES,
+            es_simulado=False,
         )
         ventas.update(libro=libro)
         total = ventas.aggregate(total=Sum("total"))["total"] or Decimal("0")

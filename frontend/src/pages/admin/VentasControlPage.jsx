@@ -62,7 +62,7 @@ export default function VentasControlPage() {
 
   const grouped = useMemo(() => {
     const map = new Map();
-    ventas.forEach((sale) => {
+    ventas.filter((sale) => !sale.es_simulado).forEach((sale) => {
       const key = sale.vendedor || 'Sin vendedor';
       const group = map.get(key) || {
         vendedor: sale.vendedor,
@@ -77,7 +77,8 @@ export default function VentasControlPage() {
     return [...map.values()].sort((a, b) => b.total - a.total);
   }, [ventas]);
 
-  const totalGeneral = ventas.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+  const ventasSimuladas = ventas.filter((sale) => sale.es_simulado);
+  const totalGeneral = ventas.filter((sale) => !sale.es_simulado).reduce((sum, sale) => sum + Number(sale.total || 0), 0);
 
   return (
     <div className="container-fluid py-3">
@@ -115,7 +116,7 @@ export default function VentasControlPage() {
               </div>
               <div>
                 <div className="stat-label">Ventas</div>
-                <div className="stat-value">{ventas.length}</div>
+                <div className="stat-value">{ventas.filter((sale) => !sale.es_simulado).length}</div>
               </div>
             </div>
           </div>
@@ -207,6 +208,22 @@ export default function VentasControlPage() {
           </div>
         ))
       )}
+      {ventasSimuladas.length > 0 && <div className="data-table p-3 mb-4">
+        <h5>Evidencia simulada (excluida de ventas reales y estadísticas)</h5>
+        <div className="table-responsive">
+          <table className="table align-middle mb-0">
+            <thead><tr><th>Transacción</th><th>Folio / soporte</th><th>Fecha</th><th>Justificación</th><th className="text-end">Monto simulado</th></tr></thead>
+            <tbody>{ventasSimuladas.map((sale) => <tr key={sale.id}>
+              <td>#{sale.id} <span className="badge text-bg-warning ms-1">SIMULACIÓN</span></td>
+              <td>{sale.folio}<div className="small text-muted">{sale.soporte}</div></td>
+              <td>{formatDate(sale.fecha)}</td>
+              <td>{sale.justificacion}</td>
+              <td className="text-end">{money(sale.total)}</td>
+            </tr>)}</tbody>
+            <tfoot><tr><th colSpan="4">Total simulado</th><th className="text-end">{money(ventasSimuladas.reduce((sum, sale) => sum + Number(sale.total || 0), 0))}</th></tr></tfoot>
+          </table>
+        </div>
+      </div>}
     </div>
   );
 }

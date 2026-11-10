@@ -37,8 +37,8 @@ def fiscal_books(request):
     libros = _readable_libros_qs_for_user(request.user).filter(anio=date_value.year)
     rows = []
     for libro in libros.order_by("-anio", "nombre"):
-        sales_total = libro.ventas.filter(fecha__date=date_value).aggregate(total=Sum("total"))["total"] or 0
-        expenses_total = libro.expenses.filter(fecha=date_value).aggregate(total=Sum("valor_pagado"))["total"] or 0
+        sales_total = libro.ventas.filter(fecha__date=date_value, es_simulado=False).aggregate(total=Sum("total"))["total"] or 0
+        expenses_total = libro.expenses.filter(fecha=date_value, es_simulado=False).aggregate(total=Sum("valor_pagado"))["total"] or 0
         rows.append({
             "id": libro.id,
             "nombre": libro.nombre,

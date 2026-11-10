@@ -44,7 +44,7 @@ def procesar_venta_historial(sender, instance, created, **kwargs):
     Cuando se crea una venta, registrar su historial automáticamente.
     """
     try:
-        if created:
+        if created and not instance.es_simulado:
             from .models import HistorialVentas
             
             # Verificar que no haya sido registrada ya

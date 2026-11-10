@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createExpense, createProvider, deleteExpense, fetchExpenses, fetchLibros, fetchProviders, updateExpense } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
-const initial = { provider: '', descripcion: 'Compra a proveedor', fecha: new Date().toISOString().slice(0, 10), descripcion_producto: '', valor_unitario: '', valor_pagado: '', cantidad: '1', libro: '' };
+const initial = { provider: '', descripcion: 'Compra a proveedor', fecha: new Date().toISOString().slice(0, 10), descripcion_producto: '', valor_unitario: '', valor_pagado: '', cantidad: '1', libro: '', es_simulado: false, proveedor_referencia: '', folio: '', soporte: '', justificacion: '' };
 const providerInitial = { nombre: '', nit: '' };
 
 export default function ExpensesPage() {
@@ -45,8 +45,10 @@ export default function ExpensesPage() {
       const valorPagado = Number(form.valor_pagado);
       const payload = {
         ...form,
-        descripcion: `Compra: ${form.descripcion_producto.trim()}`,
-        provider: Number(form.provider),
+        descripcion: form.es_simulado
+          ? `SIMULACIÓN - ${form.justificacion.trim()} - Folio ${form.folio.trim()}`
+          : `Compra: ${form.descripcion_producto.trim()}`,
+        provider: form.es_simulado ? null : Number(form.provider),
         libro: Number(form.libro),
         cantidad,
         valor_pagado: valorPagado,
@@ -83,6 +85,11 @@ export default function ExpensesPage() {
       valor_pagado: expense.valor_pagado,
       cantidad: expense.cantidad,
       libro: expense.libro,
+      es_simulado: expense.es_simulado,
+      proveedor_referencia: expense.proveedor_referencia || '',
+      folio: expense.folio || '',
+      soporte: expense.soporte || '',
+      justificacion: expense.justificacion || '',
     });
     setMessage(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -141,7 +148,22 @@ export default function ExpensesPage() {
         <div className="data-table p-3 mb-3">
           <form onSubmit={submit}>
             <div className="row g-2">
-              <div className="col-md-4">
+              <div className="col-12 form-check form-switch mb-2">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="simulated-expense-toggle"
+                  checked={form.es_simulado}
+                  onChange={(event) => setForm({ ...form, es_simulado: event.target.checked })}
+                  disabled={Boolean(editingId)}
+                />
+                <label className="form-check-label" htmlFor="simulated-expense-toggle">Registrar simulación (no es egreso real)</label>
+                {form.es_simulado && <div className="small text-warning-emphasis">No se crea movimiento fiscal; no altera saldos reales.</div>}
+              </div>
+              {form.es_simulado ? <div className="col-md-4">
+                <label className="form-label">Proveedor representado (simulado)</label>
+                <input required maxLength={180} className="form-control" value={form.proveedor_referencia} onChange={update('proveedor_referencia')} placeholder="Bavaria / Postobón (SIMULADO)" />
+              </div> : <div className="col-md-4">
                 <label className="form-label">Proveedor</label>
                 <div className="input-group">
                   <select
@@ -208,7 +230,7 @@ export default function ExpensesPage() {
                     </div>
                   </div>
                 )}
-              </div>
+              </div>}
 
               <div className="col-md-4">
                 <label className="form-label">Qué se compró</label>
@@ -221,6 +243,11 @@ export default function ExpensesPage() {
                   onChange={update('descripcion_producto')}
                 />
               </div>
+              {form.es_simulado && <>
+                <div className="col-md-4"><label className="form-label">Folio</label><input required maxLength={30} className="form-control" value={form.folio} onChange={update('folio')} /></div>
+                <div className="col-md-4"><label className="form-label">Soporte</label><input required maxLength={255} className="form-control" value={form.soporte} onChange={update('soporte')} /></div>
+                <div className="col-md-4"><label className="form-label">Justificación</label><input required maxLength={255} className="form-control" value={form.justificacion} onChange={update('justificacion')} /></div>
+              </>}
 
               <div className="col-md-2">
                 <label className="form-label">Cantidad</label>
@@ -319,10 +346,10 @@ export default function ExpensesPage() {
                 return (
                   <tr key={row.id}>
                     <td>{row.fecha}</td>
-                    <td>{row.provider_nombre}</td>
+                    <td>{row.provider_nombre}{row.es_simulado && <span className="badge text-bg-warning ms-2">SIMULACIÓN</span>}</td>
                     <td>{provider?.nit || '-'}</td>
                     <td>{row.descripcion_producto}</td>
-                    <td>{row.descripcion}</td>
+                    <td>{row.descripcion}{row.es_simulado && <div className="small text-muted">Folio {row.folio} · {row.soporte}</div>}</td>
                     <td className="text-end">{Number(row.valor_pagado).toFixed(2)}</td>
                     <td>{row.libro}</td>
                     {!readOnly && (

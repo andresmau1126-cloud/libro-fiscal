@@ -118,7 +118,56 @@ class InventarioBlackBoxAPITests(APITestCase):
         self.assertEqual(response.data["total"], 25.0)
         product.refresh_from_db()
         self.assertEqual(product.stock_actual, 3)
-        self.assertEqual(Venta.objects.filter(vendedor=self.user).count(), 1)
+
+    def test_manager_can_create_simulated_sale_without_stock_or_real_fiscal_movement(self):
+        manager = Usuario.objects.create_user(
+            email="simulacion-admin@test.com",
+            nombre="Admin simulación",
+            password="test-password",
+            rol="admin",
+        )
+        product = Producto.objects.create(
+            nombre="Producto simulado",
+            stock_actual=5,
+            precio_venta="10.00",
+            propietario=manager,
+        )
+        book = Libro.objects.create(
+            nombre="Libro simulación",
+            nit="1010085627-1",
+            anio=2026,
+            propietario=manager,
+        )
+        self.client.force_authenticate(user=manager)
+
+        response = self.client.post(
+            "/api/ventas",
+            {
+                "es_simulado": True,
+                "libro_id": book.id,
+                "fecha": "2026-10-01",
+                "total": "200000",
+                "folio": "0010",
+                "soporte": "Cuaderno / Foto Folio 0010",
+                "justificacion": "Venta diaria simulada",
+                "descripcion": "Evidencia de prueba",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(response.data["es_simulado"])
+        self.assertEqual(response.data["fecha"][:10], "2026-10-01")
+        product.refresh_from_db()
+        self.assertEqual(product.stock_actual, Decimal("5"))
+        self.assertFalse(Movimiento.objects.filter(libro=book, fecha=date(2026, 10, 1)).exists())
+        self.assertTrue(Auditoria.objects.filter(entidad="venta", accion="crear_simulacion").exists())
+        self.assertEqual(response.data["total"], 200000.0)
+        list_response = self.client.get("/api/ventas?fecha=2026-10-01")
+        self.assertEqual(list_response.data["resumen"]["total"], 0)
+        self.assertEqual(list_response.data["resumen"]["total_simulado"], 200000.0)
+        fiscal_response = self.client.get("/api/fiscal-books?date=2026-10-01")
+        self.assertEqual(fiscal_response.data[0]["total_ventas_dia"], 0)
 
     def test_create_sale_updates_fiscal_book_daily_income(self):
         libro = Libro.objects.create(

@@ -19,7 +19,7 @@ TURNOS_SUPERVISOR_ROLES = {"admin", "gerente"}
 
 
 def _ventas_dia(vendedor, fecha):
-    total = Venta.objects.filter(vendedor=vendedor, fecha__date=fecha).aggregate(total=Sum("total"))["total"]
+    total = Venta.objects.filter(vendedor=vendedor, fecha__date=fecha, es_simulado=False).aggregate(total=Sum("total"))["total"]
     return total or Decimal("0")
 
 

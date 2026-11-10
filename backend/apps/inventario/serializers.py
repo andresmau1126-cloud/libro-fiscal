@@ -83,6 +83,16 @@ class VentaCreateSerializer(serializers.Serializer):
         return value
 
 
+class VentaSimuladaCreateSerializer(serializers.Serializer):
+    libro_id = serializers.IntegerField(min_value=1)
+    fecha = serializers.DateField()
+    total = serializers.DecimalField(max_digits=18, decimal_places=2, min_value=Decimal("0.01"))
+    folio = serializers.CharField(max_length=30)
+    soporte = serializers.CharField(max_length=255)
+    justificacion = serializers.CharField(max_length=255)
+    descripcion = serializers.CharField(max_length=255)
+
+
 # ============================================================================
 # SERIALIZERS PARA INVENTARIO CENTRALIZADO Y RASTREO
 # ============================================================================

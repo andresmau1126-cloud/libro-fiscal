@@ -58,7 +58,12 @@ export default function SaleReceipt() {
       doc.setTextColor(17, 24, 39);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(11);
-      let y = 105;
+      if (receipt.es_simulado) {
+        doc.setTextColor(180, 83, 9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('SIMULACIÓN - NO ES UN COMPROBANTE REAL', 42, 90);
+      }
+      let y = receipt.es_simulado ? 125 : 105;
       doc.text(`Fecha: ${formatDate(receipt.fecha)}`, 42, y);
       doc.text(`Vendedor: ${receipt.vendedor}`, 42, y + 20);
       doc.text(`Cliente: ${client.nombre || 'Consumidor final'}`, 300, y);
@@ -101,6 +106,7 @@ export default function SaleReceipt() {
       </div>
       {splitItems(receipt.items).map((items, pageIndex, pages) => (
         <article className="data-table p-4 receipt-page" key={pageIndex}>
+          {receipt.es_simulado && <div className="alert alert-warning fw-bold">SIMULACIÓN — NO ES UNA VENTA REAL NI SOPORTE FISCAL · Folio {receipt.folio}</div>}
           <header className="d-flex justify-content-between border-bottom pb-3 mb-4">
             <div><h2 className="mb-1">Multivariedades Ricaurte</h2><div>NIT 1010085627-1</div></div>
             <div className="text-end"><h3 className="mb-0">Recibo de Caja No. {receipt.numero_comprobante}</h3><small>Hoja {pageIndex + 1} de {pages.length}</small></div>

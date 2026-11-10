@@ -72,6 +72,36 @@ class FinanzasPermissionsAndFiscalTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Expense.objects.count(), 1)
 
+    def test_admin_simulated_expense_does_not_create_fiscal_movement(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            "/api/expenses",
+            {
+                "provider": None,
+                "proveedor_referencia": "Bavaria / Postobón (SIMULADO)",
+                "descripcion": "Simulación Folio 0010",
+                "descripcion_producto": "Compra simulada",
+                "fecha": "2026-10-01",
+                "valor_unitario": "445207",
+                "valor_pagado": "445207",
+                "cantidad": "1",
+                "libro": self.libro.id,
+                "es_simulado": True,
+                "folio": "0010",
+                "soporte": "Cuaderno / Factura",
+                "justificacion": "Evidencia simulada",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        expense = Expense.objects.get(pk=response.data["id"])
+        self.assertTrue(expense.es_simulado)
+        self.assertIsNone(expense.movimiento)
+        self.assertFalse(Movimiento.objects.filter(libro=self.libro, fecha=date(2026, 10, 1)).exists())
+        fiscal_response = self.client.get("/api/fiscal-books?date=2026-10-01")
+        self.assertEqual(fiscal_response.data[0]["total_egresos_dia"], 0)
+
     def test_auditor_cannot_create_expense(self):
         self.client.force_authenticate(user=self.auditor)
         response = self.client.post("/api/expenses", {}, format="json")

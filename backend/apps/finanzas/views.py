@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.inventario.models import Venta
+from apps.auditoria.services import audit_log
 from apps.movimientos.models import Movimiento
 from apps.usuarios.permissions import can_manage_configuration, can_view_shared_data
 from apps.usuarios.utils import get_shift_error_for_user
@@ -41,7 +42,7 @@ def stats(request):
         start, end = _period_bounds(period, request.query_params.get("date"))
     except (ValueError, TypeError):
         return Response({"error": "Use period=daily|monthly y una fecha válida."}, status=status.HTTP_400_BAD_REQUEST)
-    rows = (Venta.objects.filter(fecha__date__gte=start, fecha__date__lte=end, vendedor__rol__in=("vendedor", "vendedor_2"))
+    rows = (Venta.objects.filter(fecha__date__gte=start, fecha__date__lte=end, vendedor__rol__in=("vendedor", "vendedor_2"), es_simulado=False)
             .values("vendedor_id", "vendedor__nombre")
             .annotate(total=Sum("total"), count=Count("id")))
     SellerStats.objects.filter(period=period, period_start=start).delete()
@@ -69,10 +70,20 @@ def expenses(request):
     if data["fecha"].year != data["libro"].anio:
         return Response({"error": "La fecha debe pertenecer al año del libro."}, status=status.HTTP_400_BAD_REQUEST)
     with transaction.atomic():
-        movimiento = Movimiento.objects.create(fecha=data["fecha"], descripcion=data["descripcion"], ingresos=0,
-                                                egresos=data["valor_pagado"], libro=data["libro"])
+        movimiento = None
+        if not data.get("es_simulado", False):
+            movimiento = Movimiento.objects.create(fecha=data["fecha"], descripcion=data["descripcion"], ingresos=0,
+                                                    egresos=data["valor_pagado"], libro=data["libro"])
         expense = Expense.objects.create(**data, creado_por=request.user, movimiento=movimiento)
-        recompute_saldos(data["libro"].id)
+        if movimiento:
+            recompute_saldos(data["libro"].id)
+        audit_log(request, "crear_simulacion" if expense.es_simulado else "crear", "egreso", expense.id, {
+            "valor_pagado": float(expense.valor_pagado),
+            "fecha": expense.fecha.isoformat(),
+            "libro_id": expense.libro_id,
+            "folio": expense.folio,
+            "simulado": expense.es_simulado,
+        })
     return Response(ExpenseSerializer(expense).data, status=status.HTTP_201_CREATED)
 
 
@@ -96,12 +107,16 @@ def expense_receipt(request, expense_id):
         "numero_comprobante": f"EXP-{expense.id:04d}",
         "fecha": expense.fecha.isoformat(),
         "proveedor": {
-            "nombre": expense.provider.nombre,
-            "nit": expense.provider.nit or "Sin NIT",
+            "nombre": expense.proveedor_referencia or (expense.provider.nombre if expense.provider else "Sin proveedor"),
+            "nit": (expense.provider.nit or "Sin NIT") if expense.provider else "No aplica (simulación)",
         },
         "concepto": expense.descripcion,
         "detalle": detalle,
         "total_pagado": float(expense.valor_pagado),
+        "es_simulado": expense.es_simulado,
+        "folio": expense.folio,
+        "soporte": expense.soporte,
+        "justificacion": expense.justificacion,
         "usuario_registro": {
             "nombre": expense.creado_por.nombre,
             "email": expense.creado_por.email,
@@ -151,6 +166,8 @@ def expense_detail(request, expense_id):
     serializer = ExpenseSerializer(expense, data=request.data, partial=request.method == "PATCH")
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
+    if "es_simulado" in data and data["es_simulado"] != expense.es_simulado:
+        return Response({"error": "No se puede cambiar el carácter simulado de un egreso existente."}, status=status.HTTP_400_BAD_REQUEST)
     target_book = data.get("libro", expense.libro)
     target_date = data.get("fecha", expense.fecha)
     if target_date.year != target_book.anio:
@@ -161,14 +178,16 @@ def expense_detail(request, expense_id):
             setattr(expense, field, value)
         expense.save()
         movement = expense.movimiento
-        movement.fecha = expense.fecha
-        movement.descripcion = expense.descripcion
-        movement.egresos = expense.valor_pagado
-        movement.libro = expense.libro
-        movement.save(update_fields=["fecha", "descripcion", "egresos", "libro"])
-        recompute_saldos(old_book_id)
-        if expense.libro_id != old_book_id:
-            recompute_saldos(expense.libro_id)
+        if movement:
+            movement.fecha = expense.fecha
+            movement.descripcion = expense.descripcion
+            movement.egresos = expense.valor_pagado
+            movement.libro = expense.libro
+            movement.save(update_fields=["fecha", "descripcion", "egresos", "libro"])
+            recompute_saldos(old_book_id)
+            if expense.libro_id != old_book_id:
+                recompute_saldos(expense.libro_id)
+        audit_log(request, "editar_simulacion" if expense.es_simulado else "editar", "egreso", expense.id)
     return Response(ExpenseSerializer(expense).data)
 
 

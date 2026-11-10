@@ -50,8 +50,13 @@ export default function ExpenseReceipt() {
     doc.text('NIT: 1010085627-1', 42, 42);
     doc.text('COMPROBANTE DE EGRESO', pageWidth - 170, 26);
     doc.text(`N° ${receipt.numero_comprobante}`, pageWidth - 170, 42);
+    if (receipt.es_simulado) {
+      doc.setTextColor(180, 83, 9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SIMULACIÓN - NO ES UN COMPROBANTE REAL', 42, 72);
+    }
 
-    y = 90;
+    y = receipt.es_simulado ? 110 : 90;
     doc.setTextColor(17, 24, 39);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
@@ -88,6 +93,9 @@ export default function ExpenseReceipt() {
     doc.setFont('helvetica', 'normal');
     doc.text(`Forma de pago: ${receipt.forma_pago}`, 42, totalY + 24);
     doc.text(`Observaciones: ${receipt.observaciones}`, 42, totalY + 42, { maxWidth: 500 });
+    if (receipt.es_simulado) {
+      doc.text(`Folio ${receipt.folio} · Soporte: ${receipt.soporte}`, 42, totalY + 60, { maxWidth: 500 });
+    }
 
     doc.line(42, totalY + 80, 220, totalY + 80);
     doc.text('Quien entrega', 42, totalY + 96);
@@ -149,6 +157,7 @@ export default function ExpenseReceipt() {
         </div>
 
         <div className="mt-7 text-center">
+          {receipt.es_simulado && <p className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 font-bold text-amber-800">SIMULACIÓN — NO ES UN EGRESO REAL NI SOPORTE FISCAL</p>}
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-sky-700">Documento de egreso</p>
           <h1 className="mt-2 text-3xl font-black uppercase tracking-tight text-slate-900">Comprobante de egreso</h1>
         </div>
@@ -175,6 +184,7 @@ export default function ExpenseReceipt() {
         <div className="mt-8">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Concepto</p>
           <p className="mt-2 text-lg font-semibold text-slate-900">{receipt.concepto}</p>
+          {receipt.es_simulado && <p className="mt-2 text-sm text-amber-800">Folio {receipt.folio} · Soporte: {receipt.soporte} · {receipt.justificacion}</p>}
         </div>
 
         <div className="mt-8 overflow-hidden rounded-xl border border-slate-200">

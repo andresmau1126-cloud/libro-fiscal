@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createVenta, deleteVenta, fetchClientes, fetchProductos, fetchVentas, updateVenta } from '../../services/api';
+import { createVenta, deleteVenta, fetchClientes, fetchLibros, fetchProductos, fetchVentas, updateVenta } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
 const money = (value) => '$ ' + Number(value || 0).toLocaleString('es-CO', {
@@ -19,6 +19,7 @@ export default function VentasPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const canViewSalesRecords = !['vendedor', 'vendedor_2'].includes(user?.rol);
+  const canCreateSimulation = ['admin', 'gerente'].includes(user?.rol);
   const readOnly = user?.rol === 'auditor';
   const today = localDate();
   const getInitialState = () => {
@@ -43,6 +44,7 @@ export default function VentasPage() {
 
   const [productos, setProductos] = useState([]);
   const [clientes, setClientes] = useState([]);
+  const [libros, setLibros] = useState([]);
   const [ventas, setVentas] = useState([]);
   const [fecha, setFecha] = useState(initialState?.fecha || today);
   const [cliente, setCliente] = useState(initialState?.cliente || '');
@@ -58,6 +60,12 @@ export default function VentasPage() {
   const [paymentSimulation, setPaymentSimulation] = useState(null);
   const [editingSaleId, setEditingSaleId] = useState(null);
   const [editingSaleDate, setEditingSaleDate] = useState('');
+  const [esSimulado, setEsSimulado] = useState(false);
+  const [totalSimulado, setTotalSimulado] = useState('');
+  const [libroSimulado, setLibroSimulado] = useState('');
+  const [folioSimulado, setFolioSimulado] = useState('');
+  const [soporteSimulado, setSoporteSimulado] = useState('');
+  const [justificacionSimulada, setJustificacionSimulada] = useState('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -69,9 +77,10 @@ export default function VentasPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const [productData, clientData] = await Promise.all([fetchProductos(), fetchClientes()]);
+      const [productData, clientData, libroData] = await Promise.all([fetchProductos(), fetchClientes(), fetchLibros()]);
       setProductos(productData || []);
       setClientes(clientData || []);
+      setLibros(libroData || []);
       if (canViewSalesRecords) {
         const saleData = await fetchVentas(fecha);
         setVentas(saleData?.ventas || []);
@@ -108,6 +117,22 @@ export default function VentasPage() {
     setSaving(true);
     setMessage(null);
     try {
+      if (esSimulado) {
+        await createVenta({
+          es_simulado: true,
+          fecha,
+          total: Number(totalSimulado),
+          libro_id: Number(libroSimulado),
+          folio: folioSimulado,
+          soporte: soporteSimulado,
+          justificacion: justificacionSimulada,
+          descripcion: justificacionSimulada,
+        });
+        setMessage({ ok: true, text: 'Simulación guardada; no modificó existencias ni totales reales.' });
+        setTotalSimulado('');
+        await load();
+        return;
+      }
       const newSale = await createVenta({
         cliente,
         cliente_nit: clienteNit,
@@ -182,10 +207,23 @@ export default function VentasPage() {
         {!readOnly && <div className="col-lg-7">
           <div className="data-table p-3">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <div><h5 className="mb-0">Nueva venta</h5><small className="text-muted">El stock se actualiza al confirmar el cobro.</small></div>
+              <div><h5 className="mb-0">Nueva venta</h5><small className="text-muted">{esSimulado ? 'La simulación no modifica inventario ni reportes reales.' : 'El stock se actualiza al confirmar el cobro.'}</small></div>
               <span className="badge text-bg-light">{cart.length} productos</span>
             </div>
             <form onSubmit={checkout}>
+              {canCreateSimulation && <div className="form-check form-switch mb-3">
+                <input className="form-check-input" type="checkbox" id="simulated-sale-toggle" checked={esSimulado} onChange={(event) => setEsSimulado(event.target.checked)} />
+                <label className="form-check-label" htmlFor="simulated-sale-toggle">Registrar simulación (no es venta real)</label>
+              </div>}
+              {esSimulado ? <div className="row g-2">
+                <div className="col-md-4"><label className="form-label small">Fecha simulada</label><input className="form-control" type="date" value={fecha} onChange={(event) => setFecha(event.target.value)} required /></div>
+                <div className="col-md-4"><label className="form-label small">Monto</label><input className="form-control" type="number" min="0.01" step="0.01" value={totalSimulado} onChange={(event) => setTotalSimulado(event.target.value)} required /></div>
+                <div className="col-md-4"><label className="form-label small">Libro</label><select className="form-select" value={libroSimulado} onChange={(event) => setLibroSimulado(event.target.value)} required><option value="">Seleccione</option>{libros.map((libro) => <option key={libro.id} value={libro.id}>{libro.nombre} ({libro.anio}) · {libro.nit}</option>)}</select></div>
+                <div className="col-md-4"><label className="form-label small">Folio</label><input className="form-control" value={folioSimulado} onChange={(event) => setFolioSimulado(event.target.value)} required /></div>
+                <div className="col-md-4"><label className="form-label small">Soporte</label><input className="form-control" value={soporteSimulado} onChange={(event) => setSoporteSimulado(event.target.value)} required /></div>
+                <div className="col-md-4"><label className="form-label small">Justificación</label><input className="form-control" value={justificacionSimulada} onChange={(event) => setJustificacionSimulada(event.target.value)} required /></div>
+                <div className="col-12 text-end"><button className="btn btn-warning" disabled={saving}>{saving ? 'Guardando...' : 'Guardar simulación'}</button></div>
+              </div> : <>
               <div className="row g-2 mb-3">
                 <div className="col-md-7">
                   <label className="form-label small">Producto</label>
@@ -229,6 +267,7 @@ export default function VentasPage() {
                 <div className="col-md-4"><label className="form-label small">Medio de pago</label><select className="form-select" value={medioPago} onChange={(event) => { const value = event.target.value; setMedioPago(value); if (value !== 'efectivo') setPaymentSimulation({ medio: value, referencia: String(Math.floor(1000 + Math.random() * 9000)), fecha: new Date().toLocaleString('es-CO'), valor: total }); }}><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option></select></div>
                 <div className="col-md-3 d-flex align-items-end"><button className="btn btn-primary w-100" disabled={saving || !cart.length}>{saving ? 'Registrando...' : `Cobrar ${money(total)}`}</button></div>
               </div>
+              </>}
             </form>
           </div>
         </div>}
@@ -236,14 +275,16 @@ export default function VentasPage() {
         {canViewSalesRecords && <div className={readOnly ? 'col-12' : 'col-lg-5'}>
           <div className="data-table p-3">
             <div className="d-flex justify-content-between align-items-center mb-3"><h5 className="mb-0">Ventas del día</h5><div className="d-flex gap-2"><input type="date" className="form-control form-control-sm w-auto" value={fecha} onChange={(event) => setFecha(event.target.value)} /><button type="button" className="btn btn-sm btn-outline-secondary" onClick={load} disabled={loading} title="Actualizar ventas y stock" aria-label="Actualizar ventas y stock"><i className="bi bi-arrow-clockwise" /></button></div></div>
-            <div className="display-6 fw-semibold text-success mb-3">{money(ventas.reduce((sum, sale) => sum + sale.total, 0))}</div>
+            <div className="mb-3"><div className="display-6 fw-semibold text-success">{money(ventas.filter((sale) => !sale.es_simulado).reduce((sum, sale) => sum + sale.total, 0))}</div><div className="small text-warning-emphasis">Simulaciones (excluidas de totales reales): {money(ventas.filter((sale) => sale.es_simulado).reduce((sum, sale) => sum + sale.total, 0))}</div></div>
             {loading ? <div className="text-muted">Cargando...</div> : !ventas.length ? <div className="text-muted">No hay ventas para esta fecha.</div> : ventas.map((sale) => (
               <div className="border-top py-2" key={sale.id}>
                 <div className="d-flex justify-content-between align-items-start">
                   <div>
                     <strong>Venta #{sale.id}</strong>
+                    {sale.es_simulado && <span className="badge text-bg-warning ms-2">SIMULACIÓN · Folio {sale.folio}</span>}
                     <div className="small text-muted">{new Date(sale.fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} · {sale.medio_pago} · {sale.cliente || 'Consumidor final'}</div>
                     {sale.vendedor && <div className="small text-muted">Vendedor: {sale.vendedor} ({sale.vendedor_rol === 'vendedor_2' ? 'Vendedor 2' : 'Vendedor'})</div>}
+                    {sale.es_simulado && <div className="small text-muted">{sale.justificacion} · Soporte: {sale.soporte}</div>}
                   </div>
                   <div className="text-end">
                     <div>{money(sale.total)}</div>

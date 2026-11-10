@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Producto(models.Model):
@@ -62,7 +63,7 @@ class Venta(models.Model):
         ("noche", "Noche (22:00 - 06:00)"),
     ]
 
-    fecha = models.DateTimeField(auto_now_add=True)
+    fecha = models.DateTimeField(default=timezone.now)
     cliente = models.CharField(max_length=180, blank=True, default="")
     cliente_nit = models.CharField(max_length=50, blank=True, default="")
     cliente_registro = models.ForeignKey(
@@ -83,6 +84,10 @@ class Venta(models.Model):
         blank=True,
         related_name="ventas",
     )
+    es_simulado = models.BooleanField(default=False, db_index=True)
+    folio = models.CharField(max_length=30, blank=True, default="")
+    soporte = models.CharField(max_length=255, blank=True, default="")
+    justificacion = models.CharField(max_length=255, blank=True, default="")
 
     class Meta:
         db_table = "inventario_venta"

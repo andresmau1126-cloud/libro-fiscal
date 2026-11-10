@@ -1,4 +1,5 @@
 import hashlib
+from datetime import datetime, time
 
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -19,7 +20,7 @@ from .models import (
     ResumenVentasPorVendedor,
 )
 from .serializers import (
-    ProductoSerializer, ProductoCreateUpdateSerializer, VentaCreateSerializer,
+    ProductoSerializer, ProductoCreateUpdateSerializer, VentaCreateSerializer, VentaSimuladaCreateSerializer,
     HistorialInventarioSerializer, HistorialVentasSerializer,
     EstadoInventarioCentralizadoSerializer, ResumenVentasPorVendedorSerializer,
     EstadisticasVendedorSerializer,
@@ -168,6 +169,10 @@ def _venta_data(venta):
         "medio_pago": venta.medio_pago,
         "turno": venta.turno,
         "total": float(venta.total),
+        "es_simulado": venta.es_simulado,
+        "folio": venta.folio,
+        "soporte": venta.soporte,
+        "justificacion": venta.justificacion,
         "vendedor": venta.vendedor.nombre,
         "vendedor_email": venta.vendedor.email,
         "vendedor_rol": venta.vendedor.rol,
@@ -210,6 +215,39 @@ def _turno_payment_totals(ventas_qs):
 @permission_classes([IsAuthenticated])
 def ventas_list_create(request):
     if request.method == "POST":
+        if request.data.get("es_simulado") is True:
+            if request.user.rol not in {"admin", "gerente"}:
+                return Response({"error": "Solo admin o gerente puede crear ventas simuladas."}, status=status.HTTP_403_FORBIDDEN)
+            serializer = VentaSimuladaCreateSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            data = serializer.validated_data
+            from apps.libros.models import Libro
+            libro = Libro.objects.filter(pk=data["libro_id"], anio=data["fecha"].year).first()
+            if not libro:
+                return Response({"error": "El libro no existe para el año de la fecha."}, status=status.HTTP_400_BAD_REQUEST)
+            with transaction.atomic():
+                venta = Venta.objects.create(
+                    fecha=timezone.make_aware(
+                        datetime.combine(data["fecha"], time.min),
+                        timezone.get_current_timezone(),
+                    ),
+                    cliente=data["descripcion"],
+                    total=data["total"],
+                    vendedor=request.user,
+                    libro=libro,
+                    es_simulado=True,
+                    folio=data["folio"],
+                    soporte=data["soporte"],
+                    justificacion=data["justificacion"],
+                )
+                audit_log(request, "crear_simulacion", "venta", venta.id, {
+                    "total": float(venta.total),
+                    "fecha": data["fecha"].isoformat(),
+                    "libro_id": libro.id,
+                    "folio": venta.folio,
+                    "stock_modificado": False,
+                })
+            return Response(_venta_data(venta), status=status.HTTP_201_CREATED)
         shift_error = get_shift_error_for_user(request.user)
         if shift_error:
             return Response({"msg": shift_error}, status=status.HTTP_403_FORBIDDEN)
@@ -232,11 +270,15 @@ def ventas_list_create(request):
             if fecha:
                 qs = qs.filter(fecha__date=fecha)
         ventas = [_venta_data(venta) for venta in qs[:100]]
+        ventas_reales = [item for item in ventas if not item["es_simulado"]]
+        ventas_simuladas = [item for item in ventas if item["es_simulado"]]
         return Response({
             "ventas": ventas,
             "resumen": {
-                "cantidad": len(ventas),
-                "total": round(sum(item["total"] for item in ventas), 2),
+                "cantidad": len(ventas_reales),
+                "total": round(sum(item["total"] for item in ventas_reales), 2),
+                "cantidad_simulada": len(ventas_simuladas),
+                "total_simulado": round(sum(item["total"] for item in ventas_simuladas), 2),
             },
         })
 
@@ -412,14 +454,14 @@ def cierre_turno(request):
     except Exception:
         return Response({"error": "La fecha debe ser YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
 
-    ventas = Venta.objects.filter(turno=turno, fecha__date=fecha).select_related("vendedor").prefetch_related("detalles__producto")
+    ventas = Venta.objects.filter(turno=turno, fecha__date=fecha, es_simulado=False).select_related("vendedor").prefetch_related("detalles__producto")
     resumen = _turno_payment_totals(ventas)
     total_ventas = sum(float(item["total"]) for item in resumen.values())
 
     egresos_qs = Producto.objects.none()
     try:
         from apps.finanzas.models import Expense
-        egresos_qs = Expense.objects.filter(fecha=fecha)
+        egresos_qs = Expense.objects.filter(fecha=fecha, es_simulado=False)
     except Exception:
         egresos_qs = []
     total_egresos = sum(float(item.valor_pagado or 0) for item in egresos_qs) if hasattr(egresos_qs, "__iter__") else 0.0
@@ -822,6 +864,7 @@ def resumen_ventas_diarias(request):
     resumen = Venta.objects.filter(
         fecha__date=fecha,
         vendedor__rol__in=SELLER_ROLES,
+        es_simulado=False,
     ).values(
         "vendedor_id", "vendedor__nombre"
     ).annotate(
@@ -950,13 +993,13 @@ def monitoreo_turnos_hoy(request):
     
     hoy = timezone.localdate()
     ventas_hoy = list(
-        Venta.objects.filter(fecha__date=hoy)
+        Venta.objects.filter(fecha__date=hoy, es_simulado=False)
         .select_related("vendedor")
         .order_by("turno", "vendedor__nombre")
     )
 
     ventas_agrupadas = (
-        Venta.objects.filter(fecha__date=hoy)
+        Venta.objects.filter(fecha__date=hoy, es_simulado=False)
         .select_related("vendedor")
         .values("turno", "vendedor__id", "vendedor__nombre")
         .annotate(cantidad=models.Count("id"), total_dinero=models.Sum("total"))
@@ -1091,7 +1134,8 @@ def reportes_turnos(request):
     # Filtrar ventas
     ventas_qs = Venta.objects.filter(
         fecha__date__gte=fecha_inicio,
-        fecha__date__lte=fecha_fin
+        fecha__date__lte=fecha_fin,
+        es_simulado=False,
     ).select_related("vendedor").prefetch_related("detalles__producto")
     
     vendedor_id = request.query_params.get("vendedor_id")
@@ -1109,7 +1153,11 @@ def reportes_turnos(request):
 
     try:
         from apps.finanzas.models import Expense
-        egresos_qs = Expense.objects.filter(fecha__date__gte=fecha_inicio, fecha__date__lte=fecha_fin)
+        egresos_qs = Expense.objects.filter(
+            fecha__date__gte=fecha_inicio,
+            fecha__date__lte=fecha_fin,
+            es_simulado=False,
+        )
         total_egresos = sum(float(item.valor_pagado or 0) for item in egresos_qs)
     except Exception:
         egresos_qs = []

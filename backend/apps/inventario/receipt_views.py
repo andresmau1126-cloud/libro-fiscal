@@ -44,5 +44,9 @@ def venta_receipt(request, venta_id):
         "vendedor": venta.vendedor.nombre,
         "vendedor_email": venta.vendedor.email,
         "total": float(venta.total),
+        "es_simulado": venta.es_simulado,
+        "folio": venta.folio,
+        "soporte": venta.soporte,
+        "justificacion": venta.justificacion,
         "items": items,
     })

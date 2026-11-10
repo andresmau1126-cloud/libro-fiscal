@@ -20,7 +20,7 @@ class Provider(models.Model):
 
 
 class Expense(models.Model):
-    provider = models.ForeignKey(Provider, on_delete=models.PROTECT, related_name="expenses")
+    provider = models.ForeignKey(Provider, on_delete=models.PROTECT, related_name="expenses", null=True, blank=True)
     descripcion = models.CharField(max_length=255)
     fecha = models.DateField()
     descripcion_producto = models.CharField(max_length=255)
@@ -30,6 +30,11 @@ class Expense(models.Model):
     libro = models.ForeignKey("libros.Libro", on_delete=models.PROTECT, related_name="expenses")
     creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="expenses_created")
     movimiento = models.OneToOneField("movimientos.Movimiento", on_delete=models.PROTECT, related_name="expense", null=True, blank=True)
+    es_simulado = models.BooleanField(default=False, db_index=True)
+    proveedor_referencia = models.CharField(max_length=180, blank=True, default="")
+    folio = models.CharField(max_length=30, blank=True, default="")
+    soporte = models.CharField(max_length=255, blank=True, default="")
+    justificacion = models.CharField(max_length=255, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property
