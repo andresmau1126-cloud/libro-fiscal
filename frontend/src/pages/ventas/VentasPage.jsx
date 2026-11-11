@@ -271,7 +271,7 @@ export default function VentasPage() {
         {canViewSalesRecords && <div className={readOnly ? 'col-12' : 'col-lg-5'}>
           <div className="data-table p-3">
             <div className="d-flex justify-content-between align-items-center mb-3"><h5 className="mb-0">Ventas del día</h5><div className="d-flex gap-2"><input type="date" className="form-control form-control-sm w-auto" value={fecha} onChange={(event) => setFecha(event.target.value)} /><button type="button" className="btn btn-sm btn-outline-secondary" onClick={load} disabled={loading} title="Actualizar ventas y stock" aria-label="Actualizar ventas y stock"><i className="bi bi-arrow-clockwise" /></button></div></div>
-            <div className="mb-3"><div className="display-6 fw-semibold text-success">{money(ventas.filter((sale) => !sale.es_simulado).reduce((sum, sale) => sum + sale.total, 0))}</div><div className="small text-warning-emphasis">Simulaciones (excluidas de totales reales): {money(ventas.filter((sale) => sale.es_simulado).reduce((sum, sale) => sum + sale.total, 0))}</div></div>
+            <div className="mb-3"><div className="display-6 fw-semibold text-success">{money(ventas.filter((sale) => !sale.es_simulado).reduce((sum, sale) => sum + sale.total, 0))}</div></div>
             {loading ? <div className="text-muted">Cargando...</div> : !ventas.length ? <div className="text-muted">No hay ventas para esta fecha.</div> : ventas.map((sale) => (
               <div className="border-top py-2" key={sale.id}>
                 <div className="d-flex justify-content-between align-items-start">
