@@ -48,7 +48,7 @@ export default function ExpensesPage() {
         descripcion: form.es_simulado
           ? `SIMULACIÓN - ${form.justificacion.trim()} - Folio ${form.folio.trim()}`
           : form.es_real_cuaderno
-            ? `Egreso de cuaderno: ${form.proveedor_referencia.trim()}`
+            ? form.descripcion_producto.trim()
             : `Compra: ${form.descripcion_producto.trim()}`,
         provider: form.es_simulado || form.es_real_cuaderno ? null : Number(form.provider),
         libro: Number(form.libro),
@@ -242,6 +242,11 @@ export default function ExpensesPage() {
                     </div>
                   </div>
                 )}
+              </div>}
+
+              {form.es_real_cuaderno && <div className="col-md-4">
+                <label className="form-label">Folio</label>
+                <input required maxLength={30} className="form-control" value={form.folio} onChange={update('folio')} />
               </div>}
 
               <div className="col-md-4">
