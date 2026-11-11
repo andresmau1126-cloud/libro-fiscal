@@ -211,10 +211,6 @@ export default function VentasPage() {
               <span className="badge text-bg-light">{cart.length} productos</span>
             </div>
             <form onSubmit={checkout}>
-              {canCreateSimulation && <div className="form-check form-switch mb-3">
-                <input className="form-check-input" type="checkbox" id="simulated-sale-toggle" checked={esSimulado} onChange={(event) => setEsSimulado(event.target.checked)} />
-                <label className="form-check-label" htmlFor="simulated-sale-toggle">Registrar simulación (no es venta real)</label>
-              </div>}
               {esSimulado ? <div className="row g-2">
                 <div className="col-md-4"><label className="form-label small">Fecha simulada</label><input className="form-control" type="date" value={fecha} onChange={(event) => setFecha(event.target.value)} required /></div>
                 <div className="col-md-4"><label className="form-label small">Monto</label><input className="form-control" type="number" min="0.01" step="0.01" value={totalSimulado} onChange={(event) => setTotalSimulado(event.target.value)} required /></div>
