@@ -17,7 +17,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
         fields = [
             "id", "provider", "provider_nombre", "descripcion", "fecha",
             "descripcion_producto", "valor_unitario", "valor_pagado", "cantidad", "libro",
-            "sello_digital", "es_simulado", "proveedor_referencia", "folio", "soporte", "justificacion",
+            "sello_digital", "es_simulado", "es_real_cuaderno", "proveedor_referencia", "folio", "soporte", "justificacion",
         ]
 
     def get_sello_digital(self, obj):
@@ -29,9 +29,14 @@ class ExpenseSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         instance = getattr(self, "instance", None)
         es_simulado = attrs.get("es_simulado", getattr(instance, "es_simulado", False))
+        es_real_cuaderno = attrs.get("es_real_cuaderno", getattr(instance, "es_real_cuaderno", False))
+        if es_simulado and es_real_cuaderno:
+            raise serializers.ValidationError("Un egreso real de cuaderno no puede ser simulado.")
         if es_simulado and not attrs.get("proveedor_referencia", getattr(instance, "proveedor_referencia", "")):
             raise serializers.ValidationError({"proveedor_referencia": "Indique el proveedor que representa esta simulación."})
-        if not es_simulado and not attrs.get("provider", getattr(instance, "provider", None)):
+        if es_real_cuaderno and not attrs.get("proveedor_referencia", getattr(instance, "proveedor_referencia", "")):
+            raise serializers.ValidationError({"proveedor_referencia": "Indique el proveedor de referencia del cuaderno."})
+        if not es_simulado and not es_real_cuaderno and not attrs.get("provider", getattr(instance, "provider", None)):
             raise serializers.ValidationError({"provider": "Seleccione un proveedor para un egreso real."})
         for field in ("valor_unitario", "valor_pagado", "cantidad"):
             if attrs.get(field) is not None and attrs[field] <= 0:

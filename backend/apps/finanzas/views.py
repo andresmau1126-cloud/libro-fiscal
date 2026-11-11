@@ -83,6 +83,7 @@ def expenses(request):
             "libro_id": expense.libro_id,
             "folio": expense.folio,
             "simulado": expense.es_simulado,
+            "es_real_cuaderno": expense.es_real_cuaderno,
         })
     return Response(ExpenseSerializer(expense).data, status=status.HTTP_201_CREATED)
 
@@ -108,12 +109,19 @@ def expense_receipt(request, expense_id):
         "fecha": expense.fecha.isoformat(),
         "proveedor": {
             "nombre": expense.proveedor_referencia or (expense.provider.nombre if expense.provider else "Sin proveedor"),
-            "nit": (expense.provider.nit or "Sin NIT") if expense.provider else "No aplica (simulación)",
+            "nit": (
+                (expense.provider.nit or "Sin NIT")
+                if expense.provider
+                else "Sin NIT"
+                if expense.es_real_cuaderno
+                else "No aplica (simulación)"
+            ),
         },
         "concepto": expense.descripcion,
         "detalle": detalle,
         "total_pagado": float(expense.valor_pagado),
         "es_simulado": expense.es_simulado,
+        "es_real_cuaderno": expense.es_real_cuaderno,
         "folio": expense.folio,
         "soporte": expense.soporte,
         "justificacion": expense.justificacion,
@@ -168,6 +176,8 @@ def expense_detail(request, expense_id):
     data = serializer.validated_data
     if "es_simulado" in data and data["es_simulado"] != expense.es_simulado:
         return Response({"error": "No se puede cambiar el carácter simulado de un egreso existente."}, status=status.HTTP_400_BAD_REQUEST)
+    if "es_real_cuaderno" in data and data["es_real_cuaderno"] != expense.es_real_cuaderno:
+        return Response({"error": "No se puede cambiar el tipo de un egreso existente."}, status=status.HTTP_400_BAD_REQUEST)
     target_book = data.get("libro", expense.libro)
     target_date = data.get("fecha", expense.fecha)
     if target_date.year != target_book.anio:

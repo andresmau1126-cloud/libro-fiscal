@@ -21,6 +21,7 @@ from .models import (
 )
 from .serializers import (
     ProductoSerializer, ProductoCreateUpdateSerializer, VentaCreateSerializer, VentaSimuladaCreateSerializer,
+    VentaCuadernoCreateSerializer,
     HistorialInventarioSerializer, HistorialVentasSerializer,
     EstadoInventarioCentralizadoSerializer, ResumenVentasPorVendedorSerializer,
     EstadisticasVendedorSerializer,
@@ -35,6 +36,7 @@ from apps.usuarios.permissions import (
     can_write,
     can_manage_configuration,
 )
+from apps.usuarios.models import Usuario
 from apps.usuarios.utils import get_shift_error_for_user
 from services.inventario_alertas import enviar_alerta_inventario
 from services.scheduler_alertas import (
@@ -170,6 +172,7 @@ def _venta_data(venta):
         "turno": venta.turno,
         "total": float(venta.total),
         "es_simulado": venta.es_simulado,
+        "es_real_cuaderno": venta.es_real_cuaderno,
         "folio": venta.folio,
         "soporte": venta.soporte,
         "justificacion": venta.justificacion,
@@ -215,6 +218,83 @@ def _turno_payment_totals(ventas_qs):
 @permission_classes([IsAuthenticated])
 def ventas_list_create(request):
     if request.method == "POST":
+        if request.data.get("es_real_cuaderno") is True:
+            if request.data.get("es_simulado") is True:
+                return Response(
+                    {"error": "Una venta real de cuaderno no puede ser simulada."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if request.user.rol not in {"admin", "gerente"}:
+                return Response(
+                    {"error": "Solo admin o gerente puede registrar cierres de ventas."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            serializer = VentaCuadernoCreateSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            data = serializer.validated_data
+            from apps.libros.models import Libro
+            libro = Libro.objects.filter(
+                pk=data["libro_id"],
+                anio=data["fecha"].year,
+                nit="1010085627-1",
+            ).first()
+            if not libro:
+                return Response(
+                    {"error": "Seleccione el libro fiscal NIT 1010085627-1 del año de la fecha."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            with transaction.atomic():
+                vendedores = list(
+                    Usuario.objects.select_for_update()
+                    .filter(rol__in=SELLER_ROLES, activo=True)
+                    .order_by("id")
+                )
+                if not vendedores:
+                    return Response(
+                        {"error": "No hay vendedores activos para asignar el cierre."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                ultima_venta = (
+                    Venta.objects.filter(es_real_cuaderno=True, vendedor__in=vendedores)
+                    .order_by("-id")
+                    .first()
+                )
+                ultimo_indice = next(
+                    (index for index, item in enumerate(vendedores)
+                     if ultima_venta and item.id == ultima_venta.vendedor_id),
+                    -1,
+                )
+                vendedor = vendedores[(ultimo_indice + 1) % len(vendedores)]
+
+                fecha_venta = timezone.make_aware(
+                    datetime.combine(data["fecha"], time.min),
+                    timezone.get_current_timezone(),
+                )
+                venta = Venta.objects.create(
+                    fecha=fecha_venta,
+                    cliente=data["descripcion"],
+                    total=data["total"],
+                    vendedor=vendedor,
+                    libro=libro,
+                    es_real_cuaderno=True,
+                    folio=data["folio"],
+                    justificacion=data["descripcion"],
+                )
+                compilar_ventas_diarias(data["fecha"], nit=libro.nit)
+                venta.refresh_from_db()
+                audit_log(request, "crear", "venta", venta.id, {
+                    "total": float(venta.total),
+                    "fecha": data["fecha"].isoformat(),
+                    "libro_id": venta.libro_id,
+                    "folio": venta.folio,
+                    "es_real_cuaderno": True,
+                    "stock_modificado": False,
+                    "vendedor_id": vendedor.id,
+                })
+            return Response(_venta_data(venta), status=status.HTTP_201_CREATED)
+
         if request.data.get("es_simulado") is True:
             if request.user.rol not in {"admin", "gerente"}:
                 return Response({"error": "Solo admin o gerente puede crear ventas simuladas."}, status=status.HTTP_403_FORBIDDEN)
@@ -422,6 +502,7 @@ def venta_delete(request, venta_id):
 
     with transaction.atomic():
         fecha_venta = timezone.localtime(venta.fecha).date()
+        es_real_cuaderno = venta.es_real_cuaderno
         for detalle in venta.detalles.all():
             detalle.producto.stock_actual += detalle.cantidad
             detalle.producto.save(update_fields=["stock_actual", "updated_at"])
@@ -432,7 +513,10 @@ def venta_delete(request, venta_id):
 
     return Response({
         "ok": True,
-        "mensaje": f"Venta #{venta_id_log} eliminada y stock restaurado"
+        "mensaje": (
+            f"Venta #{venta_id_log} eliminada y totales fiscales actualizados"
+            if es_real_cuaderno else f"Venta #{venta_id_log} eliminada y stock restaurado"
+        )
     })
 
 

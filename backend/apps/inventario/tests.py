@@ -5,7 +5,7 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.inventario.models import Producto, Venta
+from apps.inventario.models import DetalleVenta, Producto, Venta
 from apps.auditoria.models import Auditoria
 from apps.libros.models import Libro
 from apps.movimientos.models import Movimiento
@@ -735,3 +735,106 @@ class InventarioWhiteBoxTests(TestCase):
     def test_productos_qs_for_admin_returns_all_products(self):
         qs = _productos_qs_for_user(self.admin)
         self.assertEqual(qs.count(), 2)
+
+
+class RealNotebookSalesTests(APITestCase):
+    def setUp(self):
+        self.admin = Usuario.objects.create_user(
+            email="cuaderno-admin@test.com",
+            nombre="Admin cuaderno",
+            password="test-password",
+            rol="admin",
+        )
+        self.seller_1 = Usuario.objects.create_user(
+            email="cuaderno-vendedor-1@test.com",
+            nombre="Vendedor uno",
+            password="test-password",
+            rol="vendedor",
+        )
+        self.seller_2 = Usuario.objects.create_user(
+            email="cuaderno-vendedor-2@test.com",
+            nombre="Vendedor dos",
+            password="test-password",
+            rol="vendedor_2",
+        )
+        self.book = Libro.objects.create(
+            nombre="Libro cuaderno",
+            nit=LIBRO_VENTAS_VENDEDORES_NIT,
+            anio=date.today().year,
+            propietario=self.admin,
+        )
+        self.product = Producto.objects.create(
+            nombre="Producto no usado por cierre",
+            stock_actual=8,
+            propietario=self.admin,
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def test_real_cuaderno_sales_rotate_sellers_without_touching_stock_and_feed_reports(self):
+        fecha = date.today()
+        payload = {
+            "es_real_cuaderno": True,
+            "fecha": fecha.isoformat(),
+            "total": "125000",
+            "libro_id": self.book.id,
+            "folio": "F-CIERRE",
+            "descripcion": "Cierre diario",
+        }
+
+        first_response = self.client.post("/api/ventas", payload, format="json")
+        second_response = self.client.post(
+            "/api/ventas",
+            {**payload, "total": "75000"},
+            format="json",
+        )
+
+        self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second_response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(first_response.data["es_real_cuaderno"])
+        self.assertFalse(first_response.data["es_simulado"])
+        self.assertEqual(first_response.data["vendedor"], self.seller_1.nombre)
+        self.assertEqual(second_response.data["vendedor"], self.seller_2.nombre)
+        self.assertEqual(Venta.objects.filter(es_real_cuaderno=True).count(), 2)
+        self.assertFalse(DetalleVenta.objects.filter(venta__es_real_cuaderno=True).exists())
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock_actual, Decimal("8.00"))
+
+        movimiento = Movimiento.objects.get(
+            libro=self.book,
+            fecha=fecha,
+            es_compilacion_ventas=True,
+        )
+        self.assertEqual(movimiento.ingresos, Decimal("200000.00"))
+
+        stats_response = self.client.get(f"/api/stats?period=daily&date={fecha.isoformat()}")
+        self.assertEqual(stats_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            {row["vendedor_nombre"]: row["total_vendido"] for row in stats_response.data["results"]},
+            {self.seller_1.nombre: "125000.00", self.seller_2.nombre: "75000.00"},
+        )
+        fiscal_response = self.client.get(f"/api/fiscal-books?date={fecha.isoformat()}")
+        self.assertEqual(fiscal_response.data[0]["total_ventas_dia"], Decimal("200000.00"))
+        dashboard_response = self.client.get("/api/dashboard")
+        self.assertEqual(dashboard_response.data["total_ingresos"], 200000.0)
+        self.assertEqual(
+            Auditoria.objects.filter(entidad="venta", accion="crear").count(),
+            2,
+        )
+
+    def test_real_cuaderno_sale_requires_an_active_seller(self):
+        Usuario.objects.filter(pk__in=[self.seller_1.id, self.seller_2.id]).update(activo=False)
+        response = self.client.post(
+            "/api/ventas",
+            {
+                "es_real_cuaderno": True,
+                "fecha": date.today().isoformat(),
+                "total": "1000",
+                "libro_id": self.book.id,
+                "descripcion": "Cierre sin vendedores",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Venta.objects.filter(es_real_cuaderno=True).count(), 0)
+        self.assertFalse(Movimiento.objects.filter(libro=self.book).exists())

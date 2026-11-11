@@ -31,6 +31,7 @@ class Expense(models.Model):
     creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="expenses_created")
     movimiento = models.OneToOneField("movimientos.Movimiento", on_delete=models.PROTECT, related_name="expense", null=True, blank=True)
     es_simulado = models.BooleanField(default=False, db_index=True)
+    es_real_cuaderno = models.BooleanField(default=False, db_index=True)
     proveedor_referencia = models.CharField(max_length=180, blank=True, default="")
     folio = models.CharField(max_length=30, blank=True, default="")
     soporte = models.CharField(max_length=255, blank=True, default="")

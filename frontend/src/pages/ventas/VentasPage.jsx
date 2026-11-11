@@ -20,6 +20,7 @@ export default function VentasPage() {
   const navigate = useNavigate();
   const canViewSalesRecords = !['vendedor', 'vendedor_2'].includes(user?.rol);
   const canCreateSimulation = ['admin', 'gerente'].includes(user?.rol);
+  const canCreateCuaderno = ['admin', 'gerente'].includes(user?.rol);
   const readOnly = user?.rol === 'auditor';
   const today = localDate();
   const getInitialState = () => {
@@ -61,11 +62,16 @@ export default function VentasPage() {
   const [editingSaleId, setEditingSaleId] = useState(null);
   const [editingSaleDate, setEditingSaleDate] = useState('');
   const [esSimulado, setEsSimulado] = useState(false);
+  const [esRealCuaderno, setEsRealCuaderno] = useState(false);
   const [totalSimulado, setTotalSimulado] = useState('');
   const [libroSimulado, setLibroSimulado] = useState('');
   const [folioSimulado, setFolioSimulado] = useState('');
   const [soporteSimulado, setSoporteSimulado] = useState('');
   const [justificacionSimulada, setJustificacionSimulada] = useState('');
+  const [totalCuaderno, setTotalCuaderno] = useState('');
+  const [libroCuaderno, setLibroCuaderno] = useState('');
+  const [folioCuaderno, setFolioCuaderno] = useState('');
+  const [descripcionCuaderno, setDescripcionCuaderno] = useState('Cierre de caja');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -81,6 +87,15 @@ export default function VentasPage() {
       setProductos(productData || []);
       setClientes(clientData || []);
       setLibros(libroData || []);
+      setLibroCuaderno((current) => {
+        const selected = (libroData || []).find((book) => String(book.id) === current
+          && book.nit === '1010085627-1'
+          && Number(book.anio) === Number(fecha.slice(0, 4)));
+        const matchingBook = (libroData || []).find((book) =>
+          book.nit === '1010085627-1' && Number(book.anio) === Number(fecha.slice(0, 4))
+        );
+        return selected ? current : String(matchingBook?.id || '');
+      });
       if (canViewSalesRecords) {
         const saleData = await fetchVentas(fecha);
         setVentas(saleData?.ventas || []);
@@ -113,10 +128,28 @@ export default function VentasPage() {
 
   const checkout = async (event) => {
     event.preventDefault();
-    if (!cart.length) return;
+    if (!esSimulado && !esRealCuaderno && !cart.length) return;
     setSaving(true);
     setMessage(null);
     try {
+      if (esRealCuaderno) {
+        const newSale = await createVenta({
+          es_real_cuaderno: true,
+          fecha,
+          total: Number(totalCuaderno),
+          libro_id: Number(libroCuaderno),
+          folio: folioCuaderno,
+          descripcion: descripcionCuaderno.trim(),
+        });
+        setCart([]);
+        setTotalCuaderno('');
+        setMessage({
+          ok: true,
+          text: `Cierre real registrado y asignado a ${newSale.vendedor}; no modificó existencias.`,
+        });
+        await load();
+        return;
+      }
       if (esSimulado) {
         await createVenta({
           es_simulado: true,
@@ -162,8 +195,9 @@ export default function VentasPage() {
     }
   };
 
-  const handleDeleteVenta = async (ventaId, ventaTotal) => {
-    if (!window.confirm(`¿Eliminar venta #${ventaId} (${money(ventaTotal)})? Se restaurará el stock.`)) return;
+  const handleDeleteVenta = async (ventaId, ventaTotal, esCuaderno) => {
+    const consecuencia = esCuaderno ? 'No se modificará el stock.' : 'Se restaurará el stock.';
+    if (!window.confirm(`¿Eliminar venta #${ventaId} (${money(ventaTotal)})? ${consecuencia}`)) return;
     setSaving(true);
     setMessage(null);
     try {
@@ -207,11 +241,35 @@ export default function VentasPage() {
         {!readOnly && <div className="col-lg-7">
           <div className="data-table p-3">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <div><h5 className="mb-0">Nueva venta</h5><small className="text-muted">{esSimulado ? 'La simulación no modifica inventario ni reportes reales.' : 'El stock se actualiza al confirmar el cobro.'}</small></div>
-              <span className="badge text-bg-light">{cart.length} productos</span>
+              <div><h5 className="mb-0">Nueva venta</h5><small className="text-muted">{esRealCuaderno ? 'Cierre real de cuaderno; no modifica existencias.' : esSimulado ? 'La simulación no modifica inventario ni reportes reales.' : 'El stock se actualiza al confirmar el cobro.'}</small></div>
+              <span className="badge text-bg-light">{esRealCuaderno ? 'Cierre de caja' : `${cart.length} productos`}</span>
             </div>
             <form onSubmit={checkout}>
-              {esSimulado ? <div className="row g-2">
+              <div className="row g-2 mb-3">
+                <div className="col-md-6">
+                  <label className="form-label small">Tipo de registro</label>
+                  <select
+                    className="form-select"
+                    value={esRealCuaderno ? 'cuaderno' : esSimulado ? 'simulado' : 'producto'}
+                    onChange={(event) => {
+                      setEsRealCuaderno(event.target.value === 'cuaderno');
+                      setEsSimulado(event.target.value === 'simulado');
+                    }}
+                  >
+                    <option value="producto">Venta de productos</option>
+                    {canCreateCuaderno && <option value="cuaderno">Cierre real de cuaderno (sin stock)</option>}
+                    {canCreateSimulation && <option value="simulado">Simulación</option>}
+                  </select>
+                </div>
+              </div>
+              {esRealCuaderno ? <div className="row g-2">
+                <div className="col-md-3"><label className="form-label small">Fecha</label><input className="form-control" type="date" value={fecha} onChange={(event) => setFecha(event.target.value)} required /></div>
+                <div className="col-md-3"><label className="form-label small">Total del cierre</label><input className="form-control" type="number" min="0.01" step="0.01" value={totalCuaderno} onChange={(event) => setTotalCuaderno(event.target.value)} required /></div>
+                <div className="col-md-3"><label className="form-label small">Libro fiscal</label><select className="form-select" value={libroCuaderno} onChange={(event) => setLibroCuaderno(event.target.value)} required><option value="">Seleccione</option>{libros.filter((book) => book.nit === '1010085627-1' && Number(book.anio) === Number(fecha.slice(0, 4))).map((book) => <option key={book.id} value={book.id}>{book.nombre} ({book.anio}) · {book.nit}</option>)}</select></div>
+                <div className="col-md-3"><label className="form-label small">Folio (opcional)</label><input className="form-control" value={folioCuaderno} onChange={(event) => setFolioCuaderno(event.target.value)} /></div>
+                <div className="col-md-8"><label className="form-label small">Descripción</label><input className="form-control" maxLength="180" value={descripcionCuaderno} onChange={(event) => setDescripcionCuaderno(event.target.value)} required /></div>
+                <div className="col-md-4 d-flex align-items-end"><button className="btn btn-primary w-100" disabled={saving || !totalCuaderno || !libroCuaderno}>{saving ? 'Registrando...' : 'Registrar cierre'}</button></div>
+              </div> : esSimulado ? <div className="row g-2">
                 <div className="col-md-4"><label className="form-label small">Fecha simulada</label><input className="form-control" type="date" value={fecha} onChange={(event) => setFecha(event.target.value)} required /></div>
                 <div className="col-md-4"><label className="form-label small">Monto</label><input className="form-control" type="number" min="0.01" step="0.01" value={totalSimulado} onChange={(event) => setTotalSimulado(event.target.value)} required /></div>
                 <div className="col-md-4"><label className="form-label small">Libro</label><select className="form-select" value={libroSimulado} onChange={(event) => setLibroSimulado(event.target.value)} required><option value="">Seleccione</option>{libros.map((libro) => <option key={libro.id} value={libro.id}>{libro.nombre} ({libro.anio}) · {libro.nit}</option>)}</select></div>
@@ -278,6 +336,7 @@ export default function VentasPage() {
                   <div>
                     <strong>Venta #{sale.id}</strong>
                     {sale.es_simulado && <span className="badge text-bg-warning ms-2">SIMULACIÓN · Folio {sale.folio}</span>}
+                    {sale.es_real_cuaderno && <span className="badge text-bg-info ms-2">CIERRE REAL DE CUADERNO{sale.folio ? ` · Folio ${sale.folio}` : ''}</span>}
                     <div className="small text-muted">{new Date(sale.fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} · {sale.medio_pago} · {sale.cliente || 'Consumidor final'}</div>
                     {sale.vendedor && <div className="small text-muted">Vendedor: {sale.vendedor} ({sale.vendedor_rol === 'vendedor_2' ? 'Vendedor 2' : 'Vendedor'})</div>}
                     {sale.es_simulado && <div className="small text-muted">{sale.justificacion} · Soporte: {sale.soporte}</div>}
@@ -300,7 +359,7 @@ export default function VentasPage() {
                         <button
                           type="button"
                           className="btn btn-sm btn-outline-danger"
-                          onClick={() => handleDeleteVenta(sale.id, sale.total)}
+                          onClick={() => handleDeleteVenta(sale.id, sale.total, sale.es_real_cuaderno)}
                           disabled={saving}
                           title="Eliminar venta"
                         >

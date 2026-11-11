@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createExpense, createProvider, deleteExpense, fetchExpenses, fetchLibros, fetchProviders, updateExpense } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
-const initial = { provider: '', descripcion: 'Compra a proveedor', fecha: new Date().toISOString().slice(0, 10), descripcion_producto: '', valor_unitario: '', valor_pagado: '', cantidad: '1', libro: '', es_simulado: false, proveedor_referencia: '', folio: '', soporte: '', justificacion: '' };
+const initial = { provider: '', descripcion: 'Compra a proveedor', fecha: new Date().toISOString().slice(0, 10), descripcion_producto: '', valor_unitario: '', valor_pagado: '', cantidad: '1', libro: '', es_simulado: false, es_real_cuaderno: false, proveedor_referencia: '', folio: '', soporte: '', justificacion: '' };
 const providerInitial = { nombre: '', nit: '' };
 
 export default function ExpensesPage() {
@@ -47,12 +47,14 @@ export default function ExpensesPage() {
         ...form,
         descripcion: form.es_simulado
           ? `SIMULACIÓN - ${form.justificacion.trim()} - Folio ${form.folio.trim()}`
-          : `Compra: ${form.descripcion_producto.trim()}`,
-        provider: form.es_simulado ? null : Number(form.provider),
+          : form.es_real_cuaderno
+            ? `Egreso de cuaderno: ${form.proveedor_referencia.trim()}`
+            : `Compra: ${form.descripcion_producto.trim()}`,
+        provider: form.es_simulado || form.es_real_cuaderno ? null : Number(form.provider),
         libro: Number(form.libro),
-        cantidad,
+        cantidad: form.es_real_cuaderno ? 1 : cantidad,
         valor_pagado: valorPagado,
-        valor_unitario: valorPagado / cantidad,
+        valor_unitario: form.es_real_cuaderno ? valorPagado : valorPagado / cantidad,
       };
       let createdExpense;
       if (editingId) {
@@ -60,12 +62,15 @@ export default function ExpensesPage() {
         setMessage({ ok: true, text: 'Compra actualizada correctamente.' });
       } else {
         createdExpense = await createExpense(payload);
-        setMessage({ ok: true, text: 'Compra registrada al proveedor.' });
+        setMessage({
+          ok: true,
+          text: form.es_real_cuaderno ? 'Egreso real de cuaderno registrado en el libro fiscal.' : 'Compra registrada al proveedor.',
+        });
       }
       setEditingId(null);
       setForm({ ...initial, fecha: form.fecha, provider: form.provider, libro: form.libro });
       await load();
-      if (createdExpense?.id) {
+      if (createdExpense?.id && !createdExpense.es_real_cuaderno) {
         navigate(`/egresos/${createdExpense.id}/recibo`);
       }
     } catch (error) {
@@ -86,6 +91,7 @@ export default function ExpensesPage() {
       cantidad: expense.cantidad,
       libro: expense.libro,
       es_simulado: expense.es_simulado,
+      es_real_cuaderno: expense.es_real_cuaderno,
       proveedor_referencia: expense.proveedor_referencia || '',
       folio: expense.folio || '',
       soporte: expense.soporte || '',
@@ -149,9 +155,26 @@ export default function ExpensesPage() {
           <form onSubmit={submit}>
             <div className="row g-2">
               {editingId && form.es_simulado && <div className="col-12 small text-warning-emphasis">Registro de prueba: no crea movimiento fiscal ni altera saldos reales.</div>}
-              {form.es_simulado ? <div className="col-md-4">
-                <label className="form-label">Proveedor representado (simulado)</label>
-                <input required maxLength={180} className="form-control" value={form.proveedor_referencia} onChange={update('proveedor_referencia')} placeholder="Bavaria / Postobón (SIMULADO)" />
+              <div className="col-md-4">
+                <label className="form-label">Tipo de registro</label>
+                <select
+                  className="form-select"
+                  value={form.es_simulado ? 'simulado' : form.es_real_cuaderno ? 'cuaderno' : 'normal'}
+                  onChange={(event) => setForm({
+                    ...form,
+                    es_simulado: event.target.value === 'simulado',
+                    es_real_cuaderno: event.target.value === 'cuaderno',
+                  })}
+                  disabled={Boolean(editingId)}
+                >
+                  <option value="normal">Compra a proveedor</option>
+                  <option value="cuaderno">Egreso real de cuaderno (sin factura)</option>
+                  <option value="simulado">Simulación</option>
+                </select>
+              </div>
+              {form.es_simulado || form.es_real_cuaderno ? <div className="col-md-4">
+                <label className="form-label">{form.es_real_cuaderno ? 'Proveedor de referencia (sin NIT)' : 'Proveedor representado (simulado)'}</label>
+                <input required maxLength={180} className="form-control" value={form.proveedor_referencia} onChange={update('proveedor_referencia')} placeholder={form.es_real_cuaderno ? 'Bavaria / Postobón / Ventas del Tolima / Coca-Cola / Venta Express' : 'Proveedor (SIMULADO)'} />
               </div> : <div className="col-md-4">
                 <label className="form-label">Proveedor</label>
                 <div className="input-group">
@@ -238,7 +261,7 @@ export default function ExpensesPage() {
                 <div className="col-md-4"><label className="form-label">Justificación</label><input required maxLength={255} className="form-control" value={form.justificacion} onChange={update('justificacion')} /></div>
               </>}
 
-              <div className="col-md-2">
+              {!form.es_real_cuaderno && <div className="col-md-2">
                 <label className="form-label">Cantidad</label>
                 <input
                   required
@@ -249,10 +272,10 @@ export default function ExpensesPage() {
                   value={form.cantidad}
                   onChange={update('cantidad')}
                 />
-              </div>
+              </div>}
 
               <div className="col-md-2">
-                <label className="form-label">Total pagado</label>
+                <label className="form-label">{form.es_real_cuaderno ? 'Total del egreso' : 'Total pagado'}</label>
                 <input
                   required
                   min="0.01"
@@ -335,7 +358,7 @@ export default function ExpensesPage() {
                 return (
                   <tr key={row.id}>
                     <td>{row.fecha}</td>
-                    <td>{row.provider_nombre}{row.es_simulado && <span className="badge text-bg-warning ms-2">SIMULACIÓN</span>}</td>
+                    <td>{row.provider_nombre}{row.es_simulado && <span className="badge text-bg-warning ms-2">SIMULACIÓN</span>}{row.es_real_cuaderno && <span className="badge text-bg-info ms-2">CUADERNO REAL</span>}</td>
                     <td>{provider?.nit || '-'}</td>
                     <td>{row.descripcion_producto}</td>
                     <td>{row.descripcion}{row.es_simulado && <div className="small text-muted">Folio {row.folio} · {row.soporte}</div>}</td>

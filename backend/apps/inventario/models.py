@@ -85,6 +85,7 @@ class Venta(models.Model):
         related_name="ventas",
     )
     es_simulado = models.BooleanField(default=False, db_index=True)
+    es_real_cuaderno = models.BooleanField(default=False, db_index=True)
     folio = models.CharField(max_length=30, blank=True, default="")
     soporte = models.CharField(max_length=255, blank=True, default="")
     justificacion = models.CharField(max_length=255, blank=True, default="")

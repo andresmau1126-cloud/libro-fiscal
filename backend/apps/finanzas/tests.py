@@ -4,6 +4,7 @@ from decimal import Decimal
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from apps.auditoria.models import Auditoria
 from apps.finanzas.models import Expense, Provider
 from apps.libros.models import Libro
 from apps.movimientos.models import Movimiento
@@ -151,3 +152,50 @@ class FinanzasPermissionsAndFiscalTests(APITestCase):
         self.assertEqual(expense.valor_pagado, Decimal("80.00"))
         self.assertEqual(movement.egresos, Decimal("80.00"))
         self.assertEqual(movement.descripcion, "Compra actualizada")
+
+    def test_admin_real_cuaderno_expense_creates_movement_without_provider_or_invoice(self):
+        cuaderno_book = Libro.objects.create(
+            nombre="Libro cuaderno egresos",
+            nit="1010085627-1",
+            anio=date.today().year,
+            propietario=self.admin,
+        )
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            "/api/expenses",
+            {
+                "provider": None,
+                "proveedor_referencia": "Coca-Cola / Venta Express",
+                "descripcion": "Egreso real de cuaderno",
+                "descripcion_producto": "Compra de mercancía",
+                "fecha": date.today().isoformat(),
+                "valor_unitario": "150000",
+                "valor_pagado": "150000",
+                "cantidad": "1",
+                "libro": cuaderno_book.id,
+                "es_real_cuaderno": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        expense = Expense.objects.get(pk=response.data["id"])
+        movement = Movimiento.objects.get(expense=expense)
+        self.assertTrue(expense.es_real_cuaderno)
+        self.assertFalse(expense.es_simulado)
+        self.assertIsNone(expense.provider)
+        self.assertEqual(expense.proveedor_referencia, "Coca-Cola / Venta Express")
+        self.assertEqual(movement.egresos, Decimal("150000.00"))
+        self.assertEqual(movement.saldo, Decimal("-150000.00"))
+        self.assertTrue(
+            Auditoria.objects.filter(
+                entidad="egreso",
+                entidad_id=expense.id,
+                accion="crear",
+            ).exists()
+        )
+        fiscal_response = self.client.get(f"/api/fiscal-books?date={expense.fecha.isoformat()}")
+        libro_response = next(row for row in fiscal_response.data if row["id"] == cuaderno_book.id)
+        self.assertEqual(libro_response["total_egresos_dia"], Decimal("150000.00"))
+        dashboard_response = self.client.get("/api/dashboard")
+        self.assertEqual(dashboard_response.data["total_egresos"], 150000.0)
