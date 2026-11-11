@@ -148,18 +148,7 @@ export default function ExpensesPage() {
         <div className="data-table p-3 mb-3">
           <form onSubmit={submit}>
             <div className="row g-2">
-              <div className="col-12 form-check form-switch mb-2">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="simulated-expense-toggle"
-                  checked={form.es_simulado}
-                  onChange={(event) => setForm({ ...form, es_simulado: event.target.checked })}
-                  disabled={Boolean(editingId)}
-                />
-                <label className="form-check-label" htmlFor="simulated-expense-toggle">Registrar simulación (no es egreso real)</label>
-                {form.es_simulado && <div className="small text-warning-emphasis">No se crea movimiento fiscal; no altera saldos reales.</div>}
-              </div>
+              {editingId && form.es_simulado && <div className="col-12 small text-warning-emphasis">Registro de prueba: no crea movimiento fiscal ni altera saldos reales.</div>}
               {form.es_simulado ? <div className="col-md-4">
                 <label className="form-label">Proveedor representado (simulado)</label>
                 <input required maxLength={180} className="form-control" value={form.proveedor_referencia} onChange={update('proveedor_referencia')} placeholder="Bavaria / Postobón (SIMULADO)" />
