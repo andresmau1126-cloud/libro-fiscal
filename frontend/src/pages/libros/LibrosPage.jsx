@@ -631,14 +631,18 @@ export default function LibrosPage() {
                                 ) : e.descripcion}
                               </td>
                               <td className="text-end">
-                                {Number(e.ingresos) > 0 ? <span className="text-success">{fmt(e.ingresos)}</span> : ''}
+                                {Number(e.ingresos) > 0 || isTransactionDrivenMonth
+                                  ? <span className="text-success">{fmt(e.ingresos)}</span>
+                                  : ''}
                               </td>
                               <td className="text-end editable-cell" onDoubleClick={canEdit && !isTransactionDrivenMonth ? () => startInlineEdit(e, 'egresos') : undefined}>
                                 {inlineEdit?.id === e.id && inlineEdit.field === 'egresos' ? (
                                   <input ref={inlineInputRef} type="number" step="0.01" min="0" className="inline-edit-input text-end" style={{ width: 110 }}
                                     value={inlineEdit.value} onChange={ev => setInlineEdit({ ...inlineEdit, value: ev.target.value })}
                                     onBlur={commitInlineEdit} onKeyDown={handleInlineKeyDown} />
-                                ) : Number(e.egresos) > 0 ? <span className="text-danger">{fmt(e.egresos)}</span> : ''}
+                                ) : Number(e.egresos) > 0 || isTransactionDrivenMonth
+                                  ? <span className="text-danger">{fmt(e.egresos)}</span>
+                                  : ''}
                               </td>
                               <td className="text-end fw-semibold">{fmt(e.saldo)}</td>
                               {!isTransactionDrivenMonth && <td className="text-center">
