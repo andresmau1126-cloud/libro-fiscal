@@ -1,10 +1,13 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from apps.finanzas.models import Expense
+from apps.inventario.models import Venta
 from apps.libros.models import Libro
 from apps.movimientos.models import Movimiento
 from apps.movimientos.views import _build_filters
@@ -104,6 +107,120 @@ class MovimientosBlackBoxAPITests(APITestCase):
 
         response = self.client.post("/api/entries", payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_november_0011_view_uses_real_transactions_and_ignores_manual_and_simulated_rows(self):
+        libro = Libro.objects.create(
+            nombre="Libro Folio 0011",
+            nit="1010085627-1",
+            anio=2026,
+            propietario=self.user,
+        )
+        sale_date = timezone.make_aware(datetime(2026, 11, 8))
+        Venta.objects.create(
+            fecha=sale_date,
+            total=Decimal("100.00"),
+            vendedor=self.user,
+            libro=libro,
+        )
+        Venta.objects.create(
+            fecha=sale_date,
+            total=Decimal("900.00"),
+            vendedor=self.user,
+            libro=libro,
+            es_simulado=True,
+        )
+        Expense.objects.create(
+            descripcion="Compra real",
+            fecha=date(2026, 11, 8),
+            descripcion_producto="Mercancía",
+            valor_unitario=Decimal("20.00"),
+            valor_pagado=Decimal("20.00"),
+            cantidad=Decimal("1.00"),
+            libro=libro,
+            creado_por=self.user,
+        )
+        Expense.objects.create(
+            descripcion="Compra simulada",
+            fecha=date(2026, 11, 8),
+            descripcion_producto="Mercancía simulada",
+            valor_unitario=Decimal("300.00"),
+            valor_pagado=Decimal("300.00"),
+            cantidad=Decimal("1.00"),
+            libro=libro,
+            creado_por=self.user,
+            es_simulado=True,
+        )
+        manual = Movimiento.objects.create(
+            fecha=date(2026, 11, 8),
+            descripcion="Movimiento manual que se conserva",
+            ingresos=Decimal("5000.00"),
+            egresos=Decimal("0.00"),
+            saldo=Decimal("5000.00"),
+            libro=libro,
+        )
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(
+            "/api/entries",
+            {"libro_id": libro.id, "year": 2026, "month": 11},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["rows"]), 1)
+        self.assertEqual(response.data["rows"][0]["dia"], 8)
+        self.assertEqual(response.data["rows"][0]["ingresos"], 100.0)
+        self.assertEqual(response.data["rows"][0]["egresos"], 20.0)
+        self.assertEqual(response.data["totals"]["ingresos"], 100.0)
+        self.assertEqual(response.data["totals"]["egresos"], 20.0)
+        self.assertTrue(Movimiento.objects.filter(pk=manual.pk).exists())
+
+        Venta.objects.filter(
+            libro=libro,
+            fecha__date=date(2026, 11, 8),
+            es_simulado=False,
+        ).update(total=Decimal("125.00"))
+        Expense.objects.filter(libro=libro, fecha=date(2026, 11, 8), es_simulado=False).delete()
+
+        updated_response = self.client.get(
+            "/api/entries",
+            {"libro_id": libro.id, "year": 2026, "month": 11},
+        )
+        self.assertEqual(updated_response.data["totals"]["ingresos"], 125.0)
+        self.assertEqual(updated_response.data["totals"]["egresos"], 0.0)
+
+    def test_november_0011_manual_entries_remain_read_only(self):
+        libro = Libro.objects.create(
+            nombre="Libro Folio 0011",
+            nit="1010085627-1",
+            anio=2026,
+            propietario=self.user,
+        )
+        manual = Movimiento.objects.create(
+            fecha=date(2026, 11, 1),
+            descripcion="Movimiento manual preservado",
+            ingresos=Decimal("10.00"),
+            egresos=Decimal("0.00"),
+            saldo=Decimal("10.00"),
+            libro=libro,
+        )
+        self.client.force_authenticate(user=self.user)
+
+        create_response = self.client.post(
+            "/api/entries",
+            {
+                "libro_id": libro.id,
+                "fecha": "2026-11-02",
+                "descripcion": "Movimiento manual",
+                "ingresos": "50.00",
+                "egresos": "0.00",
+            },
+            format="json",
+        )
+        delete_response = self.client.delete(f"/api/entries/{manual.id}")
+
+        self.assertEqual(create_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(delete_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(Movimiento.objects.filter(pk=manual.pk).exists())
 
 
 class MovimientosWhiteBoxTests(TestCase):

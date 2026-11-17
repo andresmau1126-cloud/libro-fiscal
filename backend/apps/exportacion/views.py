@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from apps.libros.models import Libro
 from apps.movimientos.models import Movimiento
 from services.excel import generate_excel
+from services.libro_fiscal import build_folio_0011_rows, is_folio_0011_view
 from apps.usuarios.permissions import can_view_all, can_view_shared_data
 
 
@@ -57,11 +58,23 @@ def export_excel(request):
         except (ValueError, TypeError) as e:
             return Response({"error": str(e)}, status=400)
 
-    rows = list(
-        qs.order_by("fecha", "id").values(
-            "fecha", "descripcion", "ingresos", "egresos", "saldo"
+    if year and month and is_folio_0011_view(libro, int(year), int(month)):
+        rows = [
+            {
+                "fecha": date.fromisoformat(row["fecha"]),
+                "descripcion": row["descripcion"],
+                "ingresos": row["ingresos"],
+                "egresos": row["egresos"],
+                "saldo": row["saldo"],
+            }
+            for row in build_folio_0011_rows(libro, int(year), int(month))["rows"]
+        ]
+    else:
+        rows = list(
+            qs.order_by("fecha", "id").values(
+                "fecha", "descripcion", "ingresos", "egresos", "saldo"
+            )
         )
-    )
 
     lib_dict = {"nombre": libro.nombre, "nit": libro.nit, "anio": libro.anio}
     buf = generate_excel(lib_dict, rows, month)

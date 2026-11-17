@@ -31,6 +31,10 @@ export default function LibrosPage() {
   /* ── Month picker ── */
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const isTransactionDrivenMonth = selectedLibro?.nit === '1010085627-1'
+    && selectedLibro?.anio === 2026
+    && year === 2026
+    && month === 11;
 
   /* ── Entries state ── */
   const [entries, setEntries] = useState([]);
@@ -570,8 +574,14 @@ export default function LibrosPage() {
               </button>
             </div>
 
+            {isTransactionDrivenMonth && (
+              <div className="alert alert-info py-2">
+                Noviembre 2026 · Folio 0011: esta vista se calcula automáticamente desde Ventas y Egresos.
+              </div>
+            )}
+
             <div className="action-toolbar mb-3">
-              {canEdit && <button className="action-btn action-btn-add" onClick={openAddModal}>
+              {canEdit && !isTransactionDrivenMonth && <button className="action-btn action-btn-add" onClick={openAddModal}>
                 <i className="bi bi-plus-circle-fill" /><span>Nueva Operación</span>
               </button>}
               <button className="action-btn action-btn-export" onClick={handleExport}>
@@ -590,30 +600,30 @@ export default function LibrosPage() {
                         <th className="text-end" style={{ width: 130 }}>Ingresos</th>
                         <th className="text-end" style={{ width: 130 }}>Egresos</th>
                         <th className="text-end" style={{ width: 120 }}>Saldo</th>
-                        <th style={{ width: 90 }} className="text-center">Acciones</th>
+                        {!isTransactionDrivenMonth && <th style={{ width: 90 }} className="text-center">Acciones</th>}
                       </tr>
                     </thead>
                     <tbody>
                       {loadingEntries ? (
                         <tr>
-                          <td colSpan={6} className="text-center py-4">
+                          <td colSpan={isTransactionDrivenMonth ? 5 : 6} className="text-center py-4">
                             <div className="spinner-border spinner-border-sm text-primary me-2" />Cargando datos...
                           </td>
                         </tr>
-                      ) : entries.length === 0 && !selectedLibro ? (
-                        <tr><td colSpan={6} className="text-center text-muted py-4">Sin movimientos para este mes</td></tr>
+                      ) : entries.length === 0 ? (
+                        <tr><td colSpan={isTransactionDrivenMonth ? 5 : 6} className="text-center text-muted py-4">Sin movimientos para este mes</td></tr>
                       ) : (
                         <>
                           {entries.map(e => (
                             <tr key={e.id} className="entry-row-anim">
-                              <td className="text-center editable-cell" onDoubleClick={canEdit ? () => startInlineEdit(e, 'dia') : undefined}>
+                              <td className="text-center editable-cell" onDoubleClick={canEdit && !isTransactionDrivenMonth ? () => startInlineEdit(e, 'dia') : undefined}>
                                 {inlineEdit?.id === e.id && inlineEdit.field === 'dia' ? (
                                   <input ref={inlineInputRef} type="number" min={1} max={daysInMonth} className="inline-edit-input text-center" style={{ width: 50 }}
                                     value={inlineEdit.value} onChange={ev => setInlineEdit({ ...inlineEdit, value: ev.target.value })}
                                     onBlur={commitInlineEdit} onKeyDown={handleInlineKeyDown} />
                                 ) : e.dia}
                               </td>
-                              <td className="editable-cell" onDoubleClick={canEdit ? () => startInlineEdit(e, 'descripcion') : undefined}>
+                              <td className="editable-cell" onDoubleClick={canEdit && !isTransactionDrivenMonth ? () => startInlineEdit(e, 'descripcion') : undefined}>
                                 {inlineEdit?.id === e.id && inlineEdit.field === 'descripcion' ? (
                                   <input ref={inlineInputRef} type="text" className="inline-edit-input" style={{ width: '100%' }}
                                     value={inlineEdit.value} onChange={ev => setInlineEdit({ ...inlineEdit, value: ev.target.value })}
@@ -623,7 +633,7 @@ export default function LibrosPage() {
                               <td className="text-end">
                                 {Number(e.ingresos) > 0 ? <span className="text-success">{fmt(e.ingresos)}</span> : ''}
                               </td>
-                              <td className="text-end editable-cell" onDoubleClick={canEdit ? () => startInlineEdit(e, 'egresos') : undefined}>
+                              <td className="text-end editable-cell" onDoubleClick={canEdit && !isTransactionDrivenMonth ? () => startInlineEdit(e, 'egresos') : undefined}>
                                 {inlineEdit?.id === e.id && inlineEdit.field === 'egresos' ? (
                                   <input ref={inlineInputRef} type="number" step="0.01" min="0" className="inline-edit-input text-end" style={{ width: 110 }}
                                     value={inlineEdit.value} onChange={ev => setInlineEdit({ ...inlineEdit, value: ev.target.value })}
@@ -631,7 +641,7 @@ export default function LibrosPage() {
                                 ) : Number(e.egresos) > 0 ? <span className="text-danger">{fmt(e.egresos)}</span> : ''}
                               </td>
                               <td className="text-end fw-semibold">{fmt(e.saldo)}</td>
-                              <td className="text-center">
+                              {!isTransactionDrivenMonth && <td className="text-center">
                                 {(canEdit || canDeleteEntry) && <div className="row-actions row-actions-visible">
                                   {canEdit && Number(e.ingresos) <= 0 && (
                                     <button className="row-action-btn row-action-edit" title="Editar" onClick={() => openEditModal(e)}>
@@ -642,11 +652,11 @@ export default function LibrosPage() {
                                     <i className="bi bi-trash-fill" />
                                   </button>}
                                 </div>}
-                              </td>
+                              </td>}
                             </tr>
                           ))}
                           {/* ── Quick Add Row ── */}
-                          {canEdit && <tr className="quick-add-row">
+                          {canEdit && !isTransactionDrivenMonth && <tr className="quick-add-row">
                             <td className="text-center">
                               <select className="quick-add-input text-center" style={{ width: 55 }} value={quickAdd.dia} onChange={ev => setQuickAdd({ ...quickAdd, dia: ev.target.value })}>
                                 {Array.from({ length: daysInMonth }, (_, i) => (
@@ -682,7 +692,7 @@ export default function LibrosPage() {
                           <th className="text-end">{fmt(totals.ingresos)}</th>
                           <th className="text-end">{fmt(totals.egresos)}</th>
                           <th className="text-end">{fmt(totals.saldo)}</th>
-                          <th />
+                          {!isTransactionDrivenMonth && <th />}
                         </tr>
                       </tfoot>
                     )}

@@ -36,6 +36,8 @@ class ExpenseSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"proveedor_referencia": "Indique el proveedor que representa esta simulación."})
         if es_real_cuaderno and not attrs.get("proveedor_referencia", getattr(instance, "proveedor_referencia", "")):
             raise serializers.ValidationError({"proveedor_referencia": "Indique el proveedor de referencia del cuaderno."})
+        if es_real_cuaderno and not attrs.get("folio", getattr(instance, "folio", "")).strip():
+            raise serializers.ValidationError({"folio": "Indique el folio del cuaderno."})
         if not es_simulado and not es_real_cuaderno and not attrs.get("provider", getattr(instance, "provider", None)):
             raise serializers.ValidationError({"provider": "Seleccione un proveedor para un egreso real."})
         for field in ("valor_unitario", "valor_pagado", "cantidad"):

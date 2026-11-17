@@ -28,6 +28,7 @@ El libro fiscal principal usa el NIT `1010085627` y los productos ya aparecen ca
 4. Verificar que el stock disminuye.
 5. Revisar **Ventas del dia**: el vendedor solo ve sus registros.
 6. Confirmar que el total se refleja en el libro fiscal y en el movimiento consolidado del dia.
+7. Para un cierre diario sin detalle de productos, usar **Cierre real de cuaderno** en el formulario existente. Admin o gerente lo registra sin modificar existencias; el sistema lo asigna alternadamente a vendedores activos y lo incluye en estadísticas y auditoría.
 
 ### 3. Egreso por proveedor
 
@@ -38,6 +39,7 @@ El libro fiscal principal usa el NIT `1010085627` y los productos ya aparecen ca
 5. Ingresar fecha, producto/descripcion, cantidad, valor unitario y valor pagado.
 6. Guardar y comprobar que se crea el egreso y su movimiento con saldo recalculado.
 7. Confirmar que gerente y auditor pueden consultarlo, pero no modificarlo.
+8. Para un egreso real anotado en cuaderno y sin factura/NIT, elegir **Egreso real de cuaderno** en el mismo formulario e ingresar el proveedor de referencia. Se crea el egreso, movimiento fiscal y registro de auditoría sin inventar datos del proveedor.
 
 ### 4. Libro fiscal
 
@@ -46,6 +48,7 @@ El libro fiscal principal usa el NIT `1010085627` y los productos ya aparecen ca
 3. Filtrar movimientos por año/mes.
 4. Comprobar ingresos de ventas, egresos de proveedor y saldo acumulado.
 5. Exportar a Excel cuando se requiera entregar el periodo.
+6. Noviembre 2026 del NIT `1010085627-1` (Folio 0011) es de solo lectura: la vista suma las ventas y egresos reales del mismo libro y fecha, excluye simulaciones y no permite agregar o editar movimientos manualmente. Los cierres de $0 se registran desde el formulario existente de Ventas.
 
 ### 5. Estadisticas
 

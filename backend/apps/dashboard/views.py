@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.db.models import Count, Sum
 from django.db.models.functions import ExtractMonth
 from django.utils import timezone
@@ -8,6 +10,7 @@ from apps.libros.models import Libro
 from apps.movimientos.models import Movimiento
 from apps.usuarios.models import Usuario
 from apps.usuarios.permissions import can_view_shared_data
+from services.libro_fiscal import build_folio_0011_rows, is_folio_0011_view
 
 
 def _libros_qs_for_user(user):
@@ -106,17 +109,24 @@ def resumen_anual(request):
         return Response({"error": "libro_id inválido"}, status=400)
 
     libros_qs = _libros_qs_for_user(request.user)
-    if not libros_qs.filter(pk=libro_id).exists():
+    libro = libros_qs.filter(pk=libro_id).first()
+    if not libro:
         return Response({"error": "libro no existe"}, status=404)
 
     qs = Movimiento.objects.filter(libro_id=libro_id, libro__in=libros_qs)
+    selected_year = libro.anio
     if year:
         try:
-            y = int(year)
-            from datetime import date
-            qs = qs.filter(fecha__gte=date(y, 1, 1), fecha__lt=date(y + 1, 1, 1))
+            selected_year = int(year)
+            qs = qs.filter(
+                fecha__gte=date(selected_year, 1, 1),
+                fecha__lt=date(selected_year + 1, 1, 1),
+            )
         except (ValueError, TypeError):
             return Response({"error": "year inválido"}, status=400)
+
+    if is_folio_0011_view(libro, selected_year, 11):
+        qs = qs.exclude(fecha__gte=date(2026, 11, 1), fecha__lt=date(2026, 12, 1))
 
     meses = list(
         qs
@@ -128,6 +138,16 @@ def resumen_anual(request):
         )
         .order_by("mes")
     )
+    if is_folio_0011_view(libro, selected_year, 11):
+        november = build_folio_0011_rows(libro, selected_year, 11)["totals"]
+        if november["ingresos"] or november["egresos"]:
+            meses.append({
+                "mes": 11,
+                "ingresos": november["ingresos"],
+                "egresos": november["egresos"],
+            })
+            meses.sort(key=lambda month_row: month_row["mes"])
+
     meses = [
         {"mes": m["mes"], "ingresos": float(m["ingresos"] or 0), "egresos": float(m["egresos"] or 0)}
         for m in meses
