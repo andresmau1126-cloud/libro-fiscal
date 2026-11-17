@@ -135,6 +135,7 @@ export default function VentasPage() {
       if (esRealCuaderno) {
         const newSale = await createVenta({
           es_real_cuaderno: true,
+          es_simulado: false,
           fecha,
           total: Number(totalCuaderno),
           libro_id: Number(libroCuaderno),
@@ -264,11 +265,11 @@ export default function VentasPage() {
               </div>
               {esRealCuaderno ? <div className="row g-2">
                 <div className="col-md-3"><label className="form-label small">Fecha</label><input className="form-control" type="date" value={fecha} onChange={(event) => setFecha(event.target.value)} required /></div>
-                <div className="col-md-3"><label className="form-label small">Total del cierre</label><input className="form-control" type="number" min="0.01" step="0.01" value={totalCuaderno} onChange={(event) => setTotalCuaderno(event.target.value)} required /></div>
+                <div className="col-md-3"><label className="form-label small">Total del cierre</label><input className="form-control" type="number" min="0" step="0.01" value={totalCuaderno} onChange={(event) => setTotalCuaderno(event.target.value)} required /></div>
                 <div className="col-md-3"><label className="form-label small">Libro fiscal</label><select className="form-select" value={libroCuaderno} onChange={(event) => setLibroCuaderno(event.target.value)} required><option value="">Seleccione</option>{libros.filter((book) => book.nit === '1010085627-1' && Number(book.anio) === Number(fecha.slice(0, 4))).map((book) => <option key={book.id} value={book.id}>{book.nombre} ({book.anio}) · {book.nit}</option>)}</select></div>
-                <div className="col-md-3"><label className="form-label small">Folio (opcional)</label><input className="form-control" value={folioCuaderno} onChange={(event) => setFolioCuaderno(event.target.value)} /></div>
+                <div className="col-md-3"><label className="form-label small">Folio</label><input className="form-control" value={folioCuaderno} onChange={(event) => setFolioCuaderno(event.target.value)} required /></div>
                 <div className="col-md-8"><label className="form-label small">Descripción</label><input className="form-control" maxLength="180" value={descripcionCuaderno} onChange={(event) => setDescripcionCuaderno(event.target.value)} required /></div>
-                <div className="col-md-4 d-flex align-items-end"><button className="btn btn-primary w-100" disabled={saving || !totalCuaderno || !libroCuaderno}>{saving ? 'Registrando...' : 'Registrar cierre'}</button></div>
+                <div className="col-md-4 d-flex align-items-end"><button className="btn btn-primary w-100" disabled={saving || totalCuaderno === '' || !libroCuaderno}>{saving ? 'Registrando...' : 'Registrar cierre'}</button></div>
               </div> : esSimulado ? <div className="row g-2">
                 <div className="col-md-4"><label className="form-label small">Fecha simulada</label><input className="form-control" type="date" value={fecha} onChange={(event) => setFecha(event.target.value)} required /></div>
                 <div className="col-md-4"><label className="form-label small">Monto</label><input className="form-control" type="number" min="0.01" step="0.01" value={totalSimulado} onChange={(event) => setTotalSimulado(event.target.value)} required /></div>
@@ -338,7 +339,7 @@ export default function VentasPage() {
                     {sale.es_simulado && <span className="badge text-bg-warning ms-2">SIMULACIÓN · Folio {sale.folio}</span>}
                     {sale.es_real_cuaderno && <span className="badge text-bg-info ms-2">CIERRE REAL DE CUADERNO{sale.folio ? ` · Folio ${sale.folio}` : ''}</span>}
                     <div className="small text-muted">{new Date(sale.fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} · {sale.medio_pago} · {sale.cliente || 'Consumidor final'}</div>
-                    {sale.vendedor && <div className="small text-muted">Vendedor: {sale.vendedor} ({sale.vendedor_rol === 'vendedor_2' ? 'Vendedor 2' : 'Vendedor'})</div>}
+                    {sale.vendedor && <div className="small text-muted">{sale.es_simulado ? 'Responsable de simulación' : 'Vendedor'}: {sale.vendedor}{!sale.es_simulado && ` (${sale.vendedor_rol === 'vendedor_2' ? 'Vendedor 2' : 'Vendedor'})`}</div>}
                     {sale.es_simulado && <div className="small text-muted">{sale.justificacion} · Soporte: {sale.soporte}</div>}
                   </div>
                   <div className="text-end">

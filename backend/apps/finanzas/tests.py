@@ -174,6 +174,7 @@ class FinanzasPermissionsAndFiscalTests(APITestCase):
                 "cantidad": "1",
                 "libro": cuaderno_book.id,
                 "es_real_cuaderno": True,
+                "folio": "0011",
             },
             format="json",
         )

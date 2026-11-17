@@ -96,9 +96,9 @@ class VentaSimuladaCreateSerializer(serializers.Serializer):
 class VentaCuadernoCreateSerializer(serializers.Serializer):
     libro_id = serializers.IntegerField(min_value=1)
     fecha = serializers.DateField()
-    total = serializers.DecimalField(max_digits=18, decimal_places=2, min_value=Decimal("0.01"))
+    total = serializers.DecimalField(max_digits=18, decimal_places=2, min_value=Decimal("0"))
     descripcion = serializers.CharField(max_length=180)
-    folio = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
+    folio = serializers.CharField(max_length=30, min_length=1)
 
 
 # ============================================================================

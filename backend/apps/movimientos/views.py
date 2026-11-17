@@ -7,6 +7,7 @@ from .models import Movimiento
 from .serializers import MovimientoSerializer, MovimientoCreateSerializer, MovimientoUpdateSerializer
 from apps.libros.models import Libro
 from services.saldo import recompute_saldos
+from services.libro_fiscal import build_folio_0011_rows, is_folio_0011_view
 from apps.usuarios.permissions import can_view_all, can_view_shared_data
 from apps.usuarios.utils import get_shift_error_for_user
 
@@ -59,6 +60,17 @@ def entries_list_create(request):
         except (ValueError, TypeError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+        libro_id = request.query_params.get("libro_id")
+        year = request.query_params.get("year")
+        month = request.query_params.get("month")
+        if libro_id and year and month:
+            try:
+                libro = _readable_libros_qs_for_user(request.user).get(pk=int(libro_id))
+            except (Libro.DoesNotExist, ValueError, TypeError):
+                return Response({"error": "libro no existe"}, status=status.HTTP_404_NOT_FOUND)
+            if is_folio_0011_view(libro, int(year), int(month)):
+                return Response(build_folio_0011_rows(libro, int(year), int(month)))
+
         qs = Movimiento.objects.filter(libro__in=_readable_libros_qs_for_user(request.user), **filters).order_by("fecha", "id")
         rows = MovimientoSerializer(qs, many=True).data
 
@@ -84,6 +96,11 @@ def entries_list_create(request):
     if data["fecha"].year != libro.anio:
         return Response(
             {"error": f"La fecha debe pertenecer al año {libro.anio} del libro"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if is_folio_0011_view(libro, data["fecha"].year, data["fecha"].month):
+        return Response(
+            {"error": "Noviembre 2026 del Folio 0011 se calcula desde Ventas y Egresos."},
             status=status.HTTP_400_BAD_REQUEST,
         )
     mov = Movimiento(
@@ -125,6 +142,15 @@ def entry_detail(request, entry_id):
         serializer = MovimientoUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        if is_folio_0011_view(mov.libro, mov.fecha.year, mov.fecha.month) or is_folio_0011_view(
+            mov.libro,
+            data["fecha"].year,
+            data["fecha"].month,
+        ):
+            return Response(
+                {"error": "Noviembre 2026 del Folio 0011 es una vista de solo lectura."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Validate fecha vs libro year
         if libro_id:
@@ -146,6 +172,11 @@ def entry_detail(request, entry_id):
         return Response(MovimientoSerializer(mov).data)
 
     # DELETE
+    if is_folio_0011_view(mov.libro, mov.fecha.year, mov.fecha.month):
+        return Response(
+            {"error": "Noviembre 2026 del Folio 0011 es una vista de solo lectura."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     mov.delete()
     recompute_saldos(libro_id)
     return Response({"ok": True})

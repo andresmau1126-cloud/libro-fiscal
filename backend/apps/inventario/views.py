@@ -45,6 +45,7 @@ from services.scheduler_alertas import (
     obtener_estado_scheduler,
 )
 from services.ventas_libro import asignar_libro_a_venta, compilar_ventas_diarias
+from services.libro_fiscal import is_folio_0011_view
 
 
 def _productos_qs_for_user(user):
@@ -242,6 +243,11 @@ def ventas_list_create(request):
             if not libro:
                 return Response(
                     {"error": "Seleccione el libro fiscal NIT 1010085627-1 del año de la fecha."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if is_folio_0011_view(libro, data["fecha"].year, data["fecha"].month) and data["folio"] != "0011":
+                return Response(
+                    {"error": "Los cierres de noviembre 2026 deben usar el Folio 0011."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 

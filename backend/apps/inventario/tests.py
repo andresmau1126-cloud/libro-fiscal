@@ -838,3 +838,44 @@ class RealNotebookSalesTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Venta.objects.filter(es_real_cuaderno=True).count(), 0)
         self.assertFalse(Movimiento.objects.filter(libro=self.book).exists())
+
+    def test_real_cuaderno_sale_allows_zero_value_and_requires_a_folio(self):
+        response = self.client.post(
+            "/api/ventas",
+            {
+                "es_real_cuaderno": True,
+                "es_simulado": False,
+                "fecha": date.today().isoformat(),
+                "total": "0",
+                "libro_id": self.book.id,
+                "folio": "0011",
+                "descripcion": "Venta diaria - Cierre de caja - Folio 0011",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["total"], 0.0)
+        self.assertTrue(response.data["es_real_cuaderno"])
+        self.assertFalse(response.data["es_simulado"])
+        self.assertEqual(
+            Movimiento.objects.get(
+                libro=self.book,
+                fecha=date.today(),
+                es_compilacion_ventas=True,
+            ).ingresos,
+            Decimal("0.00"),
+        )
+
+        missing_folio = self.client.post(
+            "/api/ventas",
+            {
+                "es_real_cuaderno": True,
+                "fecha": date.today().isoformat(),
+                "total": "0",
+                "libro_id": self.book.id,
+                "descripcion": "Cierre sin folio",
+            },
+            format="json",
+        )
+        self.assertEqual(missing_folio.status_code, status.HTTP_400_BAD_REQUEST)

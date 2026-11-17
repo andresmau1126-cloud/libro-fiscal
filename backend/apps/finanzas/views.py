@@ -17,6 +17,7 @@ from apps.movimientos.models import Movimiento
 from apps.usuarios.permissions import can_manage_configuration, can_view_shared_data
 from apps.usuarios.utils import get_shift_error_for_user
 from services.saldo import recompute_saldos
+from services.libro_fiscal import is_folio_0011_view
 from .models import Expense, Provider, SellerStats
 from .serializers import ExpenseSerializer, ProviderSerializer, SellerStatsSerializer
 
@@ -69,6 +70,15 @@ def expenses(request):
     data = serializer.validated_data
     if data["fecha"].year != data["libro"].anio:
         return Response({"error": "La fecha debe pertenecer al año del libro."}, status=status.HTTP_400_BAD_REQUEST)
+    if data.get("es_real_cuaderno") and is_folio_0011_view(
+        data["libro"],
+        data["fecha"].year,
+        data["fecha"].month,
+    ) and data["folio"] != "0011":
+        return Response(
+            {"error": "Los egresos de noviembre 2026 deben usar el Folio 0011."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     with transaction.atomic():
         movimiento = None
         if not data.get("es_simulado", False):
@@ -182,6 +192,15 @@ def expense_detail(request, expense_id):
     target_date = data.get("fecha", expense.fecha)
     if target_date.year != target_book.anio:
         return Response({"error": "La fecha debe pertenecer al año del libro."}, status=status.HTTP_400_BAD_REQUEST)
+    if expense.es_real_cuaderno and is_folio_0011_view(
+        target_book,
+        target_date.year,
+        target_date.month,
+    ) and data.get("folio", expense.folio) != "0011":
+        return Response(
+            {"error": "Los egresos de noviembre 2026 deben usar el Folio 0011."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     old_book_id = expense.libro_id
     with transaction.atomic():
         for field, value in data.items():
